@@ -13,10 +13,17 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
-            $table->string('email')->unique();
+            $table->foreignId('country_id')->nullable()->constrained('countries')->restrictOnDelete();
+            $table->string('first_name');
+            $table->string('last_name');
+            $table->string('full_name')->virtualAs("CONCAT(first_name, ' ', last_name)");
+            $table->string('phone_number')->unique();
+            $table->string('email')->nullable()->unique();// Email is optional for customers but usually required for Admins/Operations
+            $table->string('password')->nullable();// Nullable because Customers login via OTP, while Admins might use a password
+            $table->enum('type',['customer', 'operation', 'super_admin'])->default('customer');
+            $table->enum('status',['active', 'inactive', 'suspended'])->default('active');
             $table->timestamp('email_verified_at')->nullable();
-            $table->string('password');
+            $table->enum('preferred_language', ['ar', 'en'])->default('en');
             $table->rememberToken();
             $table->timestamps();
         });

@@ -6,11 +6,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable , HasRoles ;
 
     /**
      * The attributes that are mass assignable.
@@ -18,9 +19,17 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $fillable = [
-        'name',
+        'country_id',
+        'first_name',
+        'last_name',
+        'full_name',
+        'phone_number',
         'email',
         'password',
+        'type',
+        'status',
+        'email_verified_at',
+        'preferred_language',
     ];
 
     /**
@@ -44,5 +53,13 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function addresses(){
+        return $this->hasMany(CustomerAddress::class, 'user_id');
+    }
+
+    public function country(){
+        return $this->belongsTo(Country::class, 'country_id');
     }
 }
