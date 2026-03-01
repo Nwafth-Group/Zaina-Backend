@@ -16,6 +16,7 @@ return new class extends Migration
             $table->foreignId('country_id')->constrained('countries')->onDelete('cascade');
             $table->string('name_ar');
             $table->string('name_en');
+            $table->string('code');
             $table->boolean('is_active')->default(true); // to stop to service in onc city.
             $table->timestamps();
         });

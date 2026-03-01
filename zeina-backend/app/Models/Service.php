@@ -10,17 +10,32 @@ class Service extends Model
     /** @use HasFactory<\Database\Factories\ServiceFactory> */
     use HasFactory;
 
-    protected $fillable = [
-        'category_id',
-        'city_id',
-        'name_ar',
-        'name_en',
-        'description_ar',
-        'description_en',
-        'is_active',
+   protected $fillable = [
+        'category_id', 'type', 'name_ar', 'name_en', 
+        'description_ar', 'description_en', 'status'
     ];
 
     public function category(){
         return $this->belongsTo(Category::class, 'category_id');
     }
+
+    public function duration(){
+        return $this->hasOne(ServiceDuration::class,'service_id');
+    }
+    public function rule(){
+        return $this->hasOne(ServiceRule::class , 'service_id');
+    }
+
+    public function coverages()
+    {
+        return $this->hasMany(ServiceCoverage::class,'service_id');
+    }
+
+    public function priceRules()
+    {
+        return $this->hasMany(ServicePrice::class , 'service_id');
+    }
+
+
+    //media images iconnn
 }

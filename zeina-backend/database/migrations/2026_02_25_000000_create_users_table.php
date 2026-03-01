@@ -18,6 +18,7 @@ return new class extends Migration
             $table->string('last_name');
             $table->string('full_name')->virtualAs("CONCAT(first_name, ' ', last_name)");
             $table->string('phone_number')->unique();
+            $table->string('job_title',100)->nullable();
             $table->string('email')->nullable()->unique();// Email is optional for customers but usually required for Admins/Operations
             $table->string('password')->nullable();// Nullable because Customers login via OTP, while Admins might use a password
             $table->enum('type',['customer', 'operation', 'super_admin'])->default('customer');

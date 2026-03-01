@@ -1,0 +1,36 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('service_prices', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('service_id')->constrained('services')->cascadeOnDelete();
+            $table->enum('pricing_scope', ['city', 'area'])->default('area');
+            $table->foreignId('city_id')->nullable()->constrained('cities')->cascadeOnDelete();
+            $table->foreignId('area_id')->nullable()->constrained('areas')->cascadeOnDelete();
+            $table->decimal('base_price', 10, 2)->default(0);
+            $table->decimal('price_per_hour', 10, 2)->default(0);
+            $table->string('currency', 10)->default('EGP');
+            $table->date('effective_start')->nullable();
+            $table->date('effective_end')->nullable();
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('service_prices');
+    }
+};

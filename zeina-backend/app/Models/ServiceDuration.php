@@ -1,0 +1,26 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class ServiceDuration extends Model
+{
+    /** @use HasFactory<\Database\Factories\ServiceDurationFactory> */
+    use HasFactory;
+
+    protected $fillable = [
+        'service_id', 'allowed_durations', 'allowed_contract_durations', 
+        'min_duration_hours', 'min_contract_months'
+    ];
+
+    protected $casts = [
+        'allowed_durations' => 'array',
+        'allowed_contract_durations' => 'array',
+    ];
+
+    public function service(){
+        return $this->belongsTo(Service::class,'service_id');
+    }
+}

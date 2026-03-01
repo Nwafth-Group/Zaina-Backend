@@ -13,24 +13,14 @@ return new class extends Migration
     {
         Schema::create('services', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('category_id')->constrained('categories')->cascadeOnDelete();
-            $table->string('name_ar');
-            $table->string('name_en');
+            $table->foreignId('category_id')->constrained('categories')->restrictOnDelete();
+            $table->enum('type', ['hourly', 'moqema', 'both'])->default('hourly');
+            $table->string('name_ar', 100);
+            $table->string('name_en', 100);
             $table->text('description_ar')->nullable();
             $table->text('description_en')->nullable();
-            $table->string('type')->default('fixed'); // مثلاً: fixed (سعر ثابت) أو hourly (بالساعة)
-            
-            // ضوابط الوقت (بالدقائق كما طلبت في الـ BRD)
-            $table->integer('default_duration_minutes')->default(120);
-            $table->integer('min_duration_minutes')->default(60);
-            $table->integer('max_duration_minutes')->default(480);
-            
-            // ضوابط السعر
-            $table->decimal('base_price', 10, 2)->default(0);
-            $table->decimal('price_per_hour', 10, 2)->nullable();
-            $table->string('currency')->default('EGP'); // العملة الافتراضية
-            
-            $table->boolean('is_active')->default(true);
+            // $table->string('icon')->nullable(); store icon for service.
+            $table->enum('status', ['draft', 'active', 'hidden', 'inactive'])->default('draft');
             $table->timestamps();
         });
     }
