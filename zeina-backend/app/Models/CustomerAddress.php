@@ -15,12 +15,20 @@ class CustomerAddress extends Model
         'area_id',
         'label',
         'street',
+        'latitude',           
+        'longitude',          
+        'serviceable_status',
         'building',
         'floor',
         'unit',
         'notes',
         'is_default',
         'is_active',
+    ];
+
+    protected $casts = [
+        'is_default' => 'boolean',
+        'is_active' => 'boolean',
     ];
 
     public function user(){

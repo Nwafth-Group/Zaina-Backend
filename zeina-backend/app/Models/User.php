@@ -4,14 +4,19 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
+use OwenIt\Auditing\Contracts\Auditable;
 use Spatie\Permission\Traits\HasRoles;
 
-class User extends Authenticatable
+class User extends Authenticatable implements Auditable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable , HasRoles ;
+    use HasFactory, Notifiable , HasRoles , HasApiTokens  ;
+
+    use \OwenIt\Auditing\Auditable;
 
     /**
      * The attributes that are mass assignable.
@@ -21,6 +26,7 @@ class User extends Authenticatable
     protected $fillable = [
         'country_id',
         'first_name',
+        'id_number',
         'last_name',
         'full_name',
         'phone_number',
@@ -61,5 +67,13 @@ class User extends Authenticatable
 
     public function country(){
         return $this->belongsTo(Country::class, 'country_id');
+    }
+
+    // public function media(){
+    //     return $this->morphMany(Media::class, 'model');
+    // }
+
+    public function media(){
+        return $this->morphMany(Media::class,'model');
     }
 }

@@ -14,11 +14,13 @@ return new class extends Migration
         Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->foreignId('country_id')->nullable()->constrained('countries')->restrictOnDelete();
-            $table->string('first_name');
-            $table->string('last_name');
-            $table->string('full_name')->virtualAs("CONCAT(first_name, ' ', last_name)");
+            $table->string("id_number")->nullable()->unique();
+            $table->string('first_name',100);
+            $table->string('last_name',100);
+            $table->string('full_name',200)->virtualAs("CONCAT(first_name,' ',last_name)");
             $table->string('phone_number')->unique();
             $table->string('job_title',100)->nullable();
+            $table->enum('gender', ['Male', 'Female'])->nullable();
             $table->string('email')->nullable()->unique();// Email is optional for customers but usually required for Admins/Operations
             $table->string('password')->nullable();// Nullable because Customers login via OTP, while Admins might use a password
             $table->enum('type',['customer', 'operation', 'super_admin'])->default('customer');
@@ -27,6 +29,7 @@ return new class extends Migration
             $table->enum('preferred_language', ['ar', 'en'])->default('en');
             $table->rememberToken();
             $table->timestamps();
+            $table->softDeletes();
         });
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {

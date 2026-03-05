@@ -19,6 +19,9 @@ return new class extends Migration
         $table->string('street')->nullable();
         $table->string('building')->nullable();
         $table->string('floor')->nullable();
+        $table->decimal('latitude', 10, 8); // خط العرض
+        $table->decimal('longitude', 11, 8); // خط الطول
+        $table->enum('serviceable_status', ['serviceable', 'not_serviceable'])->default('serviceable');
         $table->string('unit')->nullable();
         $table->text('notes')->nullable();
         $table->boolean('is_default')->default(false);
