@@ -46,7 +46,9 @@ class User extends Authenticatable implements Auditable
     protected $hidden = [
         'password',
         'remember_token',
-    ];
+    ]; 
+
+    protected $guard_name = 'sanctum'; 
 
     /**
      * Get the attributes that should be cast.
@@ -69,9 +71,6 @@ class User extends Authenticatable implements Auditable
         return $this->belongsTo(Country::class, 'country_id');
     }
 
-    // public function media(){
-    //     return $this->morphMany(Media::class, 'model');
-    // }
 
     public function media(){
         return $this->morphMany(Media::class,'model');

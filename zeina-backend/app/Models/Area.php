@@ -14,7 +14,8 @@ class Area extends Model
         'city_id',
         'name_ar',
         'name_en',
-        'is_active',
+        'code',
+        'status',
     ]; 
 
     public function city(){

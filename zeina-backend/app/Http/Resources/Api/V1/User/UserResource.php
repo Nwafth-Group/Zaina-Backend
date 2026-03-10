@@ -14,6 +14,9 @@ class UserResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+       $roles = $this->roles->pluck('name');
+       $primaryRole = $roles->first();
+       $otherRolesCount = $roles->count() > 1 ? $roles->count() - 1 : 0;
         return [
             'id' => $this->id,
             'id_number' => $this->id_number,
@@ -24,6 +27,9 @@ class UserResource extends JsonResource
             'email' =>$this->email,
             'mobile_number' => $this->phone_number,
             'preferred_language' => $this->preferred_language,
+            'primary_role' => $primaryRole,
+            'additional_roles_count' => $otherRolesCount,
+            'all_roles'    => $roles,
             'type' => $this->type,
             'status' => $this->status,
              'created_at' => $this->created_at->toDateTimeString(),
