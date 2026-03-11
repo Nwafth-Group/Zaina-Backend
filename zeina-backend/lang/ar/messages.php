@@ -59,6 +59,10 @@ return [
     'cannot_delete_area_with_addresses' => 'لا يمكن حذف هذه المنطقة لأنها تحتوي على عناوين عملاء. يرجى تعطيلها بدلاً من ذلك.',
     'area_status_changed' => 'تم تغيير حالة المنطقة بنجاح.',
     'cannot_toggle_area_status_with_addresses' => 'لا يمكن تغيير حالة المنطقة لأنها تحتوي على عناوين عملاء.',
-    ''
+    'categories_retrieved' => 'تم جلب الأقسام بنجاح.',
+    'category_created' => 'تم إنشاء القسم بنجاح.',
+    'category_updated' => 'تم تحديث القسم بنجاح.',
+    'category_deactivated' => 'تم تعطيل القسم بنجاح.',
+    'category_destroyed' => 'تم حذف القسم بنجاح.',
     
 ];

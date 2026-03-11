@@ -4,21 +4,49 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Category extends Model
 {
     /** @use HasFactory<\Database\Factories\CategoryFactory> */
-    use HasFactory;
+    use HasFactory , SoftDeletes ;
 
     protected $fillable = [
         'name_ar',
         'name_en',
         'is_active',
         'sort_order',
+        'created_by',
+        'updated_by',
     ]; 
+
+    protected static function booted()
+    {
+        static::creating(function ($model) {
+            $model->created_by = auth()->id();
+              if (!$model->sort_order) {
+            $model->sort_order = Category::max('sort_order') + 1;
+        }
+        });
+
+        static::updating(function ($model) {
+            $model->updated_by = auth()->id();
+        });
+    }
 
     public function services(){
         return $this->hasMany(Service::class, 'category_id');
+    }
+
+    public function createdBy(){
+        return $this->belongsTo(User::class, 'created_by');
+    }
+    public function updatedBy(){
+        return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    public function media(){
+        return $this->morphMany(Media::class, 'model');
     }
 
 

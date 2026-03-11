@@ -59,7 +59,12 @@ return [
     'cannot_delete_area_with_addresses' => 'Cannot delete this area because it contains customer addresses. Please deactivate it instead.',
     'area_status_changed' => 'Area status changed successfully.',
     'cannot_toggle_area_status_with_addresses' => 'Cannot change area status because it contains customer addresses.',
+    'categories_retrieved' => 'Categories retrieved successfully.',
+    'category_created' => 'Category created successfully.',
+    'category_updated' => 'Category updated successfully.',
+    'category_deactivated' => 'Category deactivated successfully.',
+    'category_destroyed' => 'Category destroyed successfully.',
     
-
+    
     
 ];

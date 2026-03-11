@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\Admin\AreaController;
+use App\Http\Controllers\Api\V1\Admin\CategoryController;
 use App\Http\Controllers\Api\V1\Admin\CityController;
 use App\Http\Controllers\Api\V1\Admin\CountryController;
 use App\Http\Controllers\Api\V1\Admin\RoleController;
@@ -21,7 +22,7 @@ Route::prefix('users')->group(function (){
 Route::apiResource('roles',RoleController::class);
 Route::post('roles/{role}/duplicate',[RoleController::class, 'duplicate']); 
 
-Route::middleware('permission:location.edit')->group( function (){
+ Route::middleware('permission:location.edit')->group( function (){
   Route::apiResource('cities', CityController::class);
   Route::post('cities/{city}/toggle-status', [CityController::class, 'toggleStatus']);
 
@@ -30,7 +31,11 @@ Route::middleware('permission:location.edit')->group( function (){
 
   Route::apiResource('areas', AreaController::class);
   Route::post('areas/{area}/toggle-status', [AreaController::class, 'toggleStatus']);
-}); 
+});
+
+ Route::apiResource('categories', CategoryController::class);
+
+
 
 
 
