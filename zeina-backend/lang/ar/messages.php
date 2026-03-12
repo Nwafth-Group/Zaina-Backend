@@ -64,5 +64,15 @@ return [
     'category_updated' => 'تم تحديث القسم بنجاح.',
     'category_deactivated' => 'تم تعطيل القسم بنجاح.',
     'category_destroyed' => 'تم حذف القسم بنجاح.',
-    
+    'cannot_delete_category_with_services' => 'لا يمكن حذف القسم لوجود خدمات مرتبطة.',
+    'services_retrieved_successfully' => 'تم جلب الخدمات بنجاح.',
+    'service_created_successfully' => 'تم إنشاء الخدمة بنجاح.',
+    'failed_to_create_service' => 'فشل في إنشاء الخدمة. يرجى المحاولة مرة أخرى. خطأ: :error',
+    'service_prices_retrieved_successfully' => 'تم جلب أسعار الخدمة بنجاح.',
+    'service_toggled_successfully' => 'تم تغيير حالة الخدمة إلى :status بنجاح.',
+    'cannot_setprice' => "لا يمكن تحديد سعر لموقع غير مشمول بهذه الخدمة.",
+    'service_price_save' => 'تم حفظ السعر بنجاح.',
+     'pricing_not_availble' => 'السعر غير متاح لهذه المنطقة.',
+     'pricingestimated_retrive_success' => 'تم استلام تقديرات الأسعار بنجاح.',
+
 ];

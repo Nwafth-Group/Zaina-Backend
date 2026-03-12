@@ -165,8 +165,53 @@ return [
         'status_in' => 'الحالة يجب أن تكون إما "active" أو "inactive".',
      ],
 
-
-
+     'create_service' => [
+        'category_id_required' => 'معرف القسم مطلوب.',
+        'category_id_exists' => 'القسم المحدد غير موجود.',
+        'type_required' => 'نوع الخدمة مطلوب.',
+        'type_in' => 'نوع الخدمة يجب أن يكون إما "hourly", "moqema", أو "both".',
+        'name_ar_required' => 'الاسم العربي مطلوب.',
+        'name_ar_string' => 'الاسم العربي يجب أن يكون نصي.',
+        'name_ar_max' => 'الاسم العربي لا يجب أن يتجاوز 100 حرف.',
+        'name_en_required' => 'الاسم الإنجليزي مطلوب.',
+        'name_en_string' => 'الاسم الإنجليزي يجب أن يكون نصي.',
+        'name_en_max' => 'الاسم الإنجليزي لا يجب أن يتجاوز 100 حرف.',
+        'description_ar_string' => 'الوصف العربي يجب أن يكون نصي.',
+        'description_en_string' => 'الوصف الإنجليزي يجب أن يكون نصي.',  
+        'status_in' => 'الحالة يجب أن تكون إما "draft", "active", "hidden", أو "inactive".',
+        'rules.late_cancel_action_required' => 'إجراء الإلغاء المتأخر مطلوب.',
+        'rules.late_cancel_fee_type_required_if' => 'نوع رسوم الإلغاء المتأخر مطلوب عندما يكون إجراء الإلغاء المتأخر "رسوم".',
+        'rules.late_cancel_fee_value_required_if' => 'قيمة رسوم الإلغاء المتأخر مطلوبة عندما يكون إجراء الإلغاء المتأخر "رسوم".',
+        'rules.no_show_policy_required' => 'سياسة عدم الحضور مطلوبة.',
+        'rules.max_changes_per_booking_required' => 'الحد الأقصى للتغييرات لكل حجز مطلوب.',
     
+        // Durations and Rules validations are handled in the StoreServiceRequest.php file directly for better control and custom messages.
+     ],
+
+     'store_service_price' => [
+        'service_id_required' => 'معرف الخدمة مطلوب.',
+        'service_id_exists' => 'الخدمة المحددة غير موجودة.',
+        'pricing_scope_required' => 'نطاق التسعير مطلوب.',
+        'pricing_scope_in' => 'نطاق التسعير يجب أن يكون إما "city" أو "area".',
+        'city_id_required_if' => 'معرف المدينة مطلوب عندما يكون نطاق التسعير "city".',
+        'city_id_exists' => 'المدينة المحددة غير موجودة.',
+        'area_id_required_if' => 'معرف المنطقة مطلوب عندما يكون نطاق التسعير "area".',
+        'area_id_exists' => 'المنطقة المحددة غير موجودة.',
+        'base_price_required' => 'السعر الأساسي مطلوب.',
+        'base_price_numeric' => 'السعر الأساسي يجب أن يكون رقمي.',
+        'base_price_min' => 'السعر الأساسي لا يجب أن يكون أقل من 0.',
+        'price_per_hour_required' => 'سعر الساعة مطلوب.',
+        'price_per_hour_numeric' => 'سعر الساعة يجب أن يكون رقمي.',
+        'price_per_hour_min' => 'سعر الساعة يجب أن يكون أكبر من 0.',
+        'currency_required' => 'العملة مطلوبة.',
+        'currency_string' => 'العملة يجب أن تكون نصية.',
+        'currency_size' => 'العملة يجب أن تتكون من 3 أحرف (مثل EGP).',
+        'effective_start_date' => 'تاريخ بدء السريان يجب أن يكون تاريخًا صالحًا.',
+        'effective_start_after_or_equal' => 'تاريخ بدء السريان لا يمكن أن يكون في الماضي.',
+        'effective_end_date' => 'تاريخ نهاية السريان يجب أن يكون تاريخًا صالحًا.',
+        'effective_end_after' => 'تاريخ نهاية السريان يجب أن يكون بعد تاريخ بدء السريان.',
+     ],
+
 
 ];
+    

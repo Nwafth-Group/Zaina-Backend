@@ -22,7 +22,7 @@ class Service extends Model
     public function duration(){
         return $this->hasOne(ServiceDuration::class,'service_id');
     }
-    public function rule(){
+    public function rules(){
         return $this->hasOne(ServiceRule::class , 'service_id');
     }
 
@@ -37,5 +37,7 @@ class Service extends Model
     }
 
 
-    //media images iconnn
+   public function media(){
+    return $this->morphMany(Media::class,'model');
+   }
 }

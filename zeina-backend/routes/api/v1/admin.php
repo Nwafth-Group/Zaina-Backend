@@ -5,6 +5,8 @@ use App\Http\Controllers\Api\V1\Admin\CategoryController;
 use App\Http\Controllers\Api\V1\Admin\CityController;
 use App\Http\Controllers\Api\V1\Admin\CountryController;
 use App\Http\Controllers\Api\V1\Admin\RoleController;
+use App\Http\Controllers\Api\V1\Admin\ServiceController;
+use App\Http\Controllers\Api\V1\Admin\ServicePriceController;
 use App\Http\Controllers\Api\V1\Admin\UserController;
 use App\Models\Role;
 use Illuminate\Support\Facades\Route;
@@ -34,6 +36,11 @@ Route::post('roles/{role}/duplicate',[RoleController::class, 'duplicate']);
 });
 
  Route::apiResource('categories', CategoryController::class);
+
+ Route::apiResource('services',ServiceController::class);
+ Route::post('services/{service}/toggle-status', [ServiceController::class, 'toggleStatus']);
+
+ Route::apiResource('servicesprices',ServicePriceController::class);
 
 
 

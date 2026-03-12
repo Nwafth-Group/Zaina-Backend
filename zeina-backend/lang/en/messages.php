@@ -64,6 +64,16 @@ return [
     'category_updated' => 'Category updated successfully.',
     'category_deactivated' => 'Category deactivated successfully.',
     'category_destroyed' => 'Category destroyed successfully.',
+    'cannot_delete_category_with_services' => 'Cannot delete category with associated services.',
+    'services_retrieved_successfully' => 'Services retrieved successfully.',
+    'service_created_successfully' => 'Service created successfully.',
+    'failed_to_create_service' => 'Failed to create service. Please try again. Error: :error',
+    'service_prices_retrieved_successfully' => 'Service prices retrieved successfully.',
+    'service_toggled_successfully' => 'Service status changed to :status successfully.',
+    'cannot_setprice' => "Cannot set price for a location not covered by this service.",
+    'service_price_save' => 'Pricing service saved successfully.',
+    'pricing_not_availble' => 'Pricing not available for this location.',
+    'pricingestimated_retrive_success' => 'Pricing Estimated retreive successfully.',
     
     
     

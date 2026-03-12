@@ -19,6 +19,8 @@ class ServicePrice extends Model
     protected $casts = [
         'effective_start' => 'date',
         'effective_end' => 'date',
+        'base_price' => 'decimal:2',
+        'price_per_hour' => 'decimal:2',
     ];
 
     public function service()
