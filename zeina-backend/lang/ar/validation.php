@@ -165,28 +165,97 @@ return [
         'status_in' => 'الحالة يجب أن تكون إما "active" أو "inactive".',
      ],
 
-     'create_service' => [
-        'category_id_required' => 'معرف القسم مطلوب.',
-        'category_id_exists' => 'القسم المحدد غير موجود.',
-        'type_required' => 'نوع الخدمة مطلوب.',
-        'type_in' => 'نوع الخدمة يجب أن يكون إما "hourly", "moqema", أو "both".',
-        'name_ar_required' => 'الاسم العربي مطلوب.',
-        'name_ar_string' => 'الاسم العربي يجب أن يكون نصي.',
-        'name_ar_max' => 'الاسم العربي لا يجب أن يتجاوز 100 حرف.',
-        'name_en_required' => 'الاسم الإنجليزي مطلوب.',
-        'name_en_string' => 'الاسم الإنجليزي يجب أن يكون نصي.',
-        'name_en_max' => 'الاسم الإنجليزي لا يجب أن يتجاوز 100 حرف.',
-        'description_ar_string' => 'الوصف العربي يجب أن يكون نصي.',
-        'description_en_string' => 'الوصف الإنجليزي يجب أن يكون نصي.',  
-        'status_in' => 'الحالة يجب أن تكون إما "draft", "active", "hidden", أو "inactive".',
-        'rules.late_cancel_action_required' => 'إجراء الإلغاء المتأخر مطلوب.',
-        'rules.late_cancel_fee_type_required_if' => 'نوع رسوم الإلغاء المتأخر مطلوب عندما يكون إجراء الإلغاء المتأخر "رسوم".',
-        'rules.late_cancel_fee_value_required_if' => 'قيمة رسوم الإلغاء المتأخر مطلوبة عندما يكون إجراء الإلغاء المتأخر "رسوم".',
-        'rules.no_show_policy_required' => 'سياسة عدم الحضور مطلوبة.',
-        'rules.max_changes_per_booking_required' => 'الحد الأقصى للتغييرات لكل حجز مطلوب.',
+   'create_service' => [
+    // 1. البيانات الأساسية (Basic Data)
+    'category_id_required' => 'تصنيف الخدمة مطلوب.',
+    'category_id_exists'   => 'تصنيف الخدمة المحدد غير موجود.',
     
-        // Durations and Rules validations are handled in the StoreServiceRequest.php file directly for better control and custom messages.
-     ],
+    'type_required' => 'نوع الخدمة مطلوب.',
+    'type_in'       => 'نوع الخدمة يجب أن يكون: بالساعة، مقيمة، أو كلاهما.',
+    
+    'name_ar_required' => 'اسم الخدمة بالعربية مطلوب.',
+    'name_ar_string'   => 'اسم الخدمة بالعربية يجب أن يكون نصاً.',
+    'name_ar_max'      => 'اسم الخدمة بالعربية يجب ألا يتجاوز 100 حرف.',
+    
+    'name_en_required' => 'اسم الخدمة بالإنجليزية مطلوب.',
+    'name_en_string'   => 'اسم الخدمة بالإنجليزية يجب أن يكون نصاً.',
+    'name_en_max'      => 'اسم الخدمة بالإنجليزية يجب ألا يتجاوز 100 حرف.',
+    
+    'description_ar_string' => 'الوصف بالعربية يجب أن يكون نصاً.',
+    'description_en_string' => 'الوصف بالإنجليزية يجب أن يكون نصاً.',
+    
+    'status_in' => 'حالة الخدمة المحددة غير صحيحة.',
+
+    // 2. المدد (Durations)
+    'duration_required' => 'بيانات مدة الخدمة مطلوبة.',
+    'duration_array'    => 'بيانات مدة الخدمة يجب أن تكون مصفوفة.',
+    
+    'allowed_durations_required_if' => 'المدد المسموحة مطلوبة للخدمات بالساعة.',
+    'allowed_durations_array'       => 'المدد المسموحة يجب أن تكون مصفوفة.',
+    'allowed_durations_numeric'     => 'يجب أن تكون كل مدة مسموحة عبارة عن رقم.',
+    
+    'min_duration_hours_required_if' => 'الحد الأدنى لعدد الساعات مطلوب للخدمات بالساعة.',
+    'min_duration_hours_numeric'     => 'الحد الأدنى لعدد الساعات يجب أن يكون رقماً.',
+    'min_duration_hours_lte'         => 'الحد الأدنى لعدد الساعات يجب أن يكون أقل من أو يساوي أصغر مدة مسموحة.',
+    
+    'allowed_contract_durations_required_if' => 'مدد العقد المسموحة مطلوبة لخدمات مقيمة.',
+    'allowed_contract_durations_array'       => 'مدد العقد المسموحة يجب أن تكون مصفوفة.',
+    'allowed_contract_durations_numeric'     => 'يجب أن تكون كل مدة عقد عبارة عن رقم.',
+    
+    'min_contract_months_required_if' => 'الحد الأدنى لأشهر العقد مطلوب لخدمات مقيمة.',
+    'min_contract_months_numeric'     => 'الحد الأدنى لأشهر العقد يجب أن يكون رقماً.',
+    'min_contract_months_lte'         => 'الحد الأدنى لأشهر العقد يجب أن يكون أقل من أو يساوي أصغر مدة عقد مسموحة.',
+
+    // 3. القواعد (Rules)
+    'rules_required' => 'قواعد وشروط الخدمة مطلوبة.',
+    'rules_array'    => 'قواعد وشروط الخدمة يجب أن تكون مصفوفة.',
+    
+    'free_cancel_cutoff_hours_required' => 'المهلة المسموحة للإلغاء المجاني مطلوبة.',
+    'free_cancel_cutoff_hours_integer'  => 'المهلة المسموحة للإلغاء المجاني يجب أن تكون رقماً صحيحاً.',
+    'free_cancel_cutoff_hours_min'      => 'المهلة المسموحة للإلغاء المجاني لا يمكن أن تكون أقل من 0.',
+    
+    'reschedule_cutoff_hours_required' => 'المهلة المسموحة لإعادة الجدولة مطلوبة.',
+    'reschedule_cutoff_hours_integer'  => 'المهلة المسموحة لإعادة الجدولة يجب أن تكون رقماً صحيحاً.',
+    'reschedule_cutoff_hours_min'      => 'المهلة المسموحة لإعادة الجدولة لا يمكن أن تكون أقل من 0.',
+    
+    'lead_time_min_hours_required' => 'الحد الأدنى لوقت التحضير مطلوب.',
+    'lead_time_min_hours_integer'  => 'الحد الأدنى لوقت التحضير يجب أن يكون رقماً صحيحاً.',
+    'lead_time_min_hours_min'      => 'الحد الأدنى لوقت التحضير لا يمكن أن يكون أقل من 0.',
+    
+    'lead_time_max_days_required' => 'الحد الأقصى لأيام الحجز المسبق مطلوب.',
+    'lead_time_max_days_integer'  => 'الحد الأقصى لأيام الحجز المسبق يجب أن يكون رقماً صحيحاً.',
+    'lead_time_max_days_min'      => 'الحد الأقصى لأيام الحجز المسبق يجب أن يكون يوماً واحداً على الأقل.',
+    
+    'late_cancel_action_required' => 'إجراء الإلغاء المتأخر مطلوب.',
+    'late_cancel_action_in'       => 'إجراء الإلغاء المتأخر المحدد غير صحيح.',
+    
+    'late_cancel_fee_type_required_if' => 'نوع رسوم الإلغاء المتأخر مطلوب عند تحديد الإجراء كرسوم.',
+    'late_cancel_fee_type_in'          => 'نوع رسوم الإلغاء المتأخر المحدد غير صحيح.',
+    
+    'late_cancel_fee_value_required_if' => 'قيمة رسوم الإلغاء المتأخر مطلوبة.',
+    'late_cancel_fee_value_numeric'     => 'قيمة رسوم الإلغاء المتأخر يجب أن تكون رقماً.',
+    'late_cancel_fee_value_min'         => 'قيمة رسوم الإلغاء المتأخر لا يمكن أن تكون أقل من 0.',
+    
+    'no_show_policy_required' => 'سياسة عدم الحضور مطلوبة.',
+    'no_show_policy_in'       => 'سياسة عدم الحضور المحددة غير صحيحة.',
+    
+    'max_changes_per_booking_required' => 'الحد الأقصى للتعديلات لكل حجز مطلوب.',
+    'max_changes_per_booking_integer'  => 'الحد الأقصى للتعديلات يجب أن يكون رقماً صحيحاً.',
+    'max_changes_per_booking_min'      => 'الحد الأقصى للتعديلات لا يمكن أن يكون أقل من 0.',
+
+    // 4. التغطية الجغرافية (Coverage)
+    'coverages_required' => 'بيانات التغطية الجغرافية مطلوبة.',
+    'coverages_array'    => 'بيانات التغطية الجغرافية يجب أن تكون مصفوفة.',
+    'coverages_min'      => 'يجب إضافة منطقة تغطية واحدة على الأقل.',
+    
+    'coverages_city_id_required' => 'المدينة مطلوبة في التغطية الجغرافية.',
+    'coverages_city_id_exists'   => 'المدينة المحددة في التغطية الجغرافية غير موجودة.',
+    
+    'coverages_area_id_exists' => 'المنطقة المحددة غير موجودة.',
+    
+    'coverages_status_required' => 'حالة التغطية الجغرافية مطلوبة.',
+    'coverages_status_in'       => 'حالة التغطية الجغرافية المحددة غير صحيحة.',
+],
 
      'store_service_price' => [
         'service_id_required' => 'معرف الخدمة مطلوب.',

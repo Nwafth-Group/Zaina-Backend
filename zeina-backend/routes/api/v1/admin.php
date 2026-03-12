@@ -41,9 +41,6 @@ Route::post('roles/{role}/duplicate',[RoleController::class, 'duplicate']);
  Route::post('services/{service}/toggle-status', [ServiceController::class, 'toggleStatus']);
 
  Route::apiResource('servicesprices',ServicePriceController::class);
-
-
-
-
+ Route::post('servicesprices/estimated',[ServicePriceController::class,'getEstimatedPrice']);
 
 });

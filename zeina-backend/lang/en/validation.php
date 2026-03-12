@@ -164,41 +164,97 @@ return [
         'roles_exists' => 'One or more selected roles are invalid.',
      ],
 
-     'create_service' => [
-        'category_id_required' => 'Category ID is required.',
-        'category_id_exists' => 'The selected category does not exist.',
-        'type_required' => 'Service type is required.',
-        'type_in' => 'Service type must be either hourly, moqema, or both.',
-        'name_ar_required' => 'Arabic name is required.',
-        'name_ar_string' => 'Arabic name must be a string.',
-        'name_ar_max' => 'Arabic name must not exceed 100 characters.',
-        'name_en_required' => 'English name is required.',
-        'name_en_string' => 'English name must be a string.',
-        'name_en_max' => 'English name must not exceed 100 characters.',
-        // Durations and rules validation messages are defined in the StoreServiceRequest.php file
-        'coverages_required' => 'At least one coverage area is required.',
-        'coverages_array' => 'Coverages must be an array.',
-        'coverages_min' => 'At least one coverage area is required.',
-        'coverages.*.city_id_required' => 'City ID is required for each coverage area.',
-        'coverages.*.city_id_exists' => 'The selected city does not exist for coverage area.',
-        'coverages.*.area_id_exists' => 'The selected area does not exist for coverage area.',
-        'coverages.*.status_required' => 'Status is required for each coverage area.',
-        'coverages.*.status_in' => 'Status must be either active, inactive, or coming_soon for each coverage area.', 
-        'duration.allowed_durations_required_if' => 'Allowed durations are required when service type is hourly.',
-        'duration.min_duration_hours_required_if' => 'Minimum duration in hours is required when service type is hourly.',
-        'duration.allowed_contract_durations_required_if' => 'Allowed contract durations are required when service type is moqema.',
-        'duration.min_contract_months_required_if' => 'Minimum contract duration in months is required when service type is moqema.',
-        'rules.free_cancel_cutoff_hours_required' => 'Free cancellation cutoff hours are required.',
-        'rules.reschedule_cutoff_hours_required' => 'Reschedule cutoff hours are required.',
-        'rules.lead_time_min_hours_required' => 'Minimum lead time in hours is required.',
-        'rules.lead_time_max_days_required' => 'Maximum lead time in days is required.',
-        'rules.late_cancel_action_required' => 'Late cancellation action is required.',
-        'rules.late_cancel_fee_type_required_if' => 'Late cancellation fee type is required when late cancellation action is fee.',
-        'rules.late_cancel_fee_value_required_if' => 'Late cancellation fee value is required when late cancellation action is fee.',
-        'rules.no_show_policy_required' => 'No-show policy is required.',
-        'rules.max_changes_per_booking_required' => 'Maximum changes per booking is required.', 
+   'create_service' => [
+    // 1. Basic Data
+    'category_id_required' => 'The category is required.',
+    'category_id_exists'   => 'The selected category is invalid.',
+    
+    'type_required' => 'The service type is required.',
+    'type_in'       => 'The service type must be: hourly, moqema, or both.',
+    
+    'name_ar_required' => 'The Arabic name is required.',
+    'name_ar_string'   => 'The Arabic name must be a string.',
+    'name_ar_max'      => 'The Arabic name must not exceed 100 characters.',
+    
+    'name_en_required' => 'The English name is required.',
+    'name_en_string'   => 'The English name must be a string.',
+    'name_en_max'      => 'The English name must not exceed 100 characters.',
+    
+    'description_ar_string' => 'The Arabic description must be a string.',
+    'description_en_string' => 'The English description must be a string.',
+    
+    'status_in' => 'The selected status is invalid.',
 
-     ],
+    // 2. Durations
+    'duration_required' => 'Duration details are required.',
+    'duration_array'    => 'Duration details must be an array.',
+    
+    'allowed_durations_required_if' => 'Allowed durations are required for hourly services.',
+    'allowed_durations_array'       => 'Allowed durations must be an array.',
+    'allowed_durations_numeric'     => 'Each allowed duration must be a number.',
+    
+    'min_duration_hours_required_if' => 'Minimum duration hours are required for hourly services.',
+    'min_duration_hours_numeric'     => 'Minimum duration hours must be a number.',
+    'min_duration_hours_lte'         => 'Minimum duration hours must be less than or equal to the smallest allowed duration.',
+    
+    'allowed_contract_durations_required_if' => 'Allowed contract durations are required for moqema services.',
+    'allowed_contract_durations_array'       => 'Allowed contract durations must be an array.',
+    'allowed_contract_durations_numeric'     => 'Each allowed contract duration must be a number.',
+    
+    'min_contract_months_required_if' => 'Minimum contract months are required for moqema services.',
+    'min_contract_months_numeric'     => 'Minimum contract months must be a number.',
+    'min_contract_months_lte'         => 'Minimum contract months must be less than or equal to the smallest allowed contract duration.',
+
+    // 3. Rules
+    'rules_required' => 'Service rules are required.',
+    'rules_array'    => 'Service rules must be an array.',
+    
+    'free_cancel_cutoff_hours_required' => 'Free cancellation cutoff hours are required.',
+    'free_cancel_cutoff_hours_integer'  => 'Free cancellation cutoff hours must be an integer.',
+    'free_cancel_cutoff_hours_min'      => 'Free cancellation cutoff hours cannot be less than 0.',
+    
+    'reschedule_cutoff_hours_required' => 'Reschedule cutoff hours are required.',
+    'reschedule_cutoff_hours_integer'  => 'Reschedule cutoff hours must be an integer.',
+    'reschedule_cutoff_hours_min'      => 'Reschedule cutoff hours cannot be less than 0.',
+    
+    'lead_time_min_hours_required' => 'Minimum lead time hours are required.',
+    'lead_time_min_hours_integer'  => 'Minimum lead time hours must be an integer.',
+    'lead_time_min_hours_min'      => 'Minimum lead time hours cannot be less than 0.',
+    
+    'lead_time_max_days_required' => 'Maximum lead time days are required.',
+    'lead_time_max_days_integer'  => 'Maximum lead time days must be an integer.',
+    'lead_time_max_days_min'      => 'Maximum lead time days must be at least 1.',
+    
+    'late_cancel_action_required' => 'Late cancellation action is required.',
+    'late_cancel_action_in'       => 'The selected late cancellation action is invalid.',
+    
+    'late_cancel_fee_type_required_if' => 'Late cancellation fee type is required when a fee is applied.',
+    'late_cancel_fee_type_in'          => 'The selected late cancellation fee type is invalid.',
+    
+    'late_cancel_fee_value_required_if' => 'Late cancellation fee value is required.',
+    'late_cancel_fee_value_numeric'     => 'Late cancellation fee value must be a number.',
+    'late_cancel_fee_value_min'         => 'Late cancellation fee value cannot be less than 0.',
+    
+    'no_show_policy_required' => 'No show policy is required.',
+    'no_show_policy_in'       => 'The selected no show policy is invalid.',
+    
+    'max_changes_per_booking_required' => 'Maximum changes per booking is required.',
+    'max_changes_per_booking_integer'  => 'Maximum changes per booking must be an integer.',
+    'max_changes_per_booking_min'      => 'Maximum changes per booking cannot be less than 0.',
+
+    // 4. Coverage
+    'coverages_required' => 'Geographical coverage details are required.',
+    'coverages_array'    => 'Geographical coverage details must be an array.',
+    'coverages_min'      => 'At least one coverage area must be provided.',
+    
+    'coverages_city_id_required' => 'The city is required for coverage.',
+    'coverages_city_id_exists'   => 'The selected city is invalid.',
+    
+    'coverages_area_id_exists' => 'The selected area is invalid.',
+    
+    'coverages_status_required' => 'The coverage status is required.',
+    'coverages_status_in'       => 'The selected coverage status is invalid.',
+],
 
      'store_service_price' => [
         'service_id_required' => 'Service ID is required.',

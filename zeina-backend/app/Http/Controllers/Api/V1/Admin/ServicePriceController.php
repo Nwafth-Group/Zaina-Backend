@@ -19,7 +19,7 @@ use ApiResponseTrait;
      */
   public function index(Request $request)
     { 
-
+        
         $prices = ServicePrice::where('service_id', $request->service_id)
             ->with(['city', 'area'])
             ->get();
@@ -72,8 +72,7 @@ use ApiResponseTrait;
         //     'area_id'    => 'required',
         //     'hours'      => 'required|numeric'
         // ]); 
-
-
+        
         // تطبيق قاعدة الأولوية: السعر المخصص للمنطقة يغلب سعر المدينة (Scenario 2)
         $priceRule = ServicePrice::where('service_id', $request->service_id)
             ->where('area_id', $request->area_id)
