@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Api\v1\Admin\StoreCategoryRequest;
-use App\Http\Requests\Api\v1\Admin\UpdateCategoryRequest;
+use App\Http\Requests\Api\V1\Admin\StoreCategoryRequest;
+use App\Http\Requests\Api\V1\Admin\UpdateCategoryRequest;
 use App\Http\Resources\Api\V1\Category\CategoryResourse;
 use App\Models\Category;
 use App\Service\MediaService;

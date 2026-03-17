@@ -23,7 +23,7 @@ return new class extends Migration
             $table->enum('gender', ['Male', 'Female'])->nullable();
             $table->string('email')->nullable()->unique();// Email is optional for customers but usually required for Admins/Operations
             $table->string('password')->nullable();// Nullable because Customers login via OTP, while Admins might use a password
-            $table->enum('type',['customer', 'operation', 'super_admin'])->default('customer');
+            $table->enum('type',['customer','operation','super_admin','driver'])->default('customer');
             $table->enum('status',['active', 'inactive', 'suspended'])->default('active');
             $table->timestamp('email_verified_at')->nullable();
             $table->enum('preferred_language', ['ar', 'en'])->default('en');

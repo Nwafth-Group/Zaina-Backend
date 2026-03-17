@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Api\V1\Customer;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Api\v1\cutomer\CustomerLoginRequest;
-use App\Http\Requests\Api\v1\cutomer\CustomerRegisterRequest;
-use App\Http\Requests\Api\v1\cutomer\CustomerVerifyLoginRequest;
-use App\Http\Requests\Api\v1\cutomer\CustomerVerifyRegisterRequest;
+use App\Http\Requests\Api\V1\Customer\CustomerRegisterRequest;
+use App\Http\Requests\Api\V1\Customer\CustomerLoginRequest;
+use App\Http\Requests\Api\V1\Customer\CustomerVerifyLoginRequest;
+use App\Http\Requests\Api\V1\Customer\CustomerVerifyRegisterRequest;
 use App\Http\Resources\Api\V1\User\UserResource;
 use App\Models\User;
 use App\Traits\ApiResponseTrait;
@@ -19,11 +19,10 @@ class AuthController extends Controller
 {
     use ApiResponseTrait;
    public function register(CustomerRegisterRequest $request){
-
+     
        $data = $request->validated();
        $mobile = $data['mobile_number'];
-
-        
+   
         if(RateLimiter::tooManyAttempts('send-otp'.$mobile,1)){
             return $this->errorResponse(__('messages.too_many_attempts'));
         }

@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Http\Requests\Api\v1\cutomer;
+namespace App\Http\Requests\Api\V1\Customer;
 
 use App\Http\Requests\Api\V1\CustomFormRequest;
 use Illuminate\Foundation\Http\FormRequest;
 
-class CustomerRegisterRequest extends CustomFormRequest
+class CustomerVerifyRegisterRequest extends CustomFormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -23,11 +23,8 @@ class CustomerRegisterRequest extends CustomFormRequest
     public function rules(): array
     {
         return [
-            'first_name' => ['required','string','max:30'],
-            'last_name' => ['required','string','max:30'],
-            'mobile_number' => ['required','numeric','unique:users,phone_number'],
-            'preferred_language' =>['required','in:en,ar'],
-            'terms_accepted' => ['required','boolean','accepted']
+            'mobile_number'=>'required',
+            'otp'=>['required','numeric']
         ];
     }
 }

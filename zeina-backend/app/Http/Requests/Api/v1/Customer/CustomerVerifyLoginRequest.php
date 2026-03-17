@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Http\Requests\Api\v1\cutomer;
+namespace App\Http\Requests\Api\V1\Customer;
 
 use App\Http\Requests\Api\V1\CustomFormRequest;
 use Illuminate\Foundation\Http\FormRequest;
 
-class CustomerLoginRequest extends CustomFormRequest
+class CustomerVerifyLoginRequest extends CustomFormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -20,14 +20,14 @@ class CustomerLoginRequest extends CustomFormRequest
      *
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
      */
-      public function rules(): array
+    public function rules(): array
     {
         return [
-            'mobile_number' => [
+            'mobile_number'=>[ 
                 'required',
-                'numeric',
-                'exists:users,phone_number'
+                // 'numeric',
             ],
+            'otp'=>['required']
         ];
     }
 
@@ -36,7 +36,8 @@ class CustomerLoginRequest extends CustomFormRequest
         return [
             'mobile_number.required' => __('validation.login.mobile_number_required'),
             'mobile_number.numeric' => __('validation.login.mobile_number_numeric'),
-            'mobile_number.exists' => __('validation.login.invalid_mobile'),
+            'otp.required' => __('validation.login.otp_required'),
+            'otp.numeric' => __('validation.login.otp_numeric'),
         ];
     }
 }

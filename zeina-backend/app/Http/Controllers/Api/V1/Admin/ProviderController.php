@@ -88,7 +88,6 @@ class ProviderController extends Controller
                         'updated_at' => now(),
                     ];
                 }, $request->coverages);
-
                 $provider->areas()->createMany($coveragesData);
             });
 
@@ -96,7 +95,6 @@ class ProviderController extends Controller
 
         } catch (\Exception $e) {
             return $this->errorResponse('Failed to map provider');
-            // return response()->json(['message' => 'Failed to map provider', 'error' => $e->getMessage()], 500);
         }
     }
 }

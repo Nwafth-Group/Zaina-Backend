@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Api\V1\Customer;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Api\v1\cutomer\CompleteProfileRequest;
-use App\Http\Requests\Api\v1\cutomer\DeleteAccountRequest;
+use App\Http\Requests\Api\V1\Customer\CompleteProfileRequest;
+use App\Http\Requests\Api\V1\Customer\DeleteAccountRequest;
 use App\Service\MediaService;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\Request;

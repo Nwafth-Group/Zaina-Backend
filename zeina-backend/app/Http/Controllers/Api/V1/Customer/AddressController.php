@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api\V1\Customer;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Api\v1\cutomer\StoreAdderssRequest;
+use App\Http\Requests\Api\V1\Customer\StoreAdderssRequest;
 use App\Http\Resources\Api\V1\Address\AddressResource;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\Request;

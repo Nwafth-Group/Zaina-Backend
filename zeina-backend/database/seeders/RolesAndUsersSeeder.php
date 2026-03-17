@@ -45,6 +45,11 @@ class RolesAndUsersSeeder extends Seeder
             ['code' => 'CUSTOMER', 'description' => 'عميل', 'status' => 'active', 'guard_name' => 'sanctum']
         );
 
+         $driverRole = Role::firstOrCreate(
+            ['name' => 'Driver'],
+            ['code' => 'Driver', 'description' => 'سائق', 'status' => 'active', 'guard_name' => 'sanctum']
+        );
+
         $superAdminRole->syncPermissions(Permission::all());
         $operationRole->syncPermissions(['users.view', 'bookings.view', 'bookings.edit']);
 
