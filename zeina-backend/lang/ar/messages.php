@@ -72,7 +72,15 @@ return [
     'service_toggled_successfully' => 'تم تغيير حالة الخدمة إلى :status بنجاح.',
     'cannot_setprice' => "لا يمكن تحديد سعر لموقع غير مشمول بهذه الخدمة.",
     'service_price_save' => 'تم حفظ السعر بنجاح.',
-     'pricing_not_availble' => 'السعر غير متاح لهذه المنطقة.',
-     'pricingestimated_retrive_success' => 'تم استلام تقديرات الأسعار بنجاح.',
+    'pricing_not_availble' => 'السعر غير متاح لهذه المنطقة.',
+    'pricingestimated_retrive_success' => 'تم استلام تقديرات الأسعار بنجاح.',
+    'providers_fetch_success' => "تم جلب مقدمين الخدمات بنجاح.",
+    'provider_saved_suuccess' => 'تم حفظ مقدم الخدمة بنجاح.',
+    'provider_update_suuccess' => 'تم تعديل مطور الخدمة بنجاح.',
+    'provider_deactivated' => 'تم إلفاء تنشيط مقدك الخدمة بنجاح.',
+    'provider_activated' => 'تم تنشيط مقدم الخدمة بنجاح.',
+    'provider_not_active' => 'المزود غير نشط. تم حفظ عمليات الربط، ولكن لا يمكن تعيين المزود.',
+    'provider_and_coverge_success' => 'تم تحديث أهلية مقدم الخدمة وتغطيته بنجاح.',
+
 
 ];

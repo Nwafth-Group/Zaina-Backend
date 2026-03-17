@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\Admin\AreaController;
 use App\Http\Controllers\Api\V1\Admin\CategoryController;
 use App\Http\Controllers\Api\V1\Admin\CityController;
 use App\Http\Controllers\Api\V1\Admin\CountryController;
+use App\Http\Controllers\Api\V1\Admin\ProviderController;
 use App\Http\Controllers\Api\V1\Admin\RoleController;
 use App\Http\Controllers\Api\V1\Admin\ServiceController;
 use App\Http\Controllers\Api\V1\Admin\ServicePriceController;
@@ -36,11 +37,23 @@ Route::post('roles/{role}/duplicate',[RoleController::class, 'duplicate']);
 });
 
  Route::apiResource('categories', CategoryController::class);
-
  Route::apiResource('services',ServiceController::class);
  Route::post('services/{service}/toggle-status', [ServiceController::class, 'toggleStatus']);
-
  Route::apiResource('servicesprices',ServicePriceController::class);
  Route::post('servicesprices/estimated',[ServicePriceController::class,'getEstimatedPrice']);
+
+
+ Route::middleware('permission:providers.view')->prefix('providers')->group(function () {
+        Route::get('/', [ProviderController::class, 'index']);
+        Route::post('/', [ProviderController::class, 'store'])->middleware('permission:providers.create');
+        Route::put('/{provider}', [ProviderController::class, 'update'])->middleware('permission:providers.edit');
+        Route::patch('/{provider}/toggle-status', [ProviderController::class,'toggleStatus'])->middleware('permission:providers.deactivate');
+        // US-02: Mapping Route
+        Route::post('/{provider}/map', [ProviderController::class, 'mapProvider'])->middleware('permission:provider_eligibility.edit');
+    });
+
+
+
+ 
 
 });

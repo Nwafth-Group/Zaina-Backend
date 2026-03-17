@@ -12,9 +12,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('area_providers', function (Blueprint $table) {
-            $table->id();
+           $table->id();
             $table->foreignId('provider_id')->constrained('providers')->cascadeOnDelete();
-            $table->foreignId('area_id')->constrained('areas')->cascadeOnDelete();
+            $table->foreignId('city_id')->constrained('cities')->cascadeOnDelete();
+            $table->foreignId('area_id')->nullable()->constrained('areas')->cascadeOnDelete();
+            $table->boolean('is_enabled')->default(true);
+          
+            $table->foreignId('created_by')->nullable()->constrained('users');
             $table->timestamps();
         });
     }

@@ -74,6 +74,13 @@ return [
     'service_price_save' => 'Pricing service saved successfully.',
     'pricing_not_availble' => 'Pricing not available for this location.',
     'pricingestimated_retrive_success' => 'Pricing Estimated retreive successfully.',
+    'providers_fetch_success' => "Providers fetch successfully.",
+    'provider_saved_suuccess' => 'Provider saved successfully.',
+    'provider_update_suuccess' => 'Provider saved successfully.',
+    'provider_deactivated' => 'Provider deactive successfully.',
+    'provider_activated' => 'Provider activated successfully.',
+    'provider_not_active' => 'Provider is inactive. Mappings saved, but provider cannot be assigned.',
+    'provider_and_coverge_success' => 'Provider eligibility and coverage updated successfully.',
     
     
     

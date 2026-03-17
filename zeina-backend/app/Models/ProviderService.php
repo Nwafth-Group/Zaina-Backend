@@ -9,4 +9,6 @@ class ProviderService extends Model
 {
     /** @use HasFactory<\Database\Factories\ProviderServiceFactory> */
     use HasFactory;
+
+    
 }

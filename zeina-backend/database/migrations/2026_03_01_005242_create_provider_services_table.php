@@ -15,6 +15,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('provider_id')->constrained('providers')->cascadeOnDelete();
             $table->foreignId('service_id')->constrained('services')->cascadeOnDelete();
+            $table->boolean('is_enabled')->default(true);
+            $table->foreignId('created_by')->nullable()->constrained('users');
             $table->timestamps();
         });
     }
