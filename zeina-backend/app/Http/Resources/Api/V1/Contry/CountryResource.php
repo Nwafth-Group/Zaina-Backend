@@ -21,6 +21,7 @@ class CountryResource extends JsonResource
             'code' => $this->code,
             'cities_count' => $this->cities_count,
             'status' => $this->status,
+            'flag' => $this->flag,
             'created_at' => $this->created_at ? $this->created_at->toDateTimeString() : null,
             'updated_at' => $this->updated_at ? $this->updated_at->toDateTimeString() : null,
         ];

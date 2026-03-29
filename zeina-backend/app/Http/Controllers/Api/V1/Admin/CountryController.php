@@ -26,9 +26,15 @@ class CountryController extends Controller
      * Store a newly created resource in storage.
      */
  public function store(StoreCountryRequest $request)
-    {
-        
-        $country = Country::create($request->validated());
+    {  
+        $data = $request->validated();
+       if ($request->hasFile('flag')) {
+            $path = $request->file('flag')->store('images/flags', 'public');
+            $data['flag'] = $path; 
+            }
+         
+    
+        $country = Country::create($data);
         return $this->successResponse(new CountryResource($country), __('messages.country_created_successfully'));
     }
 

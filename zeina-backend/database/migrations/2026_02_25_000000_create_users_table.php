@@ -15,8 +15,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('country_id')->nullable()->constrained('countries')->restrictOnDelete();
             $table->string("id_number")->nullable()->unique();
-            $table->string('first_name',100);
-            $table->string('last_name',100);
+            $table->string('first_name',100)->nullable();
+            $table->string('last_name',100)->nullable();
             $table->string('full_name',200)->virtualAs("CONCAT(first_name,' ',last_name)");
             $table->string('phone_number')->unique();
             $table->string('job_title',100)->nullable();

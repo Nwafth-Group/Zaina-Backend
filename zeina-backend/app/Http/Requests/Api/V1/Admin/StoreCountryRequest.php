@@ -20,38 +20,48 @@ class StoreCountryRequest extends CustomFormRequest
      *
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
      */
-    public function rules(): array
-    {
-           return [
-            'name_ar' => ['required', 'string', 'max:100'],
-            'name_en' => ['required', 'string', 'max:100'],
-            'currency_code' => ['nullable', 'string', 'max:10'],
-            'phone_code' => ['nullable', 'string', 'max:10'],
-            'code'    => ['required', 'string', 'max:20', 'unique:countries,code'], // الكود يجب أن يكون جديداً كلياً
-            'status'  => ['nullable', 'in:active,inactive'],
-        ];
-       
-    }
-
-    public function messages()
+  public function rules(): array
     {
         return [
-            'name_ar.required' => __('validation.store_country.name_ar_required'),
-            'name_ar.string' => __('validation.store_country.name_ar_string'),
-            'name_ar.max' => __('validation.store_country.name_ar_max'),
-            'name_en.required' => __('validation.store_country.name_en_required'),
-            'name_en.string' => __('validation.store_country.name_en_string'),
-            'name_en.max' => __('validation.store_country.name_en_max'),
-            'code.required' => __('validation.store_country.code_required'),
-            'code.string' => __('validation.store_country.code_string'),
-            'code.max' => __('validation.store_country.code_max'),
-            'code.unique' => __('validation.store_country.code_unique'),
-            // 'status.required' => __('validation.store_country.status_required'),
-            'status.in' => __('validation.store_country.status_in'),
-            'currency_code.string' => __('validation.store_country.currency_code_string'),
-            'currency_code.max' => __('validation.store_country.currency_code_max'),
-            'phone_code.string' => __('validation.store_country.phone_code_string'),
-            'phone_code.max' => __('validation.store_country.phone_code_max'),
+            'name_ar'       => ['required', 'string', 'max:100'],
+            'name_en'       => ['required', 'string', 'max:100'],
+            'currency_code' => ['required', 'string', 'max:10'], // تم دمج التكرار هنا
+            'phone_code'    => ['nullable', 'string', 'max:10'],
+            'code'          => ['required', 'string', 'max:20', 'unique:countries,code'], // الكود يجب أن يكون جديداً كلياً
+            'flag'          => ['nullable', 'image', 'mimes:jpeg,png,jpg,svg,webp', 'max:1024'],
+            'status'        => ['nullable', 'in:active,inactive'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'name_ar.required'       => __('validation.store_country.name_ar_required'),
+            'name_ar.string'         => __('validation.store_country.name_ar_string'),
+            'name_ar.max'            => __('validation.store_country.name_ar_max'),
+            
+            'name_en.required'       => __('validation.store_country.name_en_required'),
+            'name_en.string'         => __('validation.store_country.name_en_string'),
+            'name_en.max'            => __('validation.store_country.name_en_max'),
+            
+            'code.required'          => __('validation.store_country.code_required'),
+            'code.string'            => __('validation.store_country.code_string'),
+            'code.max'               => __('validation.store_country.code_max'),
+            'code.unique'            => __('validation.store_country.code_unique'),
+            
+            'status.in'              => __('validation.store_country.status_in'),
+            
+            'currency_code.required' => __('validation.store_country.currency_code_required'),
+            'currency_code.string'   => __('validation.store_country.currency_code_string'),
+            'currency_code.max'      => __('validation.store_country.currency_code_max'),
+            
+            'phone_code.string'      => __('validation.store_country.phone_code_string'),
+            'phone_code.max'         => __('validation.store_country.phone_code_max'),
+            
+            // تمت إضافة رسائل التحقق الخاصة بالصورة (العلم)
+            'flag.image'             => __('validation.store_country.flag_image'),
+            'flag.mimes'             => __('validation.store_country.flag_mimes'),
+            'flag.max'               => __('validation.store_country.flag_max'),
         ];
     }
 }

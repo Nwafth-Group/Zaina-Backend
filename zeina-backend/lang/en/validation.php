@@ -3,11 +3,23 @@
 return [
 
     'login' => [
-        'mobile_number_required' => 'Mobile number is required.',
-        'mobile_number_numeric' => 'Mobile number must be numeric.',
-        'invalid_mobile' => 'The mobile number is not registered.',
-        'otp_required' => 'OTP is required.',
-        'otp_numeric' => 'OTP must be numeric.',
+      //   'mobile_number_required' => 'Mobile number is required.',
+      //   'mobile_number_numeric' => 'Mobile number must be numeric.',
+      //   'invalid_mobile' => 'The mobile number is not registered.',
+      //   'otp_required' => 'OTP is required.',
+      //   'otp_numeric' => 'OTP must be numeric.',
+      'phone_required' => 'Phone number is required to login.',
+      'phone_string'   => 'Invalid phone number format.',
+      'phone_min'      => 'Phone number must be at least 9 digits.',
+      'phone_max'      => 'Phone number must not exceed 15 digits.',
+      'account_inactive' => 'Sorry, your account is inactive. Please contact support.',
+      'logged_in_successfully' => 'Logged in successfully.',
+      'registered_successfully' => 'Account created and logged in successfully.',
+    ],
+
+    'sendotp' => [
+      'mobile_number_required' => 'Mobile number is reqiured.',
+      'otp_required' => 'OTP is reqiured.',
     ],
 
     'profile'=>[
@@ -105,24 +117,33 @@ return [
         'status_in' => 'Status must be either active or inactive.',
      ],
 
-     'store_country' => [
-        'name_ar_required' => 'Arabic name is required.',
-        'name_ar_string' => 'Arabic name must be a string.',
-        'name_ar_max' => 'Arabic name must not exceed 100 characters.',
-        'name_en_required' => 'English name is required.',
-        'name_en_string' => 'English name must be a string.',
-        'name_en_max' => 'English name must not exceed 100 characters.',
-        'code_required' => 'Country code is required.',
-        'code_string' => 'Country code must be a string.',
-        'code_max' => 'Country code must not exceed 20 characters.',
-        'code_unique' => 'Country code must be unique.',
-        'status_required' => 'Status is required.',
-        'status_in' => 'Status must be either active or inactive.',
-        'currency_code_string' => 'Currency code must be a string.',
-        'currency_code_max' => 'Currency code must not exceed 10 characters.',
-        'phone_code_string' => 'Phone code must be a string.',
-        'phone_code_max' => 'Phone code must not exceed 10 characters.',
-     ],
+   'store_country' => [
+        'name_ar_required'       => 'The Arabic name is required.',
+        'name_ar_string'         => 'The Arabic name must be a string.',
+        'name_ar_max'            => 'The Arabic name may not be greater than 100 characters.',
+        
+        'name_en_required'       => 'The English name is required.',
+        'name_en_string'         => 'The English name must be a string.',
+        'name_en_max'            => 'The English name may not be greater than 100 characters.',
+        
+        'code_required'          => 'The country code is required.',
+        'code_string'            => 'The country code must be a string.',
+        'code_max'               => 'The country code may not be greater than 20 characters.',
+        'code_unique'            => 'This country code has already been taken.',
+        
+        'status_in'              => 'The status must be either active or inactive.',
+        
+        'currency_code_required' => 'The currency code is required.',
+        'currency_code_string'   => 'The currency code must be a string.',
+        'currency_code_max'      => 'The currency code may not be greater than 10 characters.',
+        
+        'phone_code_string'      => 'The phone code must be a string.',
+        'phone_code_max'         => 'The phone code may not be greater than 10 characters.',
+        
+        'flag_image'             => 'The flag must be an image.',
+        'flag_mimes'             => 'The flag must be a file of type: jpeg, png, jpg, svg, webp.',
+        'flag_max'               => 'The flag image size may not be greater than 1024 kilobytes.',
+    ],
 
      'store_area' => [
         'city_id_required' => 'City ID is required.',

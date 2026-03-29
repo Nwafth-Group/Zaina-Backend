@@ -11,10 +11,10 @@ Route::prefix('customer')->group(function(){
 Route::get('test',[TestController::class,'test']);
 
 Route::prefix('auth')->group(function(){
-    Route::post('/register',[AuthController::class,'register']);
-    Route::post('/verify-register',[AuthController::class,'verifyRegister']);
-    Route::post('/login',[AuthController::class,'login']);
-    Route::post('/verify-login',[AuthController::class,'verifyLogin']);
+    // Route::post('/register',[AuthController::class,'register']);
+    // Route::post('/verify-register',[AuthController::class,'verifyRegister']);
+    Route::post('/send-otp',[AuthController::class,'sendotp']);
+    Route::post('/verify-otp',[AuthController::class,'verifyOtp']);
     Route::post('/logout',[AuthController::class,'logout'])->middleware('auth:sanctum');
 });
 

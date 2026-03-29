@@ -8,7 +8,7 @@ use App\Models\Role;
 use Spatie\Permission\Models\Permission;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Testing\Fluent\Concerns\Has;
-use Spatie\Permission\PermissionRegistrar;
+use Spatie\Permission\PermissionRegistrar;                                                       
 
 class RolesAndUsersSeeder extends Seeder
 {

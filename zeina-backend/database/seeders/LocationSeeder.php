@@ -18,7 +18,7 @@ class LocationSeeder extends Seeder
         // 1. إضافة دولة مصر
         $egypt = Country::firstOrCreate(
             ['code' => 'EG'],
-            ['name_ar' => 'مصر', 'name_en' => 'Egypt', 'status' => 'active' ,'phone_code'=>'+999' , 'currency_code'=>'EGP']
+            ['name_ar' => 'مصر', 'name_en' => 'Egypt', 'status' => 'active', 'flag'=> 'images/flags/egupt.png' ,'phone_code'=>'+999' , 'currency_code'=>'EGP']
         );
 
         // إضافة مدن لمصر
@@ -52,7 +52,7 @@ class LocationSeeder extends Seeder
         // 2. إضافة المملكة العربية السعودية
         $saudi = Country::firstOrCreate(
             ['code' => 'SA'],
-            ['name_ar' => 'المملكة العربية السعودية', 'name_en' => 'Saudi Arabia', 'status' => 'active' , 'phone_code'=>'+777' , 'currency_code'=>'SA']
+            ['name_ar' => 'المملكة العربية السعودية', 'flag'=> 'images/flags/ksa.png' , 'name_en' => 'Saudi Arabia', 'status' => 'active' , 'phone_code'=>'+777' , 'currency_code'=>'SA']
         );
 
         // إضافة مدن للسعودية
