@@ -33,7 +33,7 @@ Route::prefix('users')->group(function (){
 });
 
 Route::apiResource('employees',EmployeeController::class);
-Route::patchb ('employees/{employee}/toggle-status',[EmployeeController::class,'toggleStatus']);
+Route::patch('employees/{employee}/toggle-status',[EmployeeController::class,'toggleStatus']);
 
 
 Route::apiResource('roles',RoleController::class);
