@@ -81,6 +81,13 @@ return [
     'provider_activated' => 'تم تنشيط مقدم الخدمة بنجاح.',
     'provider_not_active' => 'المزود غير نشط. تم حفظ عمليات الربط، ولكن لا يمكن تعيين المزود.',
     'provider_and_coverge_success' => 'تم تحديث أهلية مقدم الخدمة وتغطيته بنجاح.',
-
+    'invalid_credentials' => 'بيانات الدخول غير صحيحة، يرجى التأكد من البريد وكلمة المرور.',
+    'unauthorized_admin_access' => 'عفواً، لا تملك صلاحية الدخول للوحة التحكم.',
+    'employee_fetched_success' => 'تم جلب الموظفين بنجاح.',
+    'employee_created_successfully' => "تم إنشاء الموظف بنجاح.",
+    'employee_show_success' => "تم عرض بيانات المظف بنجاح.",
+    "employee_updated_successfully" => "تم تعديل بيانات الموظف بنجاح.",
+    "employee_deactivated" => "تم تعطيل الموظف بنجاح.",
+    "employee_activated" => "تم تفعيل الموظف بنجاح.",
 
 ];

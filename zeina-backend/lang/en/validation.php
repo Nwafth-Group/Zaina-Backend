@@ -301,4 +301,46 @@ return [
         'effective_end_after' => 'Effective end date must be after the effective start date.',
      ],
 
+     'adminLogin' =>[
+      'email_required' => 'Email address is required.',
+      'email_invalid' => 'Invalid email format.',
+      'email_not_found' => 'No account found with this email.',
+      'password_required' => 'Password is required.',
+     ],
+
+    'storeEmployee' => [
+    'first_name_required'   => 'The first name is required.',
+    'first_name_string'     => 'The first name must be a valid string.',
+    'first_name_max'        => 'The first name may not be greater than 100 characters.',
+    
+    'last_name_required'    => 'The last name is required.',
+    'last_name_string'      => 'The last name must be a valid string.',
+    'last_name_max'         => 'The last name may not be greater than 100 characters.',
+    
+    'phone_number_required' => 'The phone number is required.',
+    'phone_already_exists'  => 'This phone number is already registered.',
+    
+    'email_required'        => 'The email address is required.',
+    'email_invalid'         => 'Please provide a valid email address.',
+    'email_already_exists'  => 'This email is already registered.',
+    
+    'password_required'     => 'The password is required.',
+    'password_min'          => 'The password must be at least 6 characters.',
+    
+    'type_required'         => 'The employee type is required.',
+    'type_invalid'          => 'The selected employee type is invalid.',
+    
+    'job_title_max'         => 'The job title may not be greater than 100 characters.',
+    
+    'gender_invalid'        => 'The selected gender is invalid.',
+    
+    'status_required'       => 'The employee status is required.',
+    'status_invalid'        => 'The selected status is invalid.',
+    
+    'roles_required'        => 'At least one role must be assigned to the employee.',
+    'roles_array'           => 'The roles format is invalid.',
+    'roles_min'             => 'You must assign at least one role.',
+    'roles_exists'          => 'One or more selected roles do not exist in our system.',
+],
+
 ];

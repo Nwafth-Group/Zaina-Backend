@@ -61,10 +61,10 @@ class RolesAndUsersSeeder extends Seeder
         $superAdmin = User::firstOrCreate(
             ['phone_number' => '0599000001'],
             [
-                'first_name' => 'Ahmad',
-                'last_name' => 'Admin',
+                'first_name' => 'Admin',
+                'last_name' => 'ZainahApp',
                 'email' => 'admin@zeina.com',
-                'password' => Hash::make('password'),
+                'password' => Hash::make('admin'),
                 'type' => 'super_admin',
                 'status' => 'active',
             ]

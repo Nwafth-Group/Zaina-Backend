@@ -1,0 +1,40 @@
+<?php
+
+namespace App\Http\Requests\Api\V1\Admin;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class UpdateEmployeeRequest extends FormRequest
+{
+    /**
+     * Determine if the user is authorized to make this request.
+     */
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    /**
+     * Get the validation rules that apply to the request.
+     *
+     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     */
+   public function rules(): array
+    {
+        $userId = $this->route('employee') ? $this->route('employee')->id : null;
+    
+        return [
+            'first_name'   => 'required|string|max:100',
+            'last_name'    => 'required|string|max:100',
+            'phone_number' => 'required|string|unique:users,phone_number,' . $userId,
+            'email'        => 'required|email|unique:users,email,' . $userId,
+            'password'     => 'nullable|string|min:6', // جعله اختياري عند التعديل
+            'type'         => 'required|in:operation,super_admin,driver',
+            'job_title'    => 'nullable|string|max:100',
+            'gender'       => 'nullable|in:Male,Female',
+            'status'       => 'required|in:active,inactive,suspended',
+            'roles'        => 'required|array|min:1',
+            'roles.*'      => 'exists:roles,name',
+        ];
+    }
+}

@@ -1,9 +1,11 @@
 <?php
 
 use App\Http\Controllers\Api\V1\Admin\AreaController;
+use App\Http\Controllers\Api\V1\Admin\AuthController;
 use App\Http\Controllers\Api\V1\Admin\CategoryController;
 use App\Http\Controllers\Api\V1\Admin\CityController;
 use App\Http\Controllers\Api\V1\Admin\CountryController;
+use App\Http\Controllers\Api\V1\Admin\EmployeeController;
 use App\Http\Controllers\Api\V1\Admin\ProviderController;
 use App\Http\Controllers\Api\V1\Admin\RoleController;
 use App\Http\Controllers\Api\V1\Admin\ServiceController;
@@ -12,7 +14,15 @@ use App\Http\Controllers\Api\V1\Admin\UserController;
 use App\Models\Role;
 use Illuminate\Support\Facades\Route;
 
-Route::prefix('admin')->middleware('auth:sanctum')->group(function (){
+Route::prefix('admin')->group(function (){
+
+Route::prefix('auth')->group(function(){
+    Route::post('login',[AuthController::class,'login']);
+    });
+    
+    Route::post('auth/logout',[AuthController::class,'logout'])->middleware('auth:sanctum');
+
+Route::middleware('auth:sanctum')->group(function(){
 
 Route::prefix('users')->group(function (){
     Route::get("/", [UserController::class, "index"])->middleware('permission:users.view');
@@ -21,6 +31,10 @@ Route::prefix('users')->group(function (){
     Route::patch('{user}/toggle-status', [UserController::class, 'toggleStatus'])->middleware('permission:users.edit');
     Route::post('/{user}/reset-password', [UserController::class, 'resetPassword'])->middleware('permission:users.edit');
 });
+
+Route::apiResource('employees',EmployeeController::class);
+Route::patchb ('employees/{employee}/toggle-status',[EmployeeController::class,'toggleStatus']);
+
 
 Route::apiResource('roles',RoleController::class);
 Route::post('roles/{role}/duplicate',[RoleController::class, 'duplicate']); 
@@ -51,6 +65,10 @@ Route::post('roles/{role}/duplicate',[RoleController::class, 'duplicate']);
         // US-02: Mapping Route
         Route::post('/{provider}/map', [ProviderController::class, 'mapProvider'])->middleware('permission:provider_eligibility.edit');
     });
+  
+});
+
+
 
 
 

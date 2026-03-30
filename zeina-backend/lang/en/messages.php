@@ -81,7 +81,12 @@ return [
     'provider_activated' => 'Provider activated successfully.',
     'provider_not_active' => 'Provider is inactive. Mappings saved, but provider cannot be assigned.',
     'provider_and_coverge_success' => 'Provider eligibility and coverage updated successfully.',
-    
-    
-    
+    'invalid_credentials' => 'Invalid credentials, please check your email and password.',
+    'unauthorized_admin_access' => 'Sorry, you do not have permission to access the admin portal.',
+    'employee_fetched_success' => 'Employee fetch successfully.',
+    'employee_created_successfully' => "Employee created successfully.",
+    'employee_show_success' => "Employee show success.",
+    "employee_updated_successfully" => "Employee updated successfully.",
+    "employee_deactivated" => "Employee deactvie successfully.",
+    "employee_activated" => "Employee active successfully.",
 ];
