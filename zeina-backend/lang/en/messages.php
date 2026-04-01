@@ -89,4 +89,5 @@ return [
     "employee_updated_successfully" => "Employee updated successfully.",
     "employee_deactivated" => "Employee deactvie successfully.",
     "employee_activated" => "Employee active successfully.",
+    "home_date_retrieve" => 'Home data retrieve successfully.',
 ];

@@ -1,31 +1,45 @@
 <?php
 
+use App\Http\Controllers\Api\V1\Customer\AdController;
 use App\Http\Controllers\Api\V1\Customer\AddressController;
 use App\Http\Controllers\Api\V1\Customer\AuthController;
+use App\Http\Controllers\Api\V1\Customer\HomeController;
 use App\Http\Controllers\Api\V1\Customer\ProfileController;
+use App\Http\Controllers\Api\V1\Customer\SearchController;
 use App\Http\Controllers\Api\V1\Customer\TestController;
 use Illuminate\Support\Facades\Route;
 
-Route::prefix('customer')->group(function(){
+Route::prefix('customer')->group(function () {
 
-Route::get('test',[TestController::class,'test']);
+    Route::get('test', [TestController::class, 'test']);
+    Route::get('search', [SearchController::class, 'index']);
+    Route::get('filter', [SearchController::class, 'filter']);
 
-Route::prefix('auth')->group(function(){
-    // Route::post('/register',[AuthController::class,'register']);
-    // Route::post('/verify-register',[AuthController::class,'verifyRegister']);
-    Route::post('/send-otp',[AuthController::class,'sendotp']);
-    Route::post('/verify-otp',[AuthController::class,'verifyOtp']);
-    Route::post('/logout',[AuthController::class,'logout'])->middleware('auth:sanctum');
-});
+    Route::prefix('auth')->group(function () {
+        // Route::post('register', [AuthController::class, 'register']);
+        // Route::post('verify-register', [AuthController::class, 'verifyRegister']);
+        Route::post('send-otp', [AuthController::class, 'sendotp']);
+        Route::post('verify-otp', [AuthController::class, 'verifyOtp']);
+    });
 
+    // ==========================================
+    // Protected Routes (Require Authentication)
+    // ==========================================
+    Route::middleware('auth:sanctum')->group(function () {
+        // Auth
+        Route::post('auth/logout', [AuthController::class, 'logout']);
+        // Profile
+        Route::prefix('profile')->group(function () {
+            Route::post('complete', [ProfileController::class, 'completeProfile']);
+            Route::post('send-delete-otp', [ProfileController::class, 'sendDeleteOtp']);
+            Route::post('delete', [ProfileController::class, 'deleteAccount']);
+        });
+        // Addresses
+        Route::apiResource('addresses', AddressController::class);
+        Route::post('address/{id}/set-default', [AddressController::class, 'setDefault']); 
+        //Home page
+        Route::get('home',[HomeController::class,'index']);
+        
+    });
 
-Route::prefix('profile')->middleware('auth:sanctum')->group(function (){
-    Route::post("complete", [ProfileController::class, 'completeProfile']);
-   Route::post('/send-delete-otp', [ProfileController::class, 'sendDeleteOtp']);
-    Route::post('/delete', [ProfileController::class, 'deleteAccount']);  
-});
-
-Route::apiResource('addresses',AddressController::class)->middleware('auth:sanctum');
-Route::post('address/{id}/set-default',[AddressController::class,'setDefault'])->middleware('auth:sanctum');
-    
 });

@@ -26,7 +26,8 @@ class DatabaseSeeder extends Seeder
             RolesAndUsersSeeder::class,
             LocationSeeder::class,
             CategoryAndServiceSeeder::class,
-            ProviderSeeder::class
+            ProviderSeeder::class,
+            AdSeeder::class,
         ]);
     }
 }

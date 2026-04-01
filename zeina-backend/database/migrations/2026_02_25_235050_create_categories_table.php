@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('name_ar');
             $table->string('name_en');
+            $table->foreignId('parent_id')->nullable()->constrained('categories');
             $table->enum('status', ['active', 'inactive'])->default('active');
             $table->integer('sort_order')->default(0); // مفيد جداً لترتيب ظهور الأقسام في تطبيق الموبايل
             $table->foreignId('created_by')->nullable()->constrained('users');

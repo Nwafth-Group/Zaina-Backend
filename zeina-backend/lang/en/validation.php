@@ -163,21 +163,52 @@ return [
      ],
 
      'create_category' => [
-        'name_ar_required' => 'Arabic name is required.',
-        'name_ar_string' => 'Arabic name must be a string.',
-        'name_ar_max' => 'Arabic name must not exceed 100 characters.',
-        'name_ar_unique' => 'Arabic name must be unique.',
-        'name_en_required' => 'English name is required.',
-        'name_en_string' => 'English name must be a string.',
-        'name_en_max' => 'English name must not exceed 100 characters.',
-        'name_en_unique' => 'English name must be unique.',
-        'image_image' => 'The file must be an image.',
-        'image_mimes' => 'The image must be a file of type: jpeg, png, jpg, svg.',
-        'image_max' => 'The image must not be greater than 2MB.',
-        'sort_order_integer' => 'Sort order must be an integer.',
-        'sort_order_min' => 'Sort order must be at least 0.',
-        'status_in' => 'Status must be either active or inactive.',
-     ],
+        'parent_id_exists' => 'The selected category is invalid, does not exist, or is already a subcategory.',
+        'parent_id_not_in' => 'A category cannot be a subcategory of itself.',
+        
+        'name_ar_required' => 'The Arabic name is required.',
+        'name_ar_string'   => 'The Arabic name must be a string.',
+        'name_ar_max'      => 'The Arabic name may not be greater than 100 characters.',
+        'name_ar_unique'   => 'The Arabic name has already been taken.',
+        
+        'name_en_required' => 'The English name is required.',
+        'name_en_string'   => 'The English name must be a string.',
+        'name_en_max'      => 'The English name may not be greater than 100 characters.',
+        'name_en_unique'   => 'The English name has already been taken.',
+        
+        'image_image'      => 'The file must be an image.',
+        'image_mimes'      => 'The image must be a file of type: jpeg, png, jpg, svg, webp.',
+        'image_max'        => 'The image size may not be greater than 2MB.',
+        
+        'sort_order_integer'=> 'The sort order must be an integer.',
+        'sort_order_min'   => 'The sort order must be at least 0.',
+        
+        'status_in'        => 'The selected status is invalid.',
+    ],
+
+    'update_category' => [
+        'parent_id_exists' => 'The selected parent category is invalid or does not exist.',
+        'parent_id_not_in' => 'Error: A category cannot be set as a subcategory of itself.',
+        
+        'name_ar_required' => 'The Arabic name is required.',
+        'name_ar_string'   => 'The Arabic name must be a string.',
+        'name_ar_max'      => 'The Arabic name may not be greater than 100 characters.',
+        'name_ar_unique'   => 'This Arabic name is already taken by another category.',
+        
+        'name_en_required' => 'The English name is required.',
+        'name_en_string'   => 'The English name must be a string.',
+        'name_en_max'      => 'The English name may not be greater than 100 characters.',
+        'name_en_unique'   => 'This English name is already taken by another category.',
+        
+        'image_image'      => 'The file must be an image.',
+        'image_mimes'      => 'The image must be a file of type: jpeg, png, jpg, svg, webp.',
+        'image_max'        => 'The image size may not be greater than 2MB.',
+        
+        'sort_order_integer'=> 'The sort order must be an integer.',
+        'sort_order_min'   => 'The sort order must be at least 0.',
+        
+        'status_in'        => 'The selected status is invalid.',
+    ],
 
      'update_user' => [
         'status_invalid' => 'Status must be either active or inactive.',

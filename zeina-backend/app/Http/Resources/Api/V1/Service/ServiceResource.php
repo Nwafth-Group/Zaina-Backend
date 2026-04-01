@@ -18,7 +18,7 @@ class ServiceResource extends JsonResource
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array
-    {
+    { 
         return [
                 'id' => $this->id,
                 'category' => new CategoryResourse($this->whenLoaded('category')),
@@ -28,6 +28,7 @@ class ServiceResource extends JsonResource
                 'description_ar' => $this->description_ar,
                 'description_en' => $this->description_en,
                 'status' => $this->status,
+                'avg_rating' => $this->avg_rating,
                 'duration' => new ServiceDurationResource($this->whenLoaded('duration')),
                 'rules' => new ServiceRuleResource($this->whenLoaded('rules')),
                 'coverages' => ServiceCoverageResource::collection($this->whenLoaded('coverages')),

@@ -12,7 +12,7 @@ class Service extends Model
 
    protected $fillable = [
         'category_id', 'type', 'name_ar', 'name_en', 
-        'description_ar', 'description_en', 'status'
+        'description_ar', 'description_en', 'status' , 'avg_rating'
     ];
 
     public function category(){
@@ -34,6 +34,21 @@ class Service extends Model
     public function priceRules()
     {
         return $this->hasMany(ServicePrice::class , 'service_id');
+    }
+
+    public function startingPrice()
+    {
+        $now = now()->toDateString();
+
+        return $this->hasOne(ServicePrice::class, 'service_id')
+            // التأكد إن التسعيرة فعالة اليوم (مش منتهية الصلاحية ومش لسا ما بدأت)
+            ->where(function ($query) use ($now) {
+                $query->whereNull('effective_start')->orWhere('effective_start', '<=', $now);
+            })
+            ->where(function ($query) use ($now) {
+                $query->whereNull('effective_end')->orWhere('effective_end', '>=', $now);
+            })
+            ->orderBy('base_price', 'asc'); 
     }
 
 

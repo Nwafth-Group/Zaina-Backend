@@ -89,5 +89,6 @@ return [
     "employee_updated_successfully" => "تم تعديل بيانات الموظف بنجاح.",
     "employee_deactivated" => "تم تعطيل الموظف بنجاح.",
     "employee_activated" => "تم تفعيل الموظف بنجاح.",
+    "home_date_retrieve" => 'تم إسترجاع بيانات الداتا الرئيسية بنجاح.',
 
 ];

@@ -20,6 +20,7 @@ return new class extends Migration
             $table->text('description_ar')->nullable();
             $table->text('description_en')->nullable();
             // $table->string('icon')->nullable(); store icon for service.
+            $table->decimal('avg_rating')->default(0.0);
             $table->enum('status', ['draft', 'active', 'hidden', 'inactive'])->default('draft');
             $table->timestamps();
         });

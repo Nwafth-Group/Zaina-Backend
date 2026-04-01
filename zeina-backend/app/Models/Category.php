@@ -14,6 +14,7 @@ class Category extends Model
     protected $fillable = [
         'name_ar',
         'name_en',
+        'parent_id',
         'is_active',
         'sort_order',
         'created_by',
@@ -47,6 +48,27 @@ class Category extends Model
 
     public function media(){
         return $this->morphMany(Media::class, 'model');
+    }
+
+    public function parent(){
+        return $this->belongsTo(Category::class, 'parent_id');
+    }
+
+    public function subcategories()
+    {
+        return $this->hasMany(Category::class, 'parent_id');
+    }
+
+    public function allServicesThroughSubcategories()
+    {
+        return $this->hasManyThrough(
+            Service::class,   // الموديل النهائي اللي بدنا نوصله (الخدمات)
+            Category::class,  // الموديل الوسيط (الأقسام الفرعية)
+            'parent_id',      // المفتاح الأجنبي في الموديل الوسيط
+            'category_id',    // المفتاح الأجنبي في الموديل النهائي
+            'id',             // المفتاح الأساسي في الموديل الحالي (الرئيسي)
+            'id'              // المفتاح الأساسي في الموديل الوسيط
+        );
     }
 
 

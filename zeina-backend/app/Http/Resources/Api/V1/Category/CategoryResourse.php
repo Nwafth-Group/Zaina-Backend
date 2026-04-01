@@ -13,15 +13,26 @@ class CategoryResourse extends JsonResource
      *
      * @return array<string, mixed>
      */ 
-    public function toArray(Request $request): array
-    { 
-        $media = $this->media()->where('collection', 'category/icon')->first();
+   public function toArray(Request $request): array
+    {  
+        // 1. التعامل مع الصورة بأداء عالي (نبحث في الـ Collection المحمّلة مسبقاً بدلاً من ضرب الداتابيز)
+        $media = $this->media->where('collection', 'category/icon')->first();
+
         return [
-            'id' => $this->id,
-            'name_ar' => $this->name_ar,
-            'name_en' => $this->name_en,
-            'image' => $media ? ( new MediaResource($media))->getFileUrl() : null,
-            'status' => $this->is_active ? 'active' : 'inactive',
+            'id'         => $this->id,
+            'name_ar'    => $this->name_ar,
+            'name_en'    => $this->name_en,
+            
+            // 2. استخدام whenLoaded لمنع مشكلة N+1 (رح يرجع الـ Parent بس إذا طلبناه في الكنترولر مع with)
+            'parent'     => $this->whenLoaded('parent', function () {
+                return new CategoryResourse($this->parent);
+            }),
+            
+            'image'      => $media ? (new MediaResource($media))->getFileUrl() : null,
+            
+            // 3. تصحيح حقل الحالة بناءً على المايجريشن
+            'status'     => $this->status, 
+            
             'sort_order' => $this->sort_order,
         ];
     }
