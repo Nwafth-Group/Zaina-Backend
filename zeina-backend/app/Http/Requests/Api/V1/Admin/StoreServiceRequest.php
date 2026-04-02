@@ -22,6 +22,7 @@ class StoreServiceRequest extends CustomFormRequest
      */
     public function rules(): array
     {
+       
         return [
             // 1. البيانات الأساسية
             'category_id'      => ['required', 'exists:categories,id'],
@@ -57,6 +58,7 @@ class StoreServiceRequest extends CustomFormRequest
             'coverages.*.city_id' => ['required', 'exists:cities,id'],
             'coverages.*.area_id' => ['nullable', 'exists:areas,id'], // null تعني كل المدينة
             'coverages.*.status'  => ['required', 'in:active,inactive,coming_soon'],
+            'image'      => ['nullable', 'image', 'mimes:jpeg,png,jpg,svg,webp', 'max:2048'],
         ];
     }
 
@@ -66,27 +68,20 @@ class StoreServiceRequest extends CustomFormRequest
             // 1. البيانات الأساسية (Basic Data)
             'category_id.required'     => __('validation.create_service.category_id_required'),
             'category_id.exists'       => __('validation.create_service.category_id_exists'),
-            
             'type.required'            => __('validation.create_service.type_required'),
             'type.in'                  => __('validation.create_service.type_in'),
-            
             'name_ar.required'         => __('validation.create_service.name_ar_required'),
             'name_ar.string'           => __('validation.create_service.name_ar_string'),
             'name_ar.max'              => __('validation.create_service.name_ar_max'),
-            
             'name_en.required'         => __('validation.create_service.name_en_required'),
             'name_en.string'           => __('validation.create_service.name_en_string'),
             'name_en.max'              => __('validation.create_service.name_en_max'),
-            
             'description_ar.string'    => __('validation.create_service.description_ar_string'),
             'description_en.string'    => __('validation.create_service.description_en_string'),
-            
             'status.in'                => __('validation.create_service.status_in'),
-
             // 2. المدد (Durations)
             'duration.required'                               => __('validation.create_service.duration_required'),
             'duration.array'                                  => __('validation.create_service.duration_array'),
-            
             'duration.allowed_durations.required_if'          => __('validation.create_service.allowed_durations_required_if'),
             'duration.allowed_durations.array'                => __('validation.create_service.allowed_durations_array'),
             'duration.allowed_durations.*.numeric'            => __('validation.create_service.allowed_durations_numeric'),
@@ -152,6 +147,11 @@ class StoreServiceRequest extends CustomFormRequest
             
             'coverages.*.status.required'  => __('validation.create_service.coverages_status_required'),
             'coverages.*.status.in'        => __('validation.create_service.coverages_status_in'),
+
+            // 5. الصورة 
+            'image.image' => __('validation.create_category.image_image'),
+            'image.mimes' => __('validation.create_category.image_mimes'),
+            'image.max' => __('validation.create_category.image_max'),
         ];
     }
 }

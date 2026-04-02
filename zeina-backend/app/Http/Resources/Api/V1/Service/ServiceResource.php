@@ -3,6 +3,7 @@
 namespace App\Http\Resources\Api\V1\Service;
 
 use App\Http\Resources\Api\V1\Category\CategoryResourse;
+use App\Http\Resources\Api\V1\Media\MediaResource;
 use App\Http\Resources\Api\V1\Service\ServiceCoverageResource;
 use App\Http\Resources\Api\V1\Service\ServiceDurationResource;
 use App\Http\Resources\Api\V1\Service\ServiceRuleResource;
@@ -19,6 +20,7 @@ class ServiceResource extends JsonResource
      */
     public function toArray(Request $request): array
     { 
+         $media = $this->media->where('collection', 'service/icon')->first();
         return [
                 'id' => $this->id,
                 'category' => new CategoryResourse($this->whenLoaded('category')),
@@ -32,6 +34,10 @@ class ServiceResource extends JsonResource
                 'duration' => new ServiceDurationResource($this->whenLoaded('duration')),
                 'rules' => new ServiceRuleResource($this->whenLoaded('rules')),
                 'coverages' => ServiceCoverageResource::collection($this->whenLoaded('coverages')),
+                'image' => $media ? (new MediaResource($media))->getFileUrl() : null,
+                'basePrice' => $this->whenLoaded('startingPrice', function () {
+                    return $this->startingPrice?->base_price;
+                }),
         ];
     }
 }

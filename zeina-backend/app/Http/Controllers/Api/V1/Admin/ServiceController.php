@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Admin\StoreServiceRequest;
 use App\Http\Resources\Api\V1\Service\ServiceResource;
 use App\Models\Service;
+use App\Service\MediaService;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,6 +18,12 @@ class ServiceController extends Controller
     /**
      * Display a listing of the resource.
      */
+
+    public function __construct(public MediaService $mediaService)
+    {
+    }
+
+
    public function index()
     {
 
@@ -28,6 +35,7 @@ class ServiceController extends Controller
     public function store(StoreServiceRequest $request)
     {
         try {
+
             // نستخدم الترانزكشن عشان لو ضرب إيرور في الـ Rules، ما يحفظ الـ Service ويكون ناقص
             $service = DB::transaction(function () use ($request) {
                 
@@ -46,6 +54,9 @@ class ServiceController extends Controller
                 // 4. حفظ التغطية الجغرافية (Coverages)
                 // coverages عبارة عن مصفوفة فيها أكثر من مدينة/منطقة
                 $service->coverages()->createMany($request->input('coverages'));
+                 if ($request->hasFile('image')) {
+                        $media = $this->mediaService->upload($request->file('image'), $service, 'service/icon', 'public');
+                    }
 
                 return $service;
             });
