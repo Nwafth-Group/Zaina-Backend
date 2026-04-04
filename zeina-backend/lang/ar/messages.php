@@ -90,5 +90,9 @@ return [
     "employee_deactivated" => "تم تعطيل الموظف بنجاح.",
     "employee_activated" => "تم تفعيل الموظف بنجاح.",
     "home_date_retrieve" => 'تم إسترجاع بيانات الداتا الرئيسية بنجاح.',
+    'categories_retrieved' => 'تم جلب الأقسام الرئيسية بنجاح.',
+    'subcategories_retrieved' => 'تم جلب الأقسام الفرعية بنجاح نجاح.',
+    'service_retrieved' => 'تم جلب الخدمة بنجاح.',
+    'services_retrieved' => 'تم جلب الخدمات بنجاح.',
 
 ];

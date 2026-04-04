@@ -32,8 +32,7 @@ class CategoryResourse extends JsonResource
             
             // 3. تصحيح حقل الحالة بناءً على المايجريشن
             'status'     => $this->status, 
-            
-            'sort_order' => $this->sort_order,
+            // 'sort_order' => $this->sort_order,
         ];
     }
 }

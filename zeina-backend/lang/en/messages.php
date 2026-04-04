@@ -90,4 +90,8 @@ return [
     "employee_deactivated" => "Employee deactvie successfully.",
     "employee_activated" => "Employee active successfully.",
     "home_date_retrieve" => 'Home data retrieve successfully.',
+    'categories_retrieved' => 'Categories retrieved successfully.',
+    'subcategories_retrieved' => 'Subcategories retrieved successfully.',
+    'service_retrieved' => 'Service retrieved successfully.',
+    'services_retrieved' => 'Services retrieved successfully.',
 ];
