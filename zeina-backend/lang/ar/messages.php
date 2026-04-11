@@ -94,5 +94,12 @@ return [
     'subcategories_retrieved' => 'تم جلب الأقسام الفرعية بنجاح نجاح.',
     'service_retrieved' => 'تم جلب الخدمة بنجاح.',
     'services_retrieved' => 'تم جلب الخدمات بنجاح.',
-
+    
+    'workers_retrieved_successfully' => 'تم جلب العمال بنجاح.',
+    'worker_retrieved_successfully' => 'تم جلب العامل بنجاح.',
+    'worker_created_successfully' => 'تم إنشاء العامل بنجاح.',
+    'worker_updated_successfully' => 'تم تحديث العامل بنجاح.',
+    'worker_deactivated' => 'تم تعطيل العامل بنجاح.',
+    'worker_activated' => 'تم تفعيل العامل بنجاح.',
+    'worker_toggle_success' => 'تم تغيير حالة العامل إلى :status بنجاح.',
 ];

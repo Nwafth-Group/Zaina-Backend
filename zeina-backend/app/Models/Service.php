@@ -55,4 +55,8 @@ class Service extends Model
    public function media(){
     return $this->morphMany(Media::class,'model');
    }
+
+   public function workers(){
+    return $this->belongsToMany(Worker::class, 'service_workers');
+   }
 }

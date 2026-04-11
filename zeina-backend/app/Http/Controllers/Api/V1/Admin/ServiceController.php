@@ -45,6 +45,8 @@ class ServiceController extends Controller
                     'description_ar', 'description_en', 'status'
                 ]));
 
+                $service->workers()->sync($request->input('workers')); // ربط العمال بالخدمة
+
                 // 2. حفظ المدد الزمنية
                 $service->duration()->create($request->input('duration'));
 

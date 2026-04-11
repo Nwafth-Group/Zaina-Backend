@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\V1\Admin\RoleController;
 use App\Http\Controllers\Api\V1\Admin\ServiceController;
 use App\Http\Controllers\Api\V1\Admin\ServicePriceController;
 use App\Http\Controllers\Api\V1\Admin\UserController;
+use App\Http\Controllers\Api\V1\Admin\WorkerController;
 use App\Models\Role;
 use Illuminate\Support\Facades\Route;
 
@@ -55,6 +56,8 @@ Route::post('roles/{role}/duplicate',[RoleController::class, 'duplicate']);
  Route::post('services/{service}/toggle-status', [ServiceController::class, 'toggleStatus']);
  Route::apiResource('servicesprices',ServicePriceController::class);
  Route::post('servicesprices/estimated',[ServicePriceController::class,'getEstimatedPrice']);
+ Route::apiResource('workers',WorkerController::class);
+ Route::post('workers/{worker}/toggle-status', [WorkerController::class, 'changeStatus']);
 
 
  Route::middleware('permission:providers.view')->prefix('providers')->group(function () {

@@ -231,7 +231,13 @@ return [
     'name_en_required' => 'The English name is required.',
     'name_en_string'   => 'The English name must be a string.',
     'name_en_max'      => 'The English name must not exceed 100 characters.',
-    
+
+    'workers_required'         => 'At least one worker is required.',
+    'workers_array'            => 'Workers must be an array.',
+    'workers.min'              => 'At least one worker is required.',
+    'workers.*.integer'       => 'Each worker ID must be an integer.',
+    'workers.*.exists'        => 'Selected worker does not exist.',
+
     'description_ar_string' => 'The Arabic description must be a string.',
     'description_en_string' => 'The English description must be a string.',
     
@@ -372,6 +378,21 @@ return [
     'roles_array'           => 'The roles format is invalid.',
     'roles_min'             => 'You must assign at least one role.',
     'roles_exists'          => 'One or more selected roles do not exist in our system.',
+],
+
+'store_worker' => [
+    'name_required' => 'The worker name is required.',
+    'name_string' => 'The worker name must be a string.',
+    'name_max' => 'The worker name must not exceed 255 characters.',
+    'nationality_required' => 'The worker nationality is required.',
+    'nationality_string' => 'The worker nationality must be a string.',
+    'nationality_max' => 'The worker nationality must not exceed 255 characters.',
+    'status_in' => 'The worker status is invalid.', 
+    'services_array' => 'The services must be an array.',
+    'services.*.exists' => 'One or more selected services do not exist.',
+    'image_image' => 'The file must be an image.',
+    'image_mimes' => 'The image must be a file of type: jpeg, png, jpg, gif, svg.',
+    'image_max' => 'The image must not be greater than 2MB.',
 ],
 
 ];

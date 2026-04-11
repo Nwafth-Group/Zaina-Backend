@@ -28,6 +28,7 @@ class DatabaseSeeder extends Seeder
             CategoryAndServiceSeeder::class,
             ProviderSeeder::class,
             AdSeeder::class,
+            WorkderSeeder::class
         ]);
     }
 }

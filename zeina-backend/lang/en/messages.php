@@ -94,4 +94,12 @@ return [
     'subcategories_retrieved' => 'Subcategories retrieved successfully.',
     'service_retrieved' => 'Service retrieved successfully.',
     'services_retrieved' => 'Services retrieved successfully.',
+
+    'workers_retrieved_successfully' => 'Workers retrieved successfully.',
+    'worker_retrieved_successfully' => 'Worker retrieved successfully.',
+    'worker_created_successfully' => 'Worker created successfully.',
+    'worker_updated_successfully' => 'Worker updated successfully.',
+    'worker_deactivated' => 'Worker deactivated successfully.',
+    'worker_activated' => 'Worker activated successfully.',
+    'worker_toggle_success' => 'Worker status changed to :status successfully.',
 ];

@@ -28,6 +28,9 @@ class StoreServiceRequest extends CustomFormRequest
             'category_id'      => ['required', 'exists:categories,id'],
             'type'             => ['required', 'in:hourly,moqema,both'],
             'name_ar'          => ['required', 'string', 'max:100'],
+            'workers'          => ['required', 'array', 'min:1'],
+            'workers.*'        => ['integer','exists:workers,id'],
+
             'name_en'          => ['required', 'string', 'max:100'],
             'description_ar'   => ['nullable', 'string'],
             'description_en'   => ['nullable', 'string'],
@@ -79,6 +82,11 @@ class StoreServiceRequest extends CustomFormRequest
             'description_ar.string'    => __('validation.create_service.description_ar_string'),
             'description_en.string'    => __('validation.create_service.description_en_string'),
             'status.in'                => __('validation.create_service.status_in'),
+            'workers.required'         => __('validation.create_service.workers_required'),
+            'workers.array'            => __('validation.create_service.workers_array'),
+            'workers.min'              => __('validation.create_service.workers_min'),
+            'workers.*.integer'       => __('validation.create_service.workers_integer'),
+            'workers.*.exists'        => __('validation.create_service.workers_exists'),
             // 2. المدد (Durations)
             'duration.required'                               => __('validation.create_service.duration_required'),
             'duration.array'                                  => __('validation.create_service.duration_array'),
