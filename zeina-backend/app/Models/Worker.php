@@ -22,6 +22,10 @@ class Worker extends Model
         return $this->belongsToMany(Service::class,'service_workers');
     } 
 
+   public function bookings()
+    {
+        return $this->hasMany(Booking::class, 'worker_id');
+    }
     public function media()
     {
         return $this->morphMany(Media::class,'model');

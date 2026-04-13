@@ -387,6 +387,32 @@ return [
     'image_max' => 'حجم الصورة لا يجب أن يتجاوز 2 ميجابايت.',
 ],
 
+ 'updateWorker' => [
+    'name_required' => 'اسم العامل مطلوب.',
+    'name_string' => 'اسم العامل يجب أن يكون نصاً.',
+    'name_max' => 'اسم العامل لا يجب أن يتجاوز 255 حرفاً.',
+    'nationality_required' => 'جنسية العامل مطلوبة.',
+    'nationality_string' => 'جنسية العامل يجب أن تكون نصاً.',
+    'nationality_max' => 'جنسية العامل لا يجب أن تتجاوز 255 حرفاً.',
+    'status_in' => 'حالة العامل غير صحيحة. يجب أن تكون إما "active" أو "inactive".',
+    'services_array' => 'الخدمات يجب أن تكون مصفوفة.',  
+
+ ],
+ 'getAvaliable' => [
+    'date_required' => 'تاريخ الخدمة مطلوب.',
+    'date_format' => 'تاريخ الخدمة يجب أن يكون بصيغة YYYY-MM-DD.',
+    'start_time_required' => 'وقت بدء الخدمة مطلوب.',
+    'start_time_format' => 'وقت بدء الخدمة يجب أن يكون بصيغة HH:MM.',
+    'duration_required' => 'مدة الخدمة مطلوبة.',
+    'duration_integer' => 'مدة الخدمة يجب أن تكون رقماً صحيحاً يمثل عدد الساعات.',
+    'duration_min' => 'مدة الخدمة لا يمكن أن تكون أقل من ساعة واحدة.',
+ ],
+
+ 'getShiftsForDate' => [
+    'date_required' => 'تاريخ الخدمة مطلوب.',
+    'date_format' => 'تاريخ الخدمة يجب أن يكون بصيغة YYYY-MM-DD.',
+ ],
+
 
 
 

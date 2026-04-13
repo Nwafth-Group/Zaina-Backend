@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('service_durations', function (Blueprint $table) {
             $table->id();
             $table->foreignId('service_id')->constrained('services')->cascadeOnDelete();
+            //add time line for service 
             $table->json('allowed_durations')->nullable(); // when type hourly
             $table->integer('min_duration_hours')->nullable(); // when type hourly
             $table->json('allowed_contract_durations')->nullable(); //when type moqema 

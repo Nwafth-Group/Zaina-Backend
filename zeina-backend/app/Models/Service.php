@@ -12,7 +12,11 @@ class Service extends Model
 
    protected $fillable = [
         'category_id', 'type', 'name_ar', 'name_en', 
-        'description_ar', 'description_en', 'status' , 'avg_rating'
+        'description_ar', 'description_en', 'status' , 'avg_rating' , 'features'
+    ];
+
+    protected $casts = [
+        'features' => 'array',
     ];
 
     public function category(){
@@ -35,7 +39,11 @@ class Service extends Model
     {
         return $this->hasMany(ServicePrice::class , 'service_id');
     }
-
+    
+    public function schedules()
+    {
+        return $this->hasMany(ServiceSchedule::class, 'service_id');
+    }
     public function startingPrice()
     {
         $now = now()->toDateString();

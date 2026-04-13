@@ -20,7 +20,13 @@ class ServiceCoverageResource extends JsonResource
         [
            'id' => $this->id,
            'city' => new CityResource($this->whenLoaded('city')),
-           'area' => new AreaResource($this->whenLoaded('area')),
+        //    'area' => new AreaResource($this->whenLoaded('area')),
+          'area' => 
+          [
+            'id' => $this->area?->id,
+            'name_ar' => $this->area?->name_ar,
+            'name_en' => $this->area?->name_en,
+          ],
            'status' => $this->status, 
         ];
     }

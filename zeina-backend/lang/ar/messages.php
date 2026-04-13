@@ -102,4 +102,10 @@ return [
     'worker_deactivated' => 'تم تعطيل العامل بنجاح.',
     'worker_activated' => 'تم تفعيل العامل بنجاح.',
     'worker_toggle_success' => 'تم تغيير حالة العامل إلى :status بنجاح.',
+
+    'service_details_retrieved' => 'تم جلب تفاصيل الخدمة بنجاح.',
+    'service_not_available' => 'هذه الخدمة غير متاحة حالياً.',
+
+    'shifts_retrieved' => 'تم جلب الشفتات بنجاح.',
+    'providers_fetch_success' => "تم جلب مزودي الخدمة بنجاح.",
 ];

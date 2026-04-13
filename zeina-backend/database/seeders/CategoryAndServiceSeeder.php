@@ -94,9 +94,17 @@ class CategoryAndServiceSeeder extends Seeder
         ];
 
         // ---------------------------------------------------------
-        // 4. إدخال الخدمات وتركيب قواعدها وأسعارها (Loop)
+        // 4. إدخال الخدمات وتركيب قواعدها وأسعارها وجداولها (Loop)
         // ---------------------------------------------------------
         foreach ($servicesData as $data) {
+
+            // 🌟 تحديث: إضافة مصفوفة الـ features (ميزات الخدمة)
+            $features = [
+                ['en' => 'Dusting All Surfaces', 'ar' => 'مسح جميع الأسطح'],
+                ['en' => 'Floor Cleaning', 'ar' => 'تنظيف الأرضيات'],
+                ['en' => 'High-quality equipment', 'ar' => 'معدات عالية الجودة'],
+            ];
+
             $service = Service::firstOrCreate(
                 ['name_en' => $data['en']],
                 [
@@ -105,6 +113,7 @@ class CategoryAndServiceSeeder extends Seeder
                     'name_ar' => $data['ar'],
                     'description_ar' => 'وصف تفصيلي لخدمة ' . $data['ar'],
                     'description_en' => 'Detailed description for ' . $data['en'],
+                    'features' =>$features,// تخزين الميزات كـ JSON
                     'status' => 'active',
                 ]
             );
@@ -151,6 +160,26 @@ class CategoryAndServiceSeeder extends Seeder
                         'price_per_hour' => $data['price'], // السعر الديناميكي من المصفوفة
                         'currency' => 'EGP',
                         'created_at' => now(), 'updated_at' => now()
+                    ]
+                );
+            }
+
+            // 🌟 جديد: إضافة أوقات العمل (Schedules)
+            // سنقوم بإضافة شفت عمل يومي من السبت إلى الخميس، من 9 صباحاً إلى 5 مساءً
+            $workingDays = ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday'];
+            
+            foreach ($workingDays as $day) {
+                DB::table('service_schedules')->updateOrInsert(
+                    [
+                        'service_id' => $service->id, 
+                        'day' => $day, 
+                        'start_time' => '09:00:00'
+                    ],
+                    [
+                        'end_time' => '17:00:00',
+                        'is_active' => true,
+                        'created_at' => now(),
+                        'updated_at' => now()
                     ]
                 );
             }

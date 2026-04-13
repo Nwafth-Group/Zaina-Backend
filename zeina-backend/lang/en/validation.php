@@ -395,4 +395,20 @@ return [
     'image_max' => 'The image must not be greater than 2MB.',
 ],
 
+'getAvaliable' => [
+    'date_required' => 'The date is required.',
+    'date_format' => 'The date must be in the format YYYY-MM-DD.',
+    'start_time_required' => 'The start time is required.',
+    'start_time_format' => 'The start time must be in the format HH:MM.',
+    'duration_required' => 'The duration is required.',
+    'duration_integer' => 'The duration must be an integer representing hours.',
+    'duration_min' => 'The duration must be at least 1 hour.',
+],
+
+'getShiftsForDate' => [
+    'date_required' => 'The date is required.',
+    'date_format' => 'The date must be in the format YYYY-MM-DD.',
+
+],
+
 ];

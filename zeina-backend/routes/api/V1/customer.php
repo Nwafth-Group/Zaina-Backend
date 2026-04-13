@@ -44,6 +44,9 @@ Route::prefix('customer')->group(function () {
 
        Route::get('/categories', [CategoryController::class, 'getMainCategories']);
        Route::get('/categories/{category}/sub', [CategoryController::class, 'getSubcategories']);
+       Route::get('/services/{service}', [ServiceController::class, 'show']); 
+       Route::get('services/{service}/shifts', [ServiceController::class, 'getShiftsForDate']);
+       Route::get('/services/{service}/available-workers', [ServiceController::class, 'getAvailableWorkers']);
 
     //(Services)
         Route::get('/services', [ServiceController::class, 'index']); // لجلب كل الخدمات مع Paginate

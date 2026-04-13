@@ -102,4 +102,10 @@ return [
     'worker_deactivated' => 'Worker deactivated successfully.',
     'worker_activated' => 'Worker activated successfully.',
     'worker_toggle_success' => 'Worker status changed to :status successfully.',
+
+    'service_details_retrieved' => 'Service details retrieved successfully.',
+    'service_not_available' => 'This service is currently not available.',
+
+    'shifts_retrieved' => 'Shifts retrieved successfully.',
+    'providers_fetch_success' => "Service providers fetched successfully.",
 ];
