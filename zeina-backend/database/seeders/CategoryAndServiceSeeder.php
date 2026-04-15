@@ -9,6 +9,8 @@ use App\Models\City;
 use App\Models\Area;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Arr; // 🌟 إضافة هذا السطر للاختيار العشوائي
 
 class CategoryAndServiceSeeder extends Seeder
 {
@@ -60,45 +62,37 @@ class CategoryAndServiceSeeder extends Seeder
         // 3. تعريف الخدمات (20 Service)
         // ---------------------------------------------------------
         $servicesData = [
-            // خدمات تنظيف المنازل
             ['sub' => 'home_cleaning', 'type' => 'hourly', 'en' => 'Regular Home Cleaning', 'ar' => 'تنظيف منزلي عادي', 'price' => 80],
             ['sub' => 'home_cleaning', 'type' => 'hourly', 'en' => 'Deep Home Cleaning', 'ar' => 'تنظيف منزلي عميق', 'price' => 120],
             ['sub' => 'home_cleaning', 'type' => 'both', 'en' => 'Post-Construction Cleaning', 'ar' => 'تنظيف بعد التشطيب', 'price' => 150],
             ['sub' => 'home_cleaning', 'type' => 'hourly', 'en' => 'Move-in/Move-out Cleaning', 'ar' => 'تنظيف نقل العفش', 'price' => 130],
-            
-            // خدمات السجاد والمفروشات
             ['sub' => 'carpet_cleaning', 'type' => 'hourly', 'en' => 'Sofa Deep Cleaning', 'ar' => 'تنظيف كنب عميق', 'price' => 60],
             ['sub' => 'carpet_cleaning', 'type' => 'hourly', 'en' => 'Carpet Washing', 'ar' => 'غسيل سجاد', 'price' => 50],
             ['sub' => 'carpet_cleaning', 'type' => 'hourly', 'en' => 'Mattress Sanitization', 'ar' => 'تعقيم مراتب', 'price' => 70],
             ['sub' => 'carpet_cleaning', 'type' => 'both', 'en' => 'Curtain Steam Cleaning', 'ar' => 'تنظيف ستائر بالبخار', 'price' => 90],
-
-            // خدمات رعاية الأطفال
             ['sub' => 'child_care', 'type' => 'hourly', 'en' => 'Toddler Sitting', 'ar' => 'رعاية أطفال صغار', 'price' => 100],
             ['sub' => 'child_care', 'type' => 'hourly', 'en' => 'Newborn Care', 'ar' => 'رعاية حديثي الولادة', 'price' => 150],
             ['sub' => 'child_care', 'type' => 'moqema', 'en' => 'Live-in Nanny', 'ar' => 'مربية مقيمة', 'price' => 3000],
             ['sub' => 'child_care', 'type' => 'hourly', 'en' => 'Special Needs Care', 'ar' => 'رعاية ذوي الاحتياجات', 'price' => 200],
-
-            // خدمات السباكة
             ['sub' => 'plumbing', 'type' => 'both', 'en' => 'Leak Detection & Repair', 'ar' => 'كشف وإصلاح تسريبات', 'price' => 150],
             ['sub' => 'plumbing', 'type' => 'both', 'en' => 'Water Heater Installation', 'ar' => 'تركيب سخان مياه', 'price' => 200],
             ['sub' => 'plumbing', 'type' => 'both', 'en' => 'Drain Unclogging', 'ar' => 'تسليك مجاري', 'price' => 100],
-
-            // خدمات الكهرباء
             ['sub' => 'electrical', 'type' => 'both', 'en' => 'Light Fixture Installation', 'ar' => 'تركيب وحدات إضاءة', 'price' => 70],
             ['sub' => 'electrical', 'type' => 'hourly', 'en' => 'Wiring Repair', 'ar' => 'إصلاح تمديدات كهربائية', 'price' => 120],
             ['sub' => 'electrical', 'type' => 'both', 'en' => 'Smart Home Setup', 'ar' => 'تأسيس أجهزة ذكية', 'price' => 250],
-
-            // خدمات التجميل
             ['sub' => 'hair_makeup', 'type' => 'both', 'en' => 'Bridal Makeup', 'ar' => 'مكياج عرائس', 'price' => 500],
             ['sub' => 'hair_makeup', 'type' => 'both', 'en' => 'Pedicure & Manicure', 'ar' => 'بديكير ومنكير', 'price' => 150],
         ];
+
+        // 🌟 قوائم الصور العشوائية الموجودة في public/dummy
+        $dummyIconsList = ['icon_1.jpg', 'icon_2.jpg', 'icon_3.jpg','cover_1.jpg', 'cover_2.jpg', 'cover_3.jpg'];
+        // $dummyCoversList = ['cover_1.jpg', 'cover_2.jpg', 'cover_3.jpg'];
 
         // ---------------------------------------------------------
         // 4. إدخال الخدمات وتركيب قواعدها وأسعارها وجداولها (Loop)
         // ---------------------------------------------------------
         foreach ($servicesData as $data) {
 
-            // 🌟 تحديث: إضافة مصفوفة الـ features (ميزات الخدمة)
             $features = [
                 ['en' => 'Dusting All Surfaces', 'ar' => 'مسح جميع الأسطح'],
                 ['en' => 'Floor Cleaning', 'ar' => 'تنظيف الأرضيات'],
@@ -113,7 +107,7 @@ class CategoryAndServiceSeeder extends Seeder
                     'name_ar' => $data['ar'],
                     'description_ar' => 'وصف تفصيلي لخدمة ' . $data['ar'],
                     'description_en' => 'Detailed description for ' . $data['en'],
-                    'features' =>$features,// تخزين الميزات كـ JSON
+                    'features' => $features,
                     'status' => 'active',
                 ]
             );
@@ -156,18 +150,16 @@ class CategoryAndServiceSeeder extends Seeder
                     ['service_id' => $service->id, 'city_id' => $city->id, 'area_id' => $area->id ?? null],
                     [
                         'pricing_scope' => $area ? 'area' : 'city',
-                        'base_price' => 50.00, // رسوم زيارة ثابتة للكل
-                        'price_per_hour' => $data['price'], // السعر الديناميكي من المصفوفة
+                        'base_price' => 50.00,
+                        'price_per_hour' => $data['price'], 
                         'currency' => 'EGP',
                         'created_at' => now(), 'updated_at' => now()
                     ]
                 );
             }
 
-            // 🌟 جديد: إضافة أوقات العمل (Schedules)
-            // سنقوم بإضافة شفت عمل يومي من السبت إلى الخميس، من 9 صباحاً إلى 5 مساءً
+            // إضافة أوقات العمل (Schedules)
             $workingDays = ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday'];
-            
             foreach ($workingDays as $day) {
                 DB::table('service_schedules')->updateOrInsert(
                     [
@@ -183,6 +175,56 @@ class CategoryAndServiceSeeder extends Seeder
                     ]
                 );
             }
+
+            // ---------------------------------------------------------
+            // 🌟 5. إضافة الصور التجريبية العشوائية 🌟
+            // ---------------------------------------------------------
+            
+            // اختيار صور عشوائية من القوائم
+            $selectedIcon = Arr::random($dummyIconsList);
+            // $selectedCover = Arr::random($dummyCoversList);
+
+            // المسارات في مجلد public
+            $dummyIconPath = public_path('dummy/' . $selectedIcon);
+            // $dummyCoverPath = public_path('dummy/' . $selectedCover);
+
+            // حفظ الأيقونة العشوائية
+            if (file_exists($dummyIconPath)) {
+                $iconName = 'service_' . $service->id . '_icon.jpg';
+                $iconPath = 'services/icons/' . $iconName;
+                
+                Storage::disk('public')->put($iconPath, file_get_contents($dummyIconPath));
+                
+                $service->media()->updateOrCreate(
+                    ['collection' => 'service/icon'],
+                    [
+                        'file_name'  => $iconName,
+                        'mime_type'  => 'image/jpeg',
+                        'disk'       => 'public',
+                        'path'       => $iconPath,
+                        'size'       => Storage::disk('public')->size($iconPath),
+                    ]
+                );
+            }
+
+            // حفظ الغلاف العشوائي
+            // if (file_exists($dummyCoverPath)) {
+            //     $coverName = 'service_' . $service->id . '_cover.jpg';
+            //     $coverPath = 'services/covers/' . $coverName;
+                
+            //     Storage::disk('public')->put($coverPath, file_get_contents($dummyCoverPath));
+                
+            //     $service->media()->updateOrCreate(
+            //         ['collection' => 'service/cover'],
+            //         [
+            //             'file_name'  => $coverName,
+            //             'mime_type'  => 'image/jpeg',
+            //             'disk'       => 'public',
+            //             'path'       => $coverPath,
+            //             'size'       => Storage::disk('public')->size($coverPath),
+            //         ]
+            //     );
+            // }
         }
     }
 }

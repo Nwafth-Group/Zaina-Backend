@@ -50,8 +50,9 @@ class HomeController extends Controller
             
             // 3. الموعد القادم (Upcoming Appointment)
             $upcomingBooking = null;
-            $user = auth()->user();
-            
+
+            if(auth('sanctum')->check()) {
+            $user = auth('sanctum')->user();
             $booking = Booking::with(['service.media'])
             ->where('customer_id', $user->id)
             // 🌟 تحديث حالات الحجز بناءً على الـ Enum الجديد 🌟
@@ -92,7 +93,9 @@ class HomeController extends Controller
                 'time' => Carbon::parse($booking->start_time)->format('h:i A'), // من حقل الوقت
             ];
         }
-        
+            }
+
+
         $popularServices = Service::with(['category:id,name_ar,name_en', 'startingPrice', 'media'])
             ->where('status', 'active')
             ->orderBy('avg_rating', 'desc')
@@ -103,7 +106,7 @@ class HomeController extends Controller
         return $this->successResponse([
             'banners' => $banners,
             'categories' => CategoryResourse::collection($categories),
-            'upcoming_appointment' => $upcomingBooking,
+            'upcoming_appointment' =>  $upcomingBooking ?? null,
             'popular_services' => ServiceResource::collection($popularServices),
         ], 'Home page data fetched successfully.');
     }

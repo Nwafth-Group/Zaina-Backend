@@ -27,6 +27,7 @@ Route::prefix('customer')->group(function () {
     // ==========================================
     // Protected Routes (Require Authentication)
     // ==========================================
+    Route::get('home',[HomeController::class,'index']);
     Route::middleware('auth:sanctum')->group(function () {
         // Auth
         Route::post('auth/logout', [AuthController::class, 'logout']);
@@ -40,7 +41,6 @@ Route::prefix('customer')->group(function () {
         Route::apiResource('addresses', AddressController::class);
         Route::post('address/{id}/set-default', [AddressController::class, 'setDefault']); 
         //Home page
-        Route::get('home',[HomeController::class,'index']);
 
        Route::get('/categories', [CategoryController::class, 'getMainCategories']);
        Route::get('/categories/{category}/sub', [CategoryController::class, 'getSubcategories']);
