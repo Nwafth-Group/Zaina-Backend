@@ -28,7 +28,9 @@ class DatabaseSeeder extends Seeder
             CategoryAndServiceSeeder::class,
             ProviderSeeder::class,
             AdSeeder::class,
-            WorkderSeeder::class
+            WorkderSeeder::class,
+            CustomerAddressSeeder::class,
+            BookingSeeder::class,
         ]);
     }
 }

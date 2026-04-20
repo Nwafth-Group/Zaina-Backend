@@ -13,12 +13,17 @@ class Booking extends Model
         'booking_ref', 'customer_id', 'service_id', 'address_id', 'provider_id',
         'scheduled_at', 'duration_minutes', 'number_of_workers',
         'price_subtotal', 'tax_amount', 'discount_amount', 'total_amount',
-        'status', 'payment_status', 'customer_notes'
+        'status', 'payment_status', 'customer_notes' , 'start_time', 'end_time', 'booking_date' , 'worker_id'
     ];
 
     protected $casts = [
         'scheduled_at' => 'datetime',
     ];
+
+    protected static function boot()
+    {
+        return parent::boot();
+    }
 
     public function customer()
     {
@@ -28,6 +33,11 @@ class Booking extends Model
     public function service()
     {
         return $this->belongsTo(Service::class);
+    }
+
+    public function worker()
+    {
+        return $this->belongsTo(Worker::class);
     }
 
     public function address()

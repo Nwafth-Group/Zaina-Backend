@@ -108,4 +108,10 @@ return [
 
     'shifts_retrieved' => 'Shifts retrieved successfully.',
     'providers_fetch_success' => "Service providers fetched successfully.",
+    'available_workers_retrieved' => 'Available workers retrieved successfully.',
+    'bookings_fetched_successfully' => 'Bookings retrieved successfully.',
+    'booking_details_fetched_successfully' => 'Booking details retrieved successfully.',
+    'worker_busy' => 'Sorry, this worker has just been booked. Please choose a different time or worker.',
+    'service_not_available' => 'Sorry, this service is not available or not priced in your area currently.',
+    'booking_created_successfully' => 'Booking created successfully.',
 ];

@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\Customer\AdController;
 use App\Http\Controllers\Api\V1\Customer\AddressController;
 use App\Http\Controllers\Api\V1\Customer\AuthController;
+use App\Http\Controllers\Api\V1\Customer\BookingController;
 use App\Http\Controllers\Api\V1\Customer\CategoryController;
 use App\Http\Controllers\Api\V1\Customer\HomeController;
 use App\Http\Controllers\Api\V1\Customer\ProfileController;
@@ -47,6 +48,9 @@ Route::prefix('customer')->group(function () {
        Route::get('/services/{service}', [ServiceController::class, 'show']); 
        Route::get('services/{service}/shifts', [ServiceController::class, 'getShiftsForDate']);
        Route::get('/services/{service}/available-workers', [ServiceController::class, 'getAvailableWorkers']);
+
+       //Bookings
+       Route::apiResource('bookings', BookingController::class);
 
     //(Services)
         Route::get('/services', [ServiceController::class, 'index']); // لجلب كل الخدمات مع Paginate

@@ -29,7 +29,6 @@ return new class extends Migration
             $table->decimal('tax_amount', 10, 2)->default(0);
             $table->decimal('discount_amount', 10, 2)->default(0);
             $table->decimal('total_amount', 10, 2);
-            // الحالات
             $table->enum('status', ['Upcoming','inService','completed','cancelled'])->default('Upcoming');
             $table->enum('payment_status', ['unpaid', 'paid', 'refunded'])->default('unpaid');
             $table->text('customer_notes')->nullable();

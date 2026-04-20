@@ -411,4 +411,20 @@ return [
 
 ],
 
+'create_booking' => [
+    'service_id_required' => 'Service ID is required.',
+    'service_id_exists' => 'The selected service does not exist.',
+    'worker_id_required' => 'Worker ID is required.',
+    'worker_id_exists' => 'The selected worker does not exist.',
+    'address_id_required' => 'Address ID is required.',
+    'address_id_exists' => 'The selected address does not exist.',
+    'date_required' => 'Booking date is required.',
+    'date_date_format' => 'Booking date must be in the format YYYY-MM-DD.',
+    'start_time_required' => 'Start time is required.',
+    'start_time_date_format' => 'Start time must be in the format HH:MM.',
+    'duration_minutes_required' => 'Duration in minutes is required.',
+    'duration_minutes_integer' => 'Duration must be an integer representing minutes.',
+    'duration_minutes_min' => 'Duration must be at least 60 minutes (1 hour).', 
+]
+
 ];

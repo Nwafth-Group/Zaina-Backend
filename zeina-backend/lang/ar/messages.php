@@ -108,4 +108,10 @@ return [
 
     'shifts_retrieved' => 'تم جلب الشفتات بنجاح.',
     'providers_fetch_success' => "تم جلب مزودي الخدمة بنجاح.",
+    'available_workers_retrieved' => 'تم جلب العمال المتاحين بنجاح.',
+    'bookings_fetched_successfully' => 'تم جلب الحجوزات بنجاح.',
+    'booking_details_fetched_successfully' => 'تم جلب تفاصيل الحجز بنجاح.',
+    'worker_busy' => 'عذراً، هذا العامل تم حجزه للتو. يرجى اختيار وقت أو عامل آخر.',
+    'service_not_available' => 'عذراً، هذه الخدمة غير متوفرة أو غير مسعرة في منطقتك حالياً.',
+    'booking_created_successfully' => 'تم إنشاء الحجز بنجاح.',
 ];

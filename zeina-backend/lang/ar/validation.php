@@ -413,6 +413,22 @@ return [
     'date_format' => 'تاريخ الخدمة يجب أن يكون بصيغة YYYY-MM-DD.',
  ],
 
+ 'create_booking' => [
+    'service_id_required' => 'معرف الخدمة مطلوب.',
+    'service_id_exists' => 'الخدمة المحددة غير موجودة.',
+    'worker_id_required' => 'معرف العامل مطلوب.',
+    'worker_id_exists' => 'العامل المحدد غير موجود.',
+    'address_id_required' => 'معرف العنوان مطلوب.',
+    'address_id_exists' => 'العنوان المحدد غير موجود.',
+    'date_required' => 'تاريخ الحجز مطلوب.',
+    'date_date_format' => 'تاريخ الحجز يجب أن يكون بصيغة YYYY-MM-DD.',
+    'start_time_required' => 'وقت بدء الحجز مطلوب.',
+    'start_time_date_format' => 'وقت بدء الحجز يجب أن يكون بصيغة HH:MM.',
+    'duration_minutes_required' => 'مدة الحجز بالدقائق مطلوبة.',
+    'duration_minutes_integer' => 'مدة الحجز بالدقائق يجب أن تكون رقماً صحيحاً.',
+    'duration_minutes_min' => 'مدة الحجز لا يمكن أن تكون أقل من 60 دقيقة (ساعة واحدة).',
+ ],
+
 
 
 
