@@ -51,10 +51,16 @@ Route::prefix('customer')->group(function () {
 
        //Bookings
        Route::apiResource('bookings', BookingController::class);
+       Route::post('bookings/{booking}/reschedule', [BookingController::class, 'reschedule']);
+       Route::put('bookings/{booking}/cancel', [BookingController::class,'cancel']);
+       Route::post('bookings/{id}/report', [BookingController::class, 'report']);
+       Route::post('bookings/{id}/review', [BookingController::class, 'review']);
 
     //(Services)
         Route::get('/services', [ServiceController::class, 'index']); // لجلب كل الخدمات مع Paginate
         Route::get('/categories/{category}/services', [ServiceController::class, 'getServicesByCategory']);
+
+
 
 
         

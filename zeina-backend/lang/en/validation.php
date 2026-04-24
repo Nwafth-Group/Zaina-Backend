@@ -422,9 +422,44 @@ return [
     'date_date_format' => 'Booking date must be in the format YYYY-MM-DD.',
     'start_time_required' => 'Start time is required.',
     'start_time_date_format' => 'Start time must be in the format HH:MM.',
-    'duration_minutes_required' => 'Duration in minutes is required.',
-    'duration_minutes_integer' => 'Duration must be an integer representing minutes.',
-    'duration_minutes_min' => 'Duration must be at least 60 minutes (1 hour).', 
-]
+    // 'duration_minutes_required' => 'Duration in minutes is required.',
+    // 'duration_minutes_integer' => 'Duration must be an integer representing minutes.',
+    // 'duration_minutes_min' => 'Duration must be at least 60 minutes (1 hour).', 
+    'end_time_required' => 'End time is required.',
+    'end_time_date_format' => 'End time must be in the format HH:MM.',
+    'end_time_after' => 'End time must be after the start time.',
+], 
+
+'report' => [
+        'report_reason_required' => 'The report reason is required.',
+        'report_reason_string' => 'The report reason must be a string.',
+        'report_reason_invalid' => 'The selected report reason is invalid.',
+        'report_description_string' => 'The report description must be a string.',
+        'report_description_required_if_other' => 'The report description is required when the reason is "other".',
+    ],
+
+  'review' => [
+        'service_rating_required' => 'The service rating is required.',
+        'service_rating_integer'  => 'The service rating must be an integer.',
+        'service_rating_min'      => 'The service rating must be at least :min.',
+        'service_rating_max'      => 'The service rating may not be greater than :max.',
+
+        'service_comment_string'  => 'The service comment must be a string.',
+        'service_comment_max'     => 'The service comment may not be greater than :max characters.',
+
+        'workers_required'        => 'The workers list is required.',
+        'workers_array'           => 'The workers must be an array.',
+
+        'worker_id_required'      => 'The worker ID is required.',
+        'worker_id_exists'        => 'The selected worker is invalid.',
+
+        'worker_rating_required'  => 'The worker rating is required.',
+        'worker_rating_integer'   => 'The worker rating must be an integer.',
+        'worker_rating_min'       => 'The worker rating must be at least :min.',
+        'worker_rating_max'       => 'The worker rating may not be greater than :max.',
+
+        'worker_comment_string'   => 'The worker comment must be a string.',
+        'worker_comment_max'      => 'The worker comment may not be greater than :max characters.',
+    ],  
 
 ];

@@ -27,7 +27,8 @@ class StoreBookingRequest extends FormRequest
             'address_id' => 'required|exists:customer_addresses,id',
             'date'       => 'required|date_format:Y-m-d',
             'start_time' => 'required|date_format:H:i',
-            'duration_minutes' => 'required|integer|min:60',
+            'end_time'   => 'required|date_format:H:i|after:start_time',
+            // 'duration_minutes' => 'required|integer|min:60',
         ];
     }
 
@@ -44,9 +45,12 @@ class StoreBookingRequest extends FormRequest
             'date.date_format' => __('validation.create_booking.date_date_format'),
             'start_time.required' => __('validation.create_booking.start_time_required'),
             'start_time.date_format' => __('validation.create_booking.start_time_date_format'),
-            'duration_minutes.required' => __('validation.create_booking.duration_minutes_required'),
-            'duration_minutes.integer' => __('validation.create_booking.duration_minutes_integer'),
-            'duration_minutes.min' => __('validation.create_booking.duration_minutes_min'),
+            'end_time.required' => __('validation.create_booking.end_time_required'),
+            'end_time.date_format' => __('validation.create_booking.end_time_date_format'),
+            'end_time.after' => __('validation.create_booking.end_time_after'),
+            // 'duration_minutes.required' => __('validation.create_booking.duration_minutes_required'),
+            // 'duration_minutes.integer' => __('validation.create_booking.duration_minutes_integer'),
+            // 'duration_minutes.min' => __('validation.create_booking.duration_minutes_min'),
         ];
     }
 }

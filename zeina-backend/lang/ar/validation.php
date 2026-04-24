@@ -424,10 +424,45 @@ return [
     'date_date_format' => 'تاريخ الحجز يجب أن يكون بصيغة YYYY-MM-DD.',
     'start_time_required' => 'وقت بدء الحجز مطلوب.',
     'start_time_date_format' => 'وقت بدء الحجز يجب أن يكون بصيغة HH:MM.',
-    'duration_minutes_required' => 'مدة الحجز بالدقائق مطلوبة.',
-    'duration_minutes_integer' => 'مدة الحجز بالدقائق يجب أن تكون رقماً صحيحاً.',
-    'duration_minutes_min' => 'مدة الحجز لا يمكن أن تكون أقل من 60 دقيقة (ساعة واحدة).',
+    // 'duration_minutes_required' => 'مدة الحجز بالدقائق مطلوبة.',
+    // 'duration_minutes_integer' => 'مدة الحجز بالدقائق يجب أن تكون رقماً صحيحاً.',
+    // 'duration_minutes_min' => 'مدة الحجز لا يمكن أن تكون أقل من 60 دقيقة (ساعة واحدة).',
+    'end_time_required' => 'وقت انتهاء الحجز مطلوب.',
+    'end_time_date_format' => 'وقت انتهاء الحجز يجب أن يكون بصيغة HH:MM.',
+    'end_time_after' => 'وقت انتهاء الحجز يجب أن يكون بعد وقت بدء الحجز.',
  ],
+
+'report' => [
+        'report_reason_required' => 'سبب الإبلاغ مطلوب.',
+        'report_reason_string' => 'يجب أن يكون سبب الإبلاغ نصاً.',
+        'report_reason_invalid' => 'سبب الإبلاغ المحدد غير صالح.',
+        'report_description_string' => 'يجب أن يكون وصف الإبلاغ نصاً.',
+        'report_description_required_if_other' => 'وصف الإبلاغ مطلوب عندما يكون السبب "أخرى".',
+    ],
+
+ 'review' => [
+        'service_rating_required' => 'تقييم الخدمة مطلوب.',
+        'service_rating_integer'  => 'يجب أن يكون تقييم الخدمة رقماً صحيحاً.',
+        'service_rating_min'      => 'يجب ألا يقل تقييم الخدمة عن :min.',
+        'service_rating_max'      => 'يجب ألا يتجاوز تقييم الخدمة :max.',
+
+        'service_comment_string'  => 'يجب أن يكون تعليق الخدمة نصاً.',
+        'service_comment_max'     => 'يجب ألا يتجاوز تعليق الخدمة :max حرفاً.',
+
+        'workers_required'        => 'قائمة العمال مطلوبة.',
+        'workers_array'           => 'يجب أن تكون قائمة العمال مصفوفة.',
+
+        'worker_id_required'      => 'رقم العامل مطلوب.',
+        'worker_id_exists'        => 'العامل المحدد غير صالح.',
+
+        'worker_rating_required'  => 'تقييم العامل مطلوب.',
+        'worker_rating_integer'   => 'يجب أن يكون تقييم العامل رقماً صحيحاً.',
+        'worker_rating_min'       => 'يجب ألا يقل تقييم العامل عن :min.',
+        'worker_rating_max'       => 'يجب ألا يتجاوز تقييم العامل :max.',
+
+        'worker_comment_string'   => 'يجب أن يكون تعليق العامل نصاً.',
+        'worker_comment_max'      => 'يجب ألا يتجاوز تعليق العامل :max حرفاً.',
+    ],
 
 
 

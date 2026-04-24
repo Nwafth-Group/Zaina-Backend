@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('nationality')->nullable();
-            $table->decimal('rating', 2, 1)->default(0.0); 
+            $table->decimal('avg_rating', 2, 1)->default(0.0); 
             $table->enum('status', ['active', 'inactive'])->default('active'); // متاح أو غير متاح
             $table->timestamps();
         });

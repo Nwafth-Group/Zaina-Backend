@@ -13,7 +13,7 @@ class Worker extends Model
     protected $fillable = [
         'name',
         'nationality',
-        'rating',
+        'avg_rating',
         'status',
     ];
 

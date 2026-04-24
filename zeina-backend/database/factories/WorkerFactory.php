@@ -21,7 +21,7 @@ class WorkerFactory extends Factory
         return [
             'name' => fake()->name(), // اسم عشوائي
             'nationality' => fake()->randomElement($nationalities), // جنسية عشوائية من المصفوفة
-            'rating' => fake()->randomFloat(1, 3.5, 5.0), // تقييم عشوائي من 3.5 إلى 5.0 (رقم عشري واحد)
+            'avg_rating' => fake()->randomFloat(1, 3.5, 5.0), // تقييم عشوائي من 3.5 إلى 5.0 (رقم عشري واحد)
             // 'status' => fake()->, // 85% من العمال راح يكونوا متاحين (true) والباقي غير متاحين
         ];
     }
