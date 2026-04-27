@@ -47,7 +47,7 @@ trait ApiResponseTrait
             $finalResponse['params'] = $params;
         }
 
-        return response()->json($finalResponse, $statusCode);
+        return response()->json($finalResponse, $statusCode ,[], JSON_UNESCAPED_UNICODE);
     }
 
     /**

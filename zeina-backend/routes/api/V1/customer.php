@@ -29,6 +29,13 @@ Route::prefix('customer')->group(function () {
     // Protected Routes (Require Authentication)
     // ==========================================
     Route::get('home',[HomeController::class,'index']);
+    Route::get('/categories', [CategoryController::class, 'getMainCategories']);//4
+    Route::get('/categories/{category}/sub', [CategoryController::class, 'getSubcategories']);//
+    Route::get('/services/{service}', [ServiceController::class, 'show']); //3
+    Route::get('services/{service}/shifts', [ServiceController::class, 'getShiftsForDate']);//
+    Route::get('/services/{service}/available-workers', [ServiceController::class, 'getAvailableWorkers']);
+    Route::get('/services', [ServiceController::class, 'index']); // 1  // لجلب كل الخدمات مع Paginate
+    Route::get('/categories/{category}/services', [ServiceController::class, 'getServicesByCategory']);// 2 
     Route::middleware('auth:sanctum')->group(function () {
         // Auth
         Route::post('auth/logout', [AuthController::class, 'logout']);
@@ -43,27 +50,13 @@ Route::prefix('customer')->group(function () {
         Route::post('address/{id}/set-default', [AddressController::class, 'setDefault']); 
         //Home page
 
-       Route::get('/categories', [CategoryController::class, 'getMainCategories']);
-       Route::get('/categories/{category}/sub', [CategoryController::class, 'getSubcategories']);
-       Route::get('/services/{service}', [ServiceController::class, 'show']); 
-       Route::get('services/{service}/shifts', [ServiceController::class, 'getShiftsForDate']);
-       Route::get('/services/{service}/available-workers', [ServiceController::class, 'getAvailableWorkers']);
-
        //Bookings
        Route::apiResource('bookings', BookingController::class);
        Route::post('bookings/{booking}/reschedule', [BookingController::class, 'reschedule']);
        Route::put('bookings/{booking}/cancel', [BookingController::class,'cancel']);
        Route::post('bookings/{id}/report', [BookingController::class, 'report']);
        Route::post('bookings/{id}/review', [BookingController::class, 'review']);
-
     //(Services)
-        Route::get('/services', [ServiceController::class, 'index']); // لجلب كل الخدمات مع Paginate
-        Route::get('/categories/{category}/services', [ServiceController::class, 'getServicesByCategory']);
-
-
-
-
-        
     });
 
 });
