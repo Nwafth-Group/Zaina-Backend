@@ -19,6 +19,7 @@ return new class extends Migration
             $table->string('last_name',100)->nullable();
             $table->string('full_name',200)->virtualAs("CONCAT(first_name,' ',last_name)");
             $table->string('phone_number')->unique();
+            $table->decimal('wallet_balance', 10, 2)->default(0.00);
             $table->string('job_title',100)->nullable();
             $table->enum('gender', ['Male', 'Female'])->nullable();
             $table->string('email')->nullable()->unique();// Email is optional for customers but usually required for Admins/Operations

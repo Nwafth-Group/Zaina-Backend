@@ -28,6 +28,7 @@ class User extends Authenticatable implements Auditable
         'first_name',
         'id_number',
         'last_name',
+        'wallet_balance',
         'full_name',
         'phone_number',
         'email',
@@ -75,4 +76,43 @@ class User extends Authenticatable implements Auditable
     public function media(){
         return $this->morphMany(Media::class,'model');
     }
+
+    // علاقة المستخدم بحركات المحفظة
+    public function walletTransactions()
+    {
+        return $this->hasMany(WalletTransaction::class)->latest(); // latest عشان يرجع الأجدد أولاً
+    }
+
+    // 🌟 دوال مساعدة للعمليات المالية 🌟
+    
+    // دالة الإيداع (إضافة رصيد)
+    public function deposit($amount, $title, $referenceId = null)
+    {
+        $this->increment('wallet_balance', $amount);
+        return $this->walletTransactions()->create([
+            'type' => 'credit',
+            'amount' => $amount,
+            'title' => $title,
+            'reference_id' => $referenceId,
+        ]);
+    }
+
+    // دالة السحب أو الخصم
+    public function withdraw($amount, $title, $referenceId = null)
+    {
+        $this->decrement('wallet_balance', $amount);
+        return $this->walletTransactions()->create([
+            'type' => 'debit',
+            'amount' => $amount,
+            'title' => $title,
+            'reference_id' => $referenceId,
+        ]);
+    }
+
+    public function cards()
+    {
+        return $this->hasMany(UserCard::class);
+    }
+
+
 }

@@ -10,6 +10,8 @@ use App\Http\Controllers\Api\V1\Customer\ProfileController;
 use App\Http\Controllers\Api\V1\Customer\SearchController;
 use App\Http\Controllers\Api\V1\Customer\ServiceController;
 use App\Http\Controllers\Api\V1\Customer\TestController;
+use App\Http\Controllers\Api\V1\Customer\UserCardController;
+use App\Http\Controllers\Api\V1\Customer\WalletController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('customer')->group(function () {
@@ -56,7 +58,16 @@ Route::prefix('customer')->group(function () {
        Route::put('bookings/{booking}/cancel', [BookingController::class,'cancel']);
        Route::post('bookings/{id}/report', [BookingController::class, 'report']);
        Route::post('bookings/{id}/review', [BookingController::class, 'review']);
-    //(Services)
+
+       //wallet endpoints
+
+       Route::get('wallet',[WalletController::class,'index']);
+       Route::post('wallet/top-up',[WalletController::class,'topUp']);
+
+       Route::get('cards', [UserCardController::class, 'index']);
+       Route::post('cards', [UserCardController::class, 'store']);
+       Route::delete('cards/{id}', [UserCardController::class, 'destroy']);
+
     });
 
 });

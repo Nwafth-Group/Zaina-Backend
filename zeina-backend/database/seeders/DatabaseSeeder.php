@@ -31,6 +31,7 @@ class DatabaseSeeder extends Seeder
             WorkderSeeder::class,
             CustomerAddressSeeder::class,
             BookingSeeder::class,
+            WalletSeeder::class
         ]);
     }
 }

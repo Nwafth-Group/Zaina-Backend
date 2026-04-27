@@ -139,5 +139,13 @@ return [
     'unauthorized_review' => 'غير مصرح لك بتقييم هذا الحجز.',
     'invalid_booking_status_for_review' => 'عذراً، لا يمكنك التقييم إلا بعد اكتمال الخدمة.',
     'review_submitted_successfully' => 'تم إرسال التقييم بنجاح. شكراً لك!',
+    'wallet_tranasction_fetch' => 'تم إسترجاع حركات المحفظة للمستخدم بنجاح.',
+    'wallet_topup_success' => 'تم شحن المحفظة بنجاح.',
+    'wallet_topup_failed' => 'فشل في شحن المحفظة. يرجى المحاولة مرة أخرى.',
+    'unpaid_penalties' => 'عذراً، لا يمكنك إجراء حجز. لديك مستحقات غير مدفوعة بقيمة :amount EGP. يرجى تسوية مستحقاتك أولاً.',
+    'insufficient_balance' => 'عذراً، لا يمكنك إجراء حجز. رصيد محفظتك غير كافٍ لسداد تكلفة الحجز البالغة :amount EGP. يرجى شحن محفظتك أولاً.',
+    'cards_fetched_successfully' => 'تم جلب البطاقات بنجاح.',
+    'card_added_successfully' => 'تم إضافة البطاقة بنجاح.',
+    'card_deleted_successfully' => 'تم حذف البطاقة بنجاح.',
 
 ];

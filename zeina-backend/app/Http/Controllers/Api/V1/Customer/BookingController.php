@@ -72,8 +72,13 @@ class BookingController extends Controller
      */
    public function store(StoreBookingRequest $request) 
     {
-        // 🌟 تحويل القيمة إلى رقم صحيح لحل مشكلة Carbon 🌟
-        
+        $user = auth()->user();
+
+        // 🌟 1. حارس المحفظة: منع الحجز إذا كان هناك ديون (رصيد سالب) 🌟
+        if ($user->wallet_balance < 0) {
+            return $this->errorResponse(__('messages.unpaid_penalties',['amount' => abs($user->wallet_balance)]) ?? 'عذراً، لا يمكنك الحجز. يوجد مستحقات سابقة غير مدفوعة بقيمة ' . abs($user->wallet_balance) . ' EGP. يرجى شحن المحفظة أولاً.', 402);
+        }
+
         $start = Carbon::parse($request->start_time);
         $end = Carbon::parse($request->end_time);
 
@@ -82,49 +87,50 @@ class BookingController extends Controller
         if ($serviceRules) {
             $bookingDateTime = Carbon::parse($request->date . ' ' . $start->format('H:i:s'));
             
-            // التأكد أن الموعد لا يسبق وقت التحضير الأدنى (مثلاً لازم يحجز قبل 3 ساعات على الأقل)
+            // التأكد أن الموعد لا يسبق وقت التحضير الأدنى
             if (now()->addHours($serviceRules->lead_time_min_hours)->greaterThan($bookingDateTime)) {
                 return $this->errorResponse(__("messages.reschedule_lead_time_min", ['lead_time_min_hours' => $serviceRules->lead_time_min_hours]), 400);
             }
 
-            // التأكد أن الموعد ليس بعيداً جداً (مثلاً أقصى حد للحجز هو 14 يوم من اليوم)
+            // التأكد أن الموعد ليس بعيداً جداً
             if (now()->addDays($serviceRules->lead_time_max_days)->endOfDay()->lessThan($bookingDateTime)) {
                 return $this->errorResponse(__("messages.reschedule_lead_time_max", ['lead_time_max_days' => $serviceRules->lead_time_max_days]), 400);
             }
         }
 
-
         $worker = Worker::find($request->worker_id);
         if (!$worker || !$worker->services->contains($request->service_id)) {
-            return $this->errorResponse(__('messages.worker_not_provide_service'),422);
+            return $this->errorResponse(__('messages.worker_not_provide_service'), 422);
         }
-        $durationMinutes = $start->diffInMinutes($end);
-         $durationMinutes = (int) $durationMinutes;
+
+        $durationMinutes = (int) $start->diffInMinutes($end);
         $dayName = strtolower(Carbon::parse($request->date)->format('l'));
+        
         $schedules = ServiceSchedule::where('service_id', $request->service_id)
             ->where('day', $dayName)
             ->where('is_active', true)
             ->get();
 
         if ($schedules->isEmpty()) {
-            return $this->errorResponse(__('messages.service_not_available_in_this_day'),422);
+            return $this->errorResponse(__('messages.service_not_available_in_this_day'), 422);
         }
+
         $isValidShift = false;
         foreach ($schedules as $schedule) {
             $shiftStart = Carbon::parse($schedule->start_time)->format('H:i:s');
             $shiftEnd = Carbon::parse($schedule->end_time)->format('H:i:s');
             
-            // هل الحجز يبدأ بعد أو مع بداية الشفت، وينتهي قبل أو مع نهاية الشفت؟
             if ($start->format('H:i:s') >= $shiftStart && $end->format('H:i:s') <= $shiftEnd) {
                 $isValidShift = true;
-                break; // لقينا شفت مناسب، بنوقف البحث
+                break; 
             }
         }
+
         if (!$isValidShift) {
             return $this->errorResponse(__('messages.service_not_scheduals'), 422);
         }
 
-        // 1. الدبل تشيك: هل العامل لا يزال متاحاً؟
+        // الدبل تشيك: هل العامل لا يزال متاحاً؟
         $isWorkerBusy = Booking::where('worker_id', $request->worker_id)
             ->where('booking_date', $request->date)
             ->whereIn('status', ['Upcoming', 'inService'])
@@ -138,14 +144,12 @@ class BookingController extends Controller
             return $this->errorResponse(__('messages.worker_busy'), 422);
         }
 
-        // 2. حساب الأسعار بناءً على عنوان العميل (المنطقة والمدينة)
+        // حساب الأسعار بناءً على عنوان العميل
         $address = CustomerAddress::with('area')->findOrFail($request->address_id);
         $areaId = $address->area_id;
         $cityId = $address->area->city_id;
-
         $today = now()->toDateString();
 
-        // استعلام التسعير الذكي
         $servicePrice = ServicePrice::where('service_id', $request->service_id)
             ->where(function ($query) use ($areaId, $cityId) {
                 $query->where(function ($q) use ($areaId) {
@@ -160,7 +164,7 @@ class BookingController extends Controller
             ->where(function ($q) use ($today) {
                 $q->whereNull('effective_end')->orWhere('effective_end', '>=', $today);
             })
-            ->orderByRaw("FIELD(pricing_scope, 'area', 'city')") // أولوية لسعر المنطقة
+            ->orderByRaw("FIELD(pricing_scope, 'area', 'city')")
             ->first();
 
         if (!$servicePrice) {
@@ -170,15 +174,20 @@ class BookingController extends Controller
         // حساب المجموع
         $hours = $durationMinutes / 60;
         $subtotal = ((float) $servicePrice->base_price) + (((float) $servicePrice->price_per_hour) * $hours);
-        $tax = 0; // ممكن تعدله لاحقاً حسب نظام الضريبة عندك
+        $tax = 0; 
         $total = $subtotal + $tax;
+
+        // 🌟 2. فحص الرصيد الكافي قبل إتمام الحجز 🌟
+        if ($user->wallet_balance < $total) {
+            return $this->errorResponse(__('messages.insufficient_balance') ?? 'عذراً، رصيد المحفظة غير كافٍ لإتمام الحجز. يرجى شحن محفظتك بـ ' . ($total - $user->wallet_balance) . ' EGP لإتمام العملية.', 402);
+        }
 
         DB::beginTransaction();
         try {
-            // 3. إنشاء الحجز
+            // إنشاء الحجز
             $booking = Booking::create([
                 'booking_ref'      => 'HC-' . rand(100000, 999999),
-                'customer_id'      => auth()->id(),
+                'customer_id'      => $user->id,
                 'service_id'       => $request->service_id,
                 'address_id'       => $request->address_id,
                 'worker_id'        => $request->worker_id,
@@ -191,28 +200,29 @@ class BookingController extends Controller
                 'discount_amount'  => 0,
                 'total_amount'     => $total,
                 'status'           => 'Upcoming',
-                'payment_status'   => 'unpaid',
+                'payment_status'   => 'paid', // 🌟 تم التعديل إلى مدفوع لأننا سحبنا من المحفظة 🌟
             ]);
 
-            // 4. تسجيل التعيين
+            // تسجيل التعيين
             BookingAssignment::create([
                 'booking_id' => $booking->id,
                 'worker_id'  => $request->worker_id,
                 'status'     => 'active',
             ]);
 
-            // 5. تسجيل التاريخ
+            // تسجيل التاريخ
             BookingHistory::create([
                 'booking_id' => $booking->id,
                 'new_status' => 'Upcoming',
-                'note'       => 'تم إنشاء الحجز من قبل العميل',
-                'created_by' => auth()->id(),
+                'note'       => 'تم إنشاء الحجز والدفع من المحفظة',
+                'created_by' => $user->id,
             ]);
 
+            // 🌟 3. الخصم من المحفظة وتسجيل الحركة المالية 🌟
+            // استخدمنا الدالة المساعدة withdraw اللي ضفناها في مودل الـ User
+            $user->withdraw($total, 'Payment - Booking', $booking->booking_ref);
             DB::commit();
-
             return $this->successResponse(new BookingResource($booking), __('messages.booking_created_successfully'), 201);
-
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['success' => false, 'message' => 'حدث خطأ أثناء الحجز.', 'error' => $e->getMessage()], 500);

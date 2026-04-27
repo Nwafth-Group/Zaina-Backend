@@ -463,9 +463,22 @@ return [
         'worker_comment_string'   => 'يجب أن يكون تعليق العامل نصاً.',
         'worker_comment_max'      => 'يجب ألا يتجاوز تعليق العامل :max حرفاً.',
     ],
+    
+    'deposit' => [
+        'amount_required' => 'مبلغ الإيداع مطلوب.',
+        'amount_numeric' => 'مبلغ الإيداع يجب أن يكون رقمي.',
+     ],
 
-
-
+     'card' => [
+        'card_token_required' => 'رمز البطاقة مطلوب.',
+        'card_token_string' => 'رمز البطاقة يجب أن يكون نصاً.',
+        'last_four_required' => 'الأرقام الأربعة الأخيرة من البطاقة مطلوبة.',
+        'last_four_string' => 'الأرقام الأربعة الأخيرة يجب أن تكون نصاً.',
+        'last_four_size' => 'الأرقام الأربعة الأخيرة يجب أن تكون بالضبط 4 أحرف.',
+        'card_brand_required' => 'علامة البطاقة مطلوبة.',
+        'card_brand_string' => 'علامة البطاقة يجب أن تكون نصاً.',
+        'card_holder_name_string' => 'اسم حامل البطاقة يجب أن يكون نصاً.',
+     ],
 
 ];
     

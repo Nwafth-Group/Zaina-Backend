@@ -462,4 +462,20 @@ return [
         'worker_comment_max'      => 'The worker comment may not be greater than :max characters.',
     ],  
 
+   'deposit' => [
+        'amount_required' => 'The deposit amount is required.',
+        'amount_numeric' => 'The deposit amount must be a numeric value.',
+     ],
+
+    'card' => [
+        'card_token_required' => 'Card token is required.',
+        'card_token_string' => 'Card token must be a string.',
+        'last_four_required' => 'Last four digits of the card are required.',
+        'last_four_string' => 'Last four digits must be a string.',
+        'last_four_size' => 'Last four digits must be exactly 4 characters.',
+        'card_brand_required' => 'Card brand is required.',
+        'card_brand_string' => 'Card brand must be a string.',
+        'card_holder_name_string' => 'Card holder name must be a string.',
+     ],
+
 ];

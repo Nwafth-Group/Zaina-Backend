@@ -139,6 +139,14 @@ return [
     'unauthorized_review' => 'You are not authorized to review this booking.',
     'invalid_booking_status_for_review' => 'Sorry, you can only review after the service is completed.',
     'review_submitted_successfully' => 'Review submitted successfully. Thank you!',
+    'wallet_tranasction_fetch' => 'Wallet Tranaction for user fetch successfully.',
+    'wallet_topup_success' => 'Wallet topped up successfully.',
+    'wallet_topup_failed' => 'Failed to top up wallet. Please try again.',
+    'unpaid_penalties' => 'Sorry, you cannot make a booking. You have unpaid penalties amounting to :amount EGP. Please settle your dues first.',
+    'insufficient_balance' => 'Sorry, you cannot make a booking. Your wallet balance is insufficient to cover the booking cost of :amount EGP. Please top up your wallet first.',
+    'cards_fetched_successfully' => 'Cards retrieved successfully.',
+    'card_added_successfully' => 'Card added successfully.',
+    'card_deleted_successfully' => 'Card deleted successfully.',
 
     
 ];

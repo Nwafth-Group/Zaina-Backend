@@ -16,7 +16,12 @@ class BookingSeeder extends Seeder
     public function run(): void
     {
         // جلب بيانات أساسية لربط الحجز بها
-        $customer = User::where('type', 'customer')->first() ?? User::first();
+       $customer = User::where('email', 'sara@example.com')->first();
+        
+        // Fallback: لو بالغلط انحذفت سارة، جيب أي عميل
+        if (!$customer) {
+            $customer = User::where('type', 'customer')->first();
+        }
         $service = Service::first();
         
         // إذا ما عندك جدول عمال أو عناوين لسا، ممكن تعمل Fake مؤقت
