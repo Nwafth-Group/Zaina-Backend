@@ -16,8 +16,7 @@ class CategoryResourse extends JsonResource
    public function toArray(Request $request): array
     {  
         // 1. التعامل مع الصورة بأداء عالي (نبحث في الـ Collection المحمّلة مسبقاً بدلاً من ضرب الداتابيز)
-        $media = $this->media->where('collection', 'category/icon')->first();
-
+        $media = $this->media()->where('collection', 'category/icon')->first();
         return [
             'id'         => $this->id,
             'name_ar'    => $this->name_ar,

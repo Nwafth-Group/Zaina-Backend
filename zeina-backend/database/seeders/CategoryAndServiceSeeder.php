@@ -14,32 +14,61 @@ use Illuminate\Support\Arr; // 🌟 إضافة هذا السطر للاختيا�
 
 class CategoryAndServiceSeeder extends Seeder
 {
-    public function run(): void
+  public function run(): void
     {
         $admin = User::first(); 
         $city = City::first();  
         $area = Area::where('city_id', $city->id ?? 0)->first();
 
+        // 🌟 قائمة الصور العشوائية للأقسام الفرعية والخدمات
+        $dummyIconsList = ['icon_1.jpg', 'icon_2.jpg', 'icon_3.jpg', 'cover_1.jpg', 'cover_2.jpg', 'cover_3.jpeg'];
+
         // ---------------------------------------------------------
-        // 1. تعريف الأقسام الرئيسية (Main Categories)
+        // 1. تعريف الأقسام الرئيسية (Main Categories) مع صور مخصصة 🌟
         // ---------------------------------------------------------
         $mainCategoriesData = [
-            'cleaning'    => ['en' => 'Cleaning', 'ar' => 'تنظيف'],
-            'babysitting' => ['en' => 'Babysitting', 'ar' => 'رعاية أطفال'],
-            'maintenance' => ['en' => 'Maintenance', 'ar' => 'صيانة منزلية'],
-            'beauty'      => ['en' => 'Beauty & Spa', 'ar' => 'تجميل وعناية'],
+            'cleaning'    => ['en' => 'Cleaning', 'ar' => 'تنظيف', 'icon' => 'cleanCategory.webp'],
+            'babysitting' => ['en' => 'Babysitting', 'ar' => 'رعاية أطفال', 'icon' => 'Babysitting.webp'],
+            'maintenance' => ['en' => 'Maintenance', 'ar' => 'صيانة منزلية', 'icon' => 'Maintenance.avif'],
+            'beauty'      => ['en' => 'Beauty & Spa', 'ar' => 'تجميل وعناية', 'icon' => 'Beauty&Spa.avif'],
         ];
 
         $mainCategories = [];
         foreach ($mainCategoriesData as $key => $data) {
-            $mainCategories[$key] = Category::firstOrCreate(
+            $category = Category::firstOrCreate(
                 ['name_en' => $data['en'], 'parent_id' => null],
                 ['name_ar' => $data['ar'], 'status' => 'active', 'created_by' => $admin->id ?? null]
             );
+            $mainCategories[$key] = $category;
+
+            // 📸 سحب الصورة المخصصة للقسم الرئيسي
+            $dummyIconPath = public_path('dummy/' . $data['icon']);
+
+            if (file_exists($dummyIconPath)) {
+                // استخراج امتداد الملف الأصلي (webp, avif...)
+                $extension = pathinfo($dummyIconPath, PATHINFO_EXTENSION);
+                $iconName = 'category_main_' . $category->id . '_icon.' . $extension;
+                $iconPath = 'categories/icons/' . $iconName; 
+                
+                Storage::disk('public')->put($iconPath, file_get_contents($dummyIconPath));
+                
+                $category->media()->updateOrCreate(
+                    ['collection' => 'category/icon'],
+                    [
+                        'file_name'  => $iconName,
+                        'mime_type'  => mime_content_type($dummyIconPath), // 🌟 قراءة نوع الملف ديناميكياً
+                        'disk'       => 'public',
+                        'path'       => $iconPath,
+                        'size'       => Storage::disk('public')->size($iconPath),
+                    ]
+                );
+            } else {
+                $this->command->warn("الصورة {$data['icon']} غير موجودة في مجلد public/dummy");
+            }
         }
 
         // ---------------------------------------------------------
-        // 2. تعريف الأقسام الفرعية (Subcategories)
+        // 2. تعريف الأقسام الفرعية (Subcategories) 
         // ---------------------------------------------------------
         $subCategoriesData = [
             'home_cleaning'   => ['en' => 'Home Cleaning', 'ar' => 'تنظيف منازل', 'parent' => 'cleaning'],
@@ -52,10 +81,34 @@ class CategoryAndServiceSeeder extends Seeder
 
         $subCategories = [];
         foreach ($subCategoriesData as $key => $data) {
-            $subCategories[$key] = Category::firstOrCreate(
+            $subCategory = Category::firstOrCreate(
                 ['name_en' => $data['en'], 'parent_id' => $mainCategories[$data['parent']]->id],
                 ['name_ar' => $data['ar'], 'status' => 'active', 'created_by' => $admin->id ?? null]
             );
+            $subCategories[$key] = $subCategory;
+
+            // 📸 سحب صورة عشوائية للقسم الفرعي
+            $selectedIcon = Arr::random($dummyIconsList);
+            $dummyIconPath = public_path('dummy/' . $selectedIcon);
+
+            if (file_exists($dummyIconPath)) {
+                $extension = pathinfo($dummyIconPath, PATHINFO_EXTENSION);
+                $iconName = 'category_sub_' . $subCategory->id . '_icon.' . $extension;
+                $iconPath = 'categories/icons/' . $iconName;
+                
+                Storage::disk('public')->put($iconPath, file_get_contents($dummyIconPath));
+                
+                $subCategory->media()->updateOrCreate(
+                    ['collection' => 'category/icon'],
+                    [
+                        'file_name'  => $iconName,
+                        'mime_type'  => mime_content_type($dummyIconPath),
+                        'disk'       => 'public',
+                        'path'       => $iconPath,
+                        'size'       => Storage::disk('public')->size($iconPath),
+                    ]
+                );
+            }
         }
 
         // ---------------------------------------------------------
@@ -84,12 +137,8 @@ class CategoryAndServiceSeeder extends Seeder
             ['sub' => 'hair_makeup', 'type' => 'both', 'en' => 'Pedicure & Manicure', 'ar' => 'بديكير ومنكير', 'price' => 150],
         ];
 
-        // 🌟 قوائم الصور العشوائية الموجودة في public/dummy
-        $dummyIconsList = ['icon_1.jpg', 'icon_2.jpg', 'icon_3.jpg','cover_1.jpg', 'cover_2.jpg', 'cover_3.jpg'];
-        // $dummyCoversList = ['cover_1.jpg', 'cover_2.jpg', 'cover_3.jpg'];
-
         // ---------------------------------------------------------
-        // 4. إدخال الخدمات وتركيب قواعدها وأسعارها وجداولها (Loop)
+        // 4. إدخال الخدمات وتركيب قواعدها وأسعارها وجداولها 
         // ---------------------------------------------------------
         foreach ($servicesData as $data) {
 
@@ -158,7 +207,7 @@ class CategoryAndServiceSeeder extends Seeder
                 );
             }
 
-            // إضافة أوقات العمل (Schedules)
+            // إضافة أوقات العمل
             $workingDays = ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday'];
             foreach ($workingDays as $day) {
                 DB::table('service_schedules')->updateOrInsert(
@@ -176,21 +225,13 @@ class CategoryAndServiceSeeder extends Seeder
                 );
             }
 
-            // ---------------------------------------------------------
-            // 🌟 5. إضافة الصور التجريبية العشوائية 🌟
-            // ---------------------------------------------------------
-            
-            // اختيار صور عشوائية من القوائم
+            // 📸 سحب صورة عشوائية للخدمة
             $selectedIcon = Arr::random($dummyIconsList);
-            // $selectedCover = Arr::random($dummyCoversList);
-
-            // المسارات في مجلد public
             $dummyIconPath = public_path('dummy/' . $selectedIcon);
-            // $dummyCoverPath = public_path('dummy/' . $selectedCover);
 
-            // حفظ الأيقونة العشوائية
             if (file_exists($dummyIconPath)) {
-                $iconName = 'service_' . $service->id . '_icon.jpg';
+                $extension = pathinfo($dummyIconPath, PATHINFO_EXTENSION);
+                $iconName = 'service_' . $service->id . '_icon.' . $extension;
                 $iconPath = 'services/icons/' . $iconName;
                 
                 Storage::disk('public')->put($iconPath, file_get_contents($dummyIconPath));
@@ -199,32 +240,13 @@ class CategoryAndServiceSeeder extends Seeder
                     ['collection' => 'service/icon'],
                     [
                         'file_name'  => $iconName,
-                        'mime_type'  => 'image/jpeg',
+                        'mime_type'  => mime_content_type($dummyIconPath),
                         'disk'       => 'public',
                         'path'       => $iconPath,
                         'size'       => Storage::disk('public')->size($iconPath),
                     ]
                 );
             }
-
-            // حفظ الغلاف العشوائي
-            // if (file_exists($dummyCoverPath)) {
-            //     $coverName = 'service_' . $service->id . '_cover.jpg';
-            //     $coverPath = 'services/covers/' . $coverName;
-                
-            //     Storage::disk('public')->put($coverPath, file_get_contents($dummyCoverPath));
-                
-            //     $service->media()->updateOrCreate(
-            //         ['collection' => 'service/cover'],
-            //         [
-            //             'file_name'  => $coverName,
-            //             'mime_type'  => 'image/jpeg',
-            //             'disk'       => 'public',
-            //             'path'       => $coverPath,
-            //             'size'       => Storage::disk('public')->size($coverPath),
-            //         ]
-            //     );
-            // }
         }
     }
 }
