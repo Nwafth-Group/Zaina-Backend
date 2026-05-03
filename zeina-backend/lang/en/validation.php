@@ -37,29 +37,15 @@ return [
         'gender_required' => 'Gender is required.', 
         'gender_in' => 'Gender must be either Male or Female.',
     ],
+
     'address' => [
-        'area_id_required' => 'Area ID is required.',
-        'area_id_exists' => 'The selected area does not exist.',
-        'latitude_required' => 'Latitude is required.',
-        'latitude_numeric' => 'Latitude must be numeric.',
-        'longitude_required' => 'Longitude is required.',
-        'longitude_numeric' => 'Longitude must be numeric.',
-        'label_required' => 'Label is required.',
-        'label_string' => 'Label must be a string.',
-        'label_max' => 'Label must not exceed 100 characters.',
-        'street_required' => 'Street is required.',
-        'street_string' => 'Street must be a string.',
-        'street_max' => 'Street must not exceed 200 characters.',
-        'building_string' => 'Building must be a string.',
-        'building_max' => 'Building must not exceed 100 characters.',
-        'floor_string' => 'Floor must be a string.',
-        'floor_max' => 'Floor must not exceed 50 characters.',
-        'unit_string' => 'Unit must be a string.',
-        'unit_max' => 'Unit must not exceed 50 characters.',
-        'notes_string' => 'Notes must be a string.',
-        'notes_max' => 'Notes must not exceed 500 characters.',
-        'is_default_boolean' => 'Is default must be a boolean value.'
-    ],
+    'area_required'         => 'The area field is required.',
+    'area_invalid'          => 'The selected area is invalid.',
+    'location_required'     => 'Please select the location on the map.',
+    'street_required'       => 'The street name is required.',
+    'contact_name_required' => 'The recipient name is required.',
+    'phone_required'        => 'The phone number is required.',
+],
 
     'delete_account' => [
         'otp_required' => 'OTP is required.',
@@ -477,5 +463,38 @@ return [
         'card_brand_string' => 'Card brand must be a string.',
         'card_holder_name_string' => 'Card holder name must be a string.',
      ],
+
+    'complete_profile' => [
+        'first_name_required'   => 'First name is required.',
+        'first_name_string'     => 'First name must be a string.',
+        'first_name_max'        => 'First name must not exceed 50 characters.',
+        'last_name_required'    => 'Last name is required.',
+        'last_name_string'      => 'Last name must be a string.',
+        'last_name_max'         => 'Last name must not exceed 50 characters.',
+        'phone_required'       => 'Phone number is required.',
+        'phone_string'         => 'Phone number must be a string.',
+        'phone_max'            => 'Phone number must not exceed 20 characters.',
+        'phone_min'            => 'Phone number must be at least 9 characters.',
+        'phone_unique'         => 'This phone number is already in use.',
+        'id_number_required' => 'ID number is required.',
+        'id_number_string' => 'ID number must be a string.',
+        'id_number_max' => 'ID number must not exceed 50 characters.',
+        'id_number_unique' => 'This ID number is already in use.',
+        'email_required'       => 'Email address is required.',
+        'email_email'          => 'Email address must be valid.',
+        'email_max'           => 'Email address must not exceed 255 characters.',
+        'email_unique'        => 'This email address is already in use.',
+        'gender_required' => 'Gender is required.',
+        'gender_in' => 'Gender must be either   Male or Female.',
+        'image_image' => 'The file must be an image.',
+        'image_mimes' => 'The image must be a file of type: jpeg, png, jpg, webp.',
+        'image_max' => 'The image must not be greater than 4MB.',
+     ],
+
+
+    
+  
+
+
 
 ];

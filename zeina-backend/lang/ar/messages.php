@@ -90,7 +90,7 @@ return [
     "employee_deactivated" => "تم تعطيل الموظف بنجاح.",
     "employee_activated" => "تم تفعيل الموظف بنجاح.",
     "home_date_retrieve" => 'تم إسترجاع بيانات الداتا الرئيسية بنجاح.',
-    'categories_retrieved' => 'تم جلب الأقسام الرئيسية بنجاح.',
+   
     'subcategories_retrieved' => 'تم جلب الأقسام الفرعية بنجاح نجاح.',
     'service_retrieved' => 'تم جلب الخدمة بنجاح.',
     'services_retrieved' => 'تم جلب الخدمات بنجاح.',
@@ -107,12 +107,12 @@ return [
     'service_not_available' => 'هذه الخدمة غير متاحة حالياً.',
 
     'shifts_retrieved' => 'تم جلب الشفتات بنجاح.',
-    'providers_fetch_success' => "تم جلب مزودي الخدمة بنجاح.",
+ 
     'available_workers_retrieved' => 'تم جلب العمال المتاحين بنجاح.',
     'bookings_fetched_successfully' => 'تم جلب الحجوزات بنجاح.',
     'booking_details_fetched_successfully' => 'تم جلب تفاصيل الحجز بنجاح.',
     'worker_busy' => 'عذراً، هذا العامل تم حجزه للتو. يرجى اختيار وقت أو عامل آخر.',
-    'service_not_available' => 'عذراً، هذه الخدمة غير متوفرة أو غير مسعرة في منطقتك حالياً.',
+   
     'booking_created_successfully' => 'تم إنشاء الحجز بنجاح.',
     'service_not_available_in_this_day' => 'عذراً، هذه الخدمة غير متوفرة في اليوم المحدد.',
     'service_not_scheduals' => 'عذراً، هذه الخدمة غير مجدولة لليوم المحدد.',
@@ -126,10 +126,7 @@ return [
     'reschedule_lead_time_max' => 'لا يمكن الحجز لموعد يتجاوز :lead_time_max أيام من الآن.',
     'booking_rescheduled_successfully' => 'تم إعادة جدولة الحجز بنجاح.',
     'booking_cancelled_successfully' => 'تم إلغاء الحجز بنجاح.',
-    'reschedule_lead_time_min' => 'يجب أن يكون الموعد الجديد بعد :lead_time_min ساعات على الأقل من الآن.',
-    'reschedule_lead_time_max' => 'لا يمكن الحجز لموعد يتجاوز :lead_time_max أيام من الآن.',
-    'booking_cancelled_successfully' => 'تم إلغاء الحجز بنجاح.',
-    'booking_not_upcoming' => 'لا يمكن إلغاء هذا الحجز في حالته الحالية.',
+   
     'late_cancel_blocked' => 'عذراً، لقد تجاوزت الوقت المسموح للإلغاء المجاني (:cutoffHours ساعات). يرجى التواصل مع خدمة العملاء.',
     'late_cancel_fee_applied' => 'تم تطبيق غرامة إلغاء متأخر بقيمة :fee.',
     'booking_reported_successfully' => 'تم الإبلاغ عن الحجز بنجاح.',
@@ -147,5 +144,16 @@ return [
     'cards_fetched_successfully' => 'تم جلب البطاقات بنجاح.',
     'card_added_successfully' => 'تم إضافة البطاقة بنجاح.',
     'card_deleted_successfully' => 'تم حذف البطاقة بنجاح.',
+    'profile_fetched_successfully' => 'تم جلب بيانات الملف الشخصي بنجاح.',
+    'profile_updated_successfully' => 'تم تحديث بيانات الملف الشخصي بنجاح.',
+    'addresses_fetched_successfully' => 'تم جلب العناوين بنجاح.',
+    'address_added_successfully' => 'تم إضافة العنوان بنجاح.',
+    'countries_fetch_success' => 'تم جلب الدول بنجاح.',
+    'governorates_fetch_success' => 'تم جلب المحافظات بنجاح.',
+    'cities_fetch_success' => 'تم جلب المدن بنجاح.',
+    'cannot_remove_default' => 'لا يمكن إزالة حالة الافتراضي دون تعيين عنوان آخر كافتراضي.',
+    'address_updated_successfully' => 'تم تحديث العنوان بنجاح.',
+    'cannot_delete_default_address' => 'لا يمكن حذف العنوان الافتراضي. يرجى تعيين عنوان آخر كافتراضي قبل حذف هذا العنوان.',
+    'address_set_as_default' => 'تم تعيين العنوان كافتراضي بنجاح.',
 
 ];

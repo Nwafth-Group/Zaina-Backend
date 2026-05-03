@@ -90,11 +90,9 @@ return [
     "employee_deactivated" => "Employee deactvie successfully.",
     "employee_activated" => "Employee active successfully.",
     "home_date_retrieve" => 'Home data retrieve successfully.',
-    'categories_retrieved' => 'Categories retrieved successfully.',
     'subcategories_retrieved' => 'Subcategories retrieved successfully.',
     'service_retrieved' => 'Service retrieved successfully.',
     'services_retrieved' => 'Services retrieved successfully.',
-
     'workers_retrieved_successfully' => 'Workers retrieved successfully.',
     'worker_retrieved_successfully' => 'Worker retrieved successfully.',
     'worker_created_successfully' => 'Worker created successfully.',
@@ -107,12 +105,12 @@ return [
     'service_not_available' => 'This service is currently not available.',
 
     'shifts_retrieved' => 'Shifts retrieved successfully.',
-    'providers_fetch_success' => "Service providers fetched successfully.",
+   
     'available_workers_retrieved' => 'Available workers retrieved successfully.',
     'bookings_fetched_successfully' => 'Bookings retrieved successfully.',
     'booking_details_fetched_successfully' => 'Booking details retrieved successfully.',
     'worker_busy' => 'Sorry, this worker has just been booked. Please choose a different time or worker.',
-    'service_not_available' => 'Sorry, this service is not available or not priced in your area currently.',
+   
     'booking_created_successfully' => 'Booking created successfully.',
     'service_not_available_in_this_day' => 'Sorry, this service is not available on the selected day.',
     'service_not_scheduals' => 'Sorry, this service is not scheduled for the selected day.',
@@ -126,9 +124,7 @@ return [
     'reschedule_lead_time_max' => 'Cannot book an appointment that exceeds :lead_time_max_days days from now.',
     'booking_rescheduled_successfully' => 'Booking rescheduled successfully.',
     'booking_cancelled_successfully' => 'Booking cancelled successfully.',
-    'reschedule_lead_time_min' => 'The new appointment must be at least :lead_time_min_hours hours from now.',
-    'reschedule_lead_time_max' => 'Cannot book an appointment that exceeds :lead_time_max_days days from now.',
-    'booking_cancelled_successfully' => 'Booking cancelled successfully.',
+   
     'booking_not_upcoming' => 'Cannot cancel this booking in :status status.',
     'late_cancel_blocked' => 'Sorry, you have exceeded the free cancellation time (:cutoffHours hours). Please contact customer support.',
     'late_cancel_fee_applied' => 'A late cancellation fee of :fee has been applied.',
@@ -147,6 +143,16 @@ return [
     'cards_fetched_successfully' => 'Cards retrieved successfully.',
     'card_added_successfully' => 'Card added successfully.',
     'card_deleted_successfully' => 'Card deleted successfully.',
-
+    'profile_fetched_successfully' => 'Profile fetched successfully.',
+    'profile_updated_successfully' => 'Profile updated successfully.',
+    'addresses_fetched_successfully' => 'Addresses retrieved successfully.',
+    'address_added_successfully' => 'Address added successfully.',
+    'countries_fetch_success' => 'Countries retrieved successfully.',
+    'governorates_fetch_success' => 'Governorates retrieved successfully.',
+    'cities_fetch_success' => 'Cities retrieved successfully.',
+    'cannot_remove_default' => 'Cannot unset default status without setting another address as default.',
+    'address_updated_successfully' => 'Address updated successfully.',
+    'cannot_delete_default_address' => 'Cannot delete the default address. Please set another address as default before deleting this one.',
+     'address_set_as_default' => 'Address set as default successfully.',
     
 ];

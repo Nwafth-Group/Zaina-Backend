@@ -28,8 +28,8 @@ class Country extends Model
         );
     }
 
-    public function cities(){
-        return $this->hasMany(City::class, 'country_id');
+    public function govrenrates(){
+        return $this->hasMany(Govrenrate::class, 'country_id');
     }
     
 }

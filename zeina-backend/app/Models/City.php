@@ -11,14 +11,14 @@ class City extends Model
     use HasFactory;
 
     protected $fillable = [
-        'country_id',
+        'govrenrate_id',
         'name_ar',
         'name_en',
         'code',
         'status',
     ]; 
-    public function country(){
-        return $this->belongsTo(Country::class, 'country_id');
+    public function govrenrate(){
+        return $this->belongsTo(Govrenrate::class, 'govrenrate_id');
     }
     public function areas(){
         return $this->hasMany(Area::class, 'city_id');

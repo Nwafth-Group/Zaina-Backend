@@ -30,6 +30,7 @@ class User extends Authenticatable implements Auditable
         'last_name',
         'wallet_balance',
         'full_name',
+        'gender',
         'phone_number',
         'email',
         'password',
@@ -63,6 +64,8 @@ class User extends Authenticatable implements Auditable
             'password' => 'hashed',
         ];
     }
+
+    
 
     public function addresses(){
         return $this->hasMany(CustomerAddress::class, 'user_id');

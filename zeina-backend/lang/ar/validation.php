@@ -37,28 +37,14 @@ return [
         'gender_required' => 'الجنس مطلوب.',
         'gender_in' => 'الجنس يجب أن يكون ذكر أو أنثى.',
     ],
-    'address' => [
-        'area_id_required' => 'معرف المنطقة مطلوب.',
-        'area_id_exists' => 'المنطقة المحددة غير موجودة.',
-        'latitude_required' => 'خط العرض مطلوب.',
-        'latitude_numeric' => 'خط العرض يجب أن يكون رقمي.',
-        'longitude_required' => 'خط الطول مطلوب.',
-        'longitude_numeric' => 'خط الطول يجب أن يكون رقمي.',
-        'label_required' => 'التسمية مطلوبة.',
-        'label_string' => 'التسمية يجب أن تكون نصية.',
-        'label_max' => 'التسمية لا يجب أن تتجاوز 100 حرف.',
-        'street_required' => 'الشارع مطلوب.',
-        'street_string' => 'الشارع يجب أن يكون نصي.',
-        'street_max' => 'الشارع لا يجب أن يتجاوز 200 حرف.',
-        'building_string' => 'المبنى يجب أن يكون نصي.',
-        'building_max' => 'المبنى لا يجب أن يتجاوز 100 حرف.',
-        'floor_string' => 'الطابق يجب أن يكون نصي.',
-        'floor_max' => 'الطابق لا يجب أن يتجاوز 50 حرف.',
-        'unit_string' => 'الوحدة يجب أن تكون نصية.',
-        'unit_max' => 'الوحدة لا يجب أن تتجاوز 50 حرف.',
-        'notes_string' => 'الملاحظات يجب أن تكون نصية.',
-        'notes_max' => 'الملاحظات لا يجب أن تتجاوز 500 حرف.',
-    ],
+   'address' => [
+    'area_required'         => 'المنطقة مطلوبة.',
+    'area_invalid'          => 'المنطقة المحددة غير صالحة.',
+    'location_required'     => 'يرجى تحديد الموقع على الخريطة.',
+    'street_required'       => 'اسم الشارع مطلوب.',
+    'contact_name_required' => 'اسم المستلم مطلوب.',
+    'phone_required'        => 'رقم الهاتف مطلوب.',
+],
 
     'delete_account' => [
         'otp_required' => 'الرمز السري المؤقت (OTP) مطلوب.',
@@ -479,6 +465,27 @@ return [
         'card_brand_string' => 'علامة البطاقة يجب أن تكون نصاً.',
         'card_holder_name_string' => 'اسم حامل البطاقة يجب أن يكون نصاً.',
      ],
+
+    'complete_profile' =>
+     [
+    'first_name_required' => 'الاسم الأول مطلوب.',
+    'last_name_required'  => 'الاسم الأخير مطلوب.',
+    'phone_required'      => 'رقم الهاتف مطلوب.',
+    'phone_unique'        => 'رقم الهاتف مستخدم مسبقاً.',
+    'id_number_required' => 'رقم الهوية مطلوب.',
+    'id_number_unique' => 'رقم الهوية مستخدم مسبقاً.',
+    'id_number_string' => 'رقم الهوية يجب أن يكون نصاً.',
+    'id_number_max' => 'رقم الهوية لا يجب أن يتجاوز 50 حرفاً.',
+    'email_required'      => 'البريد الإلكتروني مطلوب.',
+    'email_invalid'       => 'صيغة البريد الإلكتروني غير صحيحة.',
+    'email_unique'        => 'البريد الإلكتروني مستخدم مسبقاً لحساب آخر.',
+    'gender_required'     => 'يرجى تحديد الجنس.',
+    'gender_invalid'      => 'قيمة الجنس المحددة غير صالحة.',
+    'image_invalid'       => 'الملف المرفق يجب أن يكون صورة.',
+    'image_mimes'         => 'يجب أن تكون الصورة بصيغة: jpeg, png, jpg, webp.',
+    'image_max'           => 'حجم الصورة يجب ألا يتجاوز 4 ميجابايت.',
+
+    ],
 
 ];
     

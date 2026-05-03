@@ -10,33 +10,27 @@ class CustomerAddress extends Model
     /** @use HasFactory<\Database\Factories\CustomerAddressFactory> */
     use HasFactory;
 
-    protected $fillable = [
-        'user_id',
-        'area_id',
-        'label',
-        'street',
-        'latitude',           
-        'longitude',          
-        'serviceable_status',
-        'building',
-        'floor',
-        'unit',
-        'notes',
-        'is_default',
-        'is_active',
+   protected $fillable = [
+        'user_id', 'area_id', 'latitude', 'longitude', 
+        'label', 'street', 'building_name', 'building_no', 
+        'floor', 'apartment_no', 'contact_name', 'phone_number', 
+        'secondary_phone', 'serviceable_status', 'notes', 
+        'is_default', 'is_active'
     ];
 
     protected $casts = [
         'is_default' => 'boolean',
-        'is_active' => 'boolean',
+        'is_active'  => 'boolean',
     ];
 
-    public function user(){
-        return $this->belongsTo(User::class, 'user_id');
+    public function user()
+    {
+        return $this->belongsTo(User::class);
     }
 
-    public function area(){
-        return $this->belongsTo(Area::class, 'area_id');
+    public function area()
+    {
+        return $this->belongsTo(Area::class);
     }
 
     public function getCityAttribute() {

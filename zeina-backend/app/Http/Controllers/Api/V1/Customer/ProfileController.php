@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Customer;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Customer\CompleteProfileRequest;
 use App\Http\Requests\Api\V1\Customer\DeleteAccountRequest;
+use App\Http\Resources\Api\V1\User\UserResource;
 use App\Service\MediaService;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\Request;
@@ -21,28 +22,43 @@ class ProfileController extends Controller
      public function __construct(protected MediaService $mediaService){
 
      }
+   public function show()
+    {
+        $user = auth()->user();
+        return $this->successResponse(
+            new UserResource($user),
+            __('messages.profile_fetched_successfully')
+        );
+    }
+
+    // دالة تحديث بيانات البروفايل
     public function completeProfile(CompleteProfileRequest $request)
     {
         $user = auth()->user();
-        if ($request->has('email'))
-            $user->email = $request->email;
 
-        if($request->has('id_number'))
-            $user->id_number = $request->id_number;
+        // 1. تحديث البيانات النصية في الداتابيز
+        $user->update([
+            'first_name'   => $request->first_name,
+            'last_name'    => $request->last_name,
+            'phone_number' => $request->phone_number,
+            'email'        => $request->email,
+            'id_number'    => $request->id_number,
+            'gender'       => $request->gender, 
+        ]);
 
-        if ($request->has('gender'))
-            $user->gender = $request->gender; 
-    
-            if ($request->hasFile('image')) {
-                // حذف الصورة القديمة إذا كانت موجودة
-                if ($user->media()->where('collection', 'customer/profile_photo')->exists()) {
-                    $oldMedia = $user->media()->where('collection','customer/profile_photo')->first();
-                    $this->mediaService->delete($oldMedia);
-                }
-                $media = $this->mediaService->upload($request->file('image'), $user, 'customer/profile_photo', 'public');
+        // 2. تحديث صورة الملف الشخصي (Profile Picture)
+        if($request->hasFile('image')) {
+            if ($user->media()->where('collection', 'user/profilePhoto')->exists()) {
+                $oldMedia = $user->media()->where('collection','user/profilePhoto')->first();
+                $this->mediaService->delete($oldMedia);
             }
-        $user->save();
-        return $this->successResponse(null,__('messages.profile_complete_success'));
+            $media = $this->mediaService->upload($request->file('image'), $user, 'user/profilePhoto', 'public');
+        }
+
+        return $this->successResponse(
+            new UserResource($user),
+            __('messages.profile_updated_successfully')
+        );
     }
 
     public function sendDeleteOtp(Request $request)

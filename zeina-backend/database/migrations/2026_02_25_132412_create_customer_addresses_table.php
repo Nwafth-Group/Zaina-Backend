@@ -12,21 +12,28 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('customer_addresses', function (Blueprint $table) {
-        $table->id();
-        $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
-        $table->foreignId('area_id')->constrained('areas')->restrictOnDelete(); 
-        $table->string('label')->nullable(); 
-        $table->string('street')->nullable();
-        $table->string('building')->nullable();
-        $table->string('floor')->nullable();
-        $table->decimal('latitude', 10, 8); // خط العرض
-        $table->decimal('longitude', 11, 8); // خط الطول
-        $table->enum('serviceable_status', ['serviceable', 'not_serviceable'])->default('serviceable');
-        $table->string('unit')->nullable();
-        $table->text('notes')->nullable();
-        $table->boolean('is_default')->default(false);
-        $table->boolean('is_active')->default(true);
-        $table->timestamps();
+            $table->id();
+            $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
+            $table->foreignId('area_id')->constrained('areas')->restrictOnDelete();  // الموقع الجغرافي والمنطقة
+            $table->decimal('latitude', 10, 8); // من الخريطة
+            $table->decimal('longitude', 11, 8); // من الخريطة
+            // تفاصيل العنوان (حسب الفيجما)
+            $table->string('label')->nullable(); // Home, Office
+            $table->string('street')->nullable(); // إجباري
+            $table->string('building_name')->nullable(); // Al Noor Building
+            $table->string('building_no')->nullable(); // 24
+            $table->string('floor')->nullable(); // 5
+            $table->string('apartment_no')->nullable(); // 12
+            // بيانات التواصل (حسب الفيجما)
+            $table->string('contact_name')->nullable(); // Saeed Ali Al-Omar
+            $table->string('phone_number'); // +21 1012345678
+            $table->string('secondary_phone')->nullable();
+            // إعدادات إضافية
+            $table->enum('serviceable_status', ['serviceable', 'not_serviceable'])->default('serviceable');
+            $table->text('notes')->nullable(); //(مثل: الرن على الجرس مرتين)
+            $table->boolean('is_default')->default(false);
+            $table->boolean('is_active')->default(true);
+            $table->timestamps();
         });
     }
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\Api\V1\User;
 
+use App\Http\Resources\Api\V1\Media\MediaResource;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -17,6 +18,7 @@ class UserResource extends JsonResource
        $roles = $this->roles->pluck('name');
        $primaryRole = $roles->first();
        $otherRolesCount = $roles->count() > 1 ? $roles->count() - 1 : 0;
+       $image  = $this->media()->where('collection', 'user/profilePhoto')->first();
         return [
             'id' => $this->id,
             'id_number' => $this->id_number,
@@ -33,6 +35,7 @@ class UserResource extends JsonResource
             'all_roles'    => $roles,
             'type' => $this->type,
             'status' => $this->status,
+            'image'=> $image? (new MediaResource($image))->getFileUrl() : null,
              'created_at' => $this->created_at->toDateTimeString(),
              'updated_at' => $this->updated_at->toDateTimeString(),
         ];

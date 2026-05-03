@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('name_en');
             $table->string('code', 3)->unique(); // مثال: EG, SA
             $table->string('currency_code', 3)->nullable(); // للعملة
-            $table->string('phone_code', 5); // مفتاح الدولة (+20)
+            $table->string('phone_code', 5)->nullable(); // مفتاح الدولة (+20)
             $table->enum('status', ['active', 'inactive'])->default('active');
             $table->string('flag')->nullable();
             // $table->string('image')->nullable();

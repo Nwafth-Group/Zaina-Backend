@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\Customer\AuthController;
 use App\Http\Controllers\Api\V1\Customer\BookingController;
 use App\Http\Controllers\Api\V1\Customer\CategoryController;
 use App\Http\Controllers\Api\V1\Customer\HomeController;
+use App\Http\Controllers\Api\V1\Customer\LocationController;
 use App\Http\Controllers\Api\V1\Customer\ProfileController;
 use App\Http\Controllers\Api\V1\Customer\SearchController;
 use App\Http\Controllers\Api\V1\Customer\ServiceController;
@@ -38,12 +39,19 @@ Route::prefix('customer')->group(function () {
     Route::get('/services/{service}/available-workers', [ServiceController::class, 'getAvailableWorkers']);
     Route::get('/services', [ServiceController::class, 'index']); // 1  // لجلب كل الخدمات مع Paginate
     Route::get('/categories/{category}/services', [ServiceController::class, 'getServicesByCategory']);// 2 
+
+    //fetch counttries and govrenrates and citites and areas .. 
+    Route::get('locations/countries', [LocationController::class, 'countries']);
+    Route::get('locations/governorates', [LocationController::class, 'governorates']);
+    Route::get('locations/cities', [LocationController::class, 'cities']);
+    Route::get('locations/areas', [LocationController::class, 'areas']);
     Route::middleware('auth:sanctum')->group(function () {
         // Auth
         Route::post('auth/logout', [AuthController::class, 'logout']);
         // Profile
         Route::prefix('profile')->group(function () {
-            Route::post('complete', [ProfileController::class, 'completeProfile']);
+            Route::get('/', [ProfileController::class, 'show']); //Donee 
+            Route::post('complete', [ProfileController::class, 'completeProfile']); //Donee 
             Route::post('send-delete-otp', [ProfileController::class, 'sendDeleteOtp']);
             Route::post('delete', [ProfileController::class, 'deleteAccount']);
         });
