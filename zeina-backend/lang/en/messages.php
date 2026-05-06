@@ -158,5 +158,7 @@ return [
      'address_set_as_default' => 'Address set as default successfully.',
      'service_updated_successfully' => 'Service updated successfully.',
      'error_occurred' => 'An unexpected error occurred. Please try again later.',
+     'service_retrieved_successfully' => 'Service retrieved successfully.',
+    
     
 ];

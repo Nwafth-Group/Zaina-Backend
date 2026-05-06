@@ -8,6 +8,7 @@ use App\Http\Resources\Api\V1\Service\ServiceCoverageResource;
 use App\Http\Resources\Api\V1\Service\ServiceDurationResource;
 use App\Http\Resources\Api\V1\Service\ServiceRuleResource;
 use App\Http\Resources\Api\V1\Service\ServiceScheduleResource;
+use App\Http\Resources\Api\V1\Worker\WorkerResource;
 use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -60,6 +61,8 @@ class ServiceResource extends JsonResource
                 'currency'          => $priceObj ? $priceObj->currency : 'EGP',
                 'is_starting_price' => $isStartingPrice, // true = حط كلمة "يبدأ من"، false = هاد سعره النهائي
             ],
+
+            'workers' => WorkerResource::collection($this->whenLoaded('workers')),
 
             'schedules' => ServiceScheduleResource::collection($this->whenLoaded('schedules'))
         ];

@@ -159,5 +159,6 @@ return [
     'address_set_as_default' => 'تم تعيين العنوان كافتراضي بنجاح.',
     'service_updated_successfully' => 'تم تحديث الخدمة بنجاح.',
     'error_occurred' => 'حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى لاحقًا.',
+    'service_retrieved_successfully' => 'تم جلب الخدمة بنجاح.',
 
 ];
