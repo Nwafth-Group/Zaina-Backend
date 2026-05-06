@@ -59,6 +59,56 @@ class Service extends Model
             ->orderBy('base_price', 'asc'); 
     }
 
+   public function getCustomerPrice()
+    {
+        $user = auth('sanctum')->user(); 
+        
+        if ($user) {
+            $defaultAddress = $user->addresses()->where('is_default', true)->with('area')->first();
+           
+            if ($defaultAddress && $defaultAddress->area) {
+                $areaId = $defaultAddress->area_id;
+                $cityId = $defaultAddress->area->city_id; 
+                $now = now()->toDateString();
+
+                $specificPrice = $this->priceRules()
+                    ->where(function ($query) use ($now) {
+                        $query->whereNull('effective_start')->orWhere('effective_start', '<=', $now);
+                    })
+                    ->where(function ($query) use ($now) {
+                        $query->whereNull('effective_end')->orWhere('effective_end', '>=', $now);
+                    })
+                    ->where(function ($query) use ($cityId, $areaId) {
+                        $query->where(function ($q) use ($areaId) {
+                            $q->where('pricing_scope', 'area')->where('area_id', $areaId);
+                        })
+                        ->orWhere(function ($q) use ($cityId) {
+                            $q->where('pricing_scope', 'city')->where('city_id', $cityId)->whereNull('area_id');
+                        });
+                    })
+                    ->orderByRaw('area_id IS NULL ASC')
+                    ->first();
+
+                  
+
+                if ($specificPrice) {
+                    // 🌟 الحل هنا: نخبر الأوبجيكت إنه سعر مخصص (نهائي) 🌟
+                    $specificPrice->is_fallback = false; 
+                    return $specificPrice;
+                }
+            }
+        }
+
+        $fallbackPrice = $this->startingPrice;
+        
+        if ($fallbackPrice) {
+             // 🌟 الحل هنا: نخبر الأوبجيكت إنه مجرد خطة بديلة (يبدأ من) 🌟
+             $fallbackPrice->is_fallback = true;
+        }
+
+        return $fallbackPrice; 
+    }
+
 
    public function media(){
     return $this->morphMany(Media::class,'model');

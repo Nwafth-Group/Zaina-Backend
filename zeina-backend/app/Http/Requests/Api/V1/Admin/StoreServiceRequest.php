@@ -22,49 +22,56 @@ class StoreServiceRequest extends CustomFormRequest
      */
     public function rules(): array
     {
-       
         return [
-            // 1. البيانات الأساسية
-            'category_id'      => ['required', 'exists:categories,id'],
-            'type'             => ['required', 'in:hourly,moqema,both'],
-            'name_ar'          => ['required', 'string', 'max:100'],
-            'workers'          => ['required', 'array', 'min:1'],
-            'workers.*'        => ['integer','exists:workers,id'],
+            // البيانات الأساسية
+            'category_id'      => 'required|exists:categories,id',
+            'type'             => 'required|in:hourly,moqema,both',
+            'name_ar'          => 'required|string|max:100',
+            'name_en'          => 'required|string|max:100',
+            'description_ar'   => 'nullable|string',
+            'description_en'   => 'nullable|string',
+            'features'         => 'nullable|array',
+            'status'           => 'required|in:draft,active,hidden,inactive',
+            'workers'         => 'required|array|min:1',
+            'workers.*'       => 'integer|exists:workers,id',
+            // المدد الزمنية (Service Durations) - بناءً على نوع الخدمة
+            'durations.allowed_durations'          => 'required_if:type,hourly,both|array',
+            'durations.min_duration_hours'         => 'required_if:type,hourly,both|integer|min:1',
+            'durations.allowed_contract_durations' => 'required_if:type,moqema,both|array',
+            'durations.min_contract_months'        => 'required_if:type,moqema,both|integer|min:1',
+            // قواعد الخدمة (Service Rules)
+            'rules.free_cancel_cutoff_hours'  => 'nullable|integer|min:0',
+            'rules.reschedule_cutoff_hours'   => 'nullable|integer|min:0',
+            'rules.lead_time_min_hours'       => 'nullable|integer|min:0',
+            'rules.lead_time_max_days'        => 'nullable|integer|min:1',
+            'rules.late_cancel_action'        => 'nullable|in:fee,block,manual',
+            'rules.late_cancel_fee_type'      => 'nullable|in:percent,fixed',
+            'rules.late_cancel_fee_value'     => 'nullable|numeric|min:0',
+            'rules.no_show_policy'            => 'nullable|in:compensate,consumed',
+            'rules.max_changes_per_booking'   => 'nullable|integer|min:0',
 
-            'name_en'          => ['required', 'string', 'max:100'],
-            'description_ar'   => ['nullable', 'string'],
-            'description_en'   => ['nullable', 'string'],
-            'status'           => ['nullable', 'in:draft,active,hidden,inactive'],
+            // التغطية الجغرافية (Coverages) - مصفوفة
+            'coverages'             => 'required|array|min:1',
+            'coverages.*.city_id'   => 'required|exists:cities,id',
+            'coverages.*.area_id'   => 'nullable|exists:areas,id',
+            'coverages.*.status'    => 'nullable|in:active,inactive,coming_soon',
 
-            // 2. المدد (Durations)
-            'duration'                        => ['required', 'array'],
-            'duration.allowed_durations'      => ['required_if:type,hourly', 'array'],
-            'duration.allowed_durations.*'    => ['numeric'], // مثل [2, 4, 6]
-            'duration.min_duration_hours'     => ['required_if:type,hourly', 'numeric', 'lte:duration.allowed_durations.0'], // BR-03: يجب أن تكون أقل أو تساوي أصغر مدة مسموحة
-            'duration.allowed_contract_durations' => ['required_if:type,moqema', 'array'],
-            'duration.allowed_contract_durations.*' => ['numeric'], // مثل [30, 60, 90],
-            'duration.min_contract_months' => ['required_if:type,moqema', 'numeric', 'lte:duration.allowed_contract_durations.0'], // BR-03: يجب أن تكون أقل أو تساوي أصغر مدة عقد مسموحة
-            // 3. القواعد (Rules)
-            'rules'                           => ['required', 'array'],
-            'rules.free_cancel_cutoff_hours'  => ['required', 'integer', 'min:0'],
-            'rules.reschedule_cutoff_hours'   => ['required', 'integer', 'min:0'],
-            'rules.lead_time_min_hours'       => ['required', 'integer', 'min:0'],
-            'rules.lead_time_max_days'        => ['required', 'integer', 'min:1'],
-            'rules.late_cancel_action'        => ['required', 'in:fee,block,manual'],
-            'rules.late_cancel_fee_type'      => ['required_if:rules.late_cancel_action,fee', 'in:percent,fixed'],
-            'rules.late_cancel_fee_value'     => ['required_if:rules.late_cancel_action,fee', 'numeric', 'min:0'],
-            'rules.no_show_policy'            => ['required', 'in:compensate,consumed'],
-            'rules.max_changes_per_booking'   => ['required', 'integer', 'min:0'],
-
-            // 4. التغطية الجغرافية (Coverage)
-            'coverages'           => ['required', 'array', 'min:1'], // يجب أن تدعم منطقة واحدة على الأقل
-            'coverages.*.city_id' => ['required', 'exists:cities,id'],
-            'coverages.*.area_id' => ['nullable', 'exists:areas,id'], // null تعني كل المدينة
-            'coverages.*.status'  => ['required', 'in:active,inactive,coming_soon'],
-            'image'      => ['nullable', 'image', 'mimes:jpeg,png,jpg,svg,webp', 'max:2048'],
+            // التسعير (Prices) - مصفوفة
+            'prices'                  => 'required|array|min:1',
+            'prices.*.pricing_scope'  => 'required|in:city,area',
+            'prices.*.city_id'        => 'nullable|exists:cities,id',
+            'prices.*.area_id'        => 'nullable|exists:areas,id',
+            'prices.*.base_price'     => 'required|numeric|min:0',
+            'prices.*.price_per_hour' => 'required|numeric|min:0',
+            'prices.*.currency'       => 'nullable|string|max:10',
+            'prices.*.effective_start'=> 'nullable|date',
+            'prices.*.effective_end'  => 'nullable|date|after_or_equal:prices.*.effective_start',
+            
+            // الصور (اختياري)
+            'image'  => 'nullable|image|mimes:jpeg,png,jpg,webp,svg|max:2048',
+            // 'cover' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
         ];
     }
-
     public function messages(): array
     {
         return [

@@ -20,8 +20,14 @@ class ServiceResource extends JsonResource
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array
-    { 
+    {  
          $media = $this->media->where('collection', 'service/icon')->first();
+         $priceObj = $this->getCustomerPrice();
+
+        // السحر صار بسطر واحد نظيف!
+        // إذا كان الأوبجيكت موجود، اقرأ قيمة is_fallback، وإذا مش موجود اعتبره true احتياطياً
+        $isStartingPrice = $priceObj ? $priceObj->is_fallback : true;
+       
         return [
                 'id' => $this->id,
                 'category' => new CategoryResourse($this->whenLoaded('category')),
@@ -40,13 +46,20 @@ class ServiceResource extends JsonResource
                 // 'basePrice' => $this->whenLoaded('startingPrice', function () {
                 //     return $this->startingPrice?->base_price;
                 // }),
-                'price' => $this->whenLoaded('startingPrice', function () {
-                return [
-                    'base_price' => (float) $this->startingPrice?->base_price,
-                    'price_per_hour' => (float) $this->startingPrice?->price_per_hour,
-                    'currency' => $this->startingPrice?->currency,
-                ];
-            }),
+            //     'price' => $this->whenLoaded('startingPrice', function () {
+            //     return [
+            //         'base_price' => (float) $this->startingPrice?->base_price,
+            //         'price_per_hour' => (float) $this->startingPrice?->price_per_hour,
+            //         'currency' => $this->startingPrice?->currency,
+            //     ];
+            //    }),    
+
+            'price_details'  => [
+                'base_price'        => $priceObj ? $priceObj->base_price : 0,
+                'price_per_hour'    => $priceObj ? $priceObj->price_per_hour : 0,
+                'currency'          => $priceObj ? $priceObj->currency : 'EGP',
+                'is_starting_price' => $isStartingPrice, // true = حط كلمة "يبدأ من"، false = هاد سعره النهائي
+            ],
 
             'schedules' => ServiceScheduleResource::collection($this->whenLoaded('schedules'))
         ];

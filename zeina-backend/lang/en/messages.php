@@ -1,5 +1,7 @@
 <?php
 return [
+    'unauthenticated' => 'You are not authenticated. Please log in to continue.',
+    'forbidden' => 'You do not have permission to access this resource.',
     'otp_sent' => 'OTP sent successfully.',
     'invalid_otp' => 'Invalid OTP. Please try again.',
     'otp_expired' => 'OTP expired. Please request a new OTP.',
@@ -154,5 +156,7 @@ return [
     'address_updated_successfully' => 'Address updated successfully.',
     'cannot_delete_default_address' => 'Cannot delete the default address. Please set another address as default before deleting this one.',
      'address_set_as_default' => 'Address set as default successfully.',
+     'service_updated_successfully' => 'Service updated successfully.',
+     'error_occurred' => 'An unexpected error occurred. Please try again later.',
     
 ];

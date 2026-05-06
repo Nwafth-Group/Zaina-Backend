@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\V1\Admin\ServiceController;
 use App\Http\Controllers\Api\V1\Admin\ServicePriceController;
 use App\Http\Controllers\Api\V1\Admin\UserController;
 use App\Http\Controllers\Api\V1\Admin\WorkerController;
+use App\Http\Middleware\IsAdmin;
 use App\Models\Role;
 use Illuminate\Support\Facades\Route;
 
@@ -23,7 +24,7 @@ Route::prefix('auth')->group(function(){
     
     Route::post('auth/logout',[AuthController::class,'logout'])->middleware('auth:sanctum');
 
-Route::middleware('auth:sanctum')->group(function(){
+Route::middleware(['auth:sanctum' , IsAdmin::class ])->group(function(){
 
 Route::prefix('users')->group(function (){
     Route::get("/", [UserController::class, "index"])->middleware('permission:users.view');
