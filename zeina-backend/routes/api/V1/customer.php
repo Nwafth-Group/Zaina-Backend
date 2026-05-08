@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\V1\Customer\ServiceController;
 use App\Http\Controllers\Api\V1\Customer\TestController;
 use App\Http\Controllers\Api\V1\Customer\UserCardController;
 use App\Http\Controllers\Api\V1\Customer\WalletController;
+use App\Http\Middleware\IsCustomer;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('customer')->group(function () {
@@ -45,7 +46,7 @@ Route::prefix('customer')->group(function () {
     Route::get('locations/governorates', [LocationController::class, 'governorates']);
     Route::get('locations/cities', [LocationController::class, 'cities']);
     Route::get('locations/areas', [LocationController::class, 'areas']);
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum' , IsCustomer::class])->group(function () {
         // Auth
         Route::post('auth/logout', [AuthController::class, 'logout']);
         // Profile

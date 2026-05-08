@@ -37,7 +37,7 @@ class ServiceController extends Controller
     {
         $service = Service::with(['category', 'duration', 'rules', 'coverages', 'coverages.city', 'coverages.area' , 'priceRules' ,'workers'])->findOrFail($id);
         return $this->successResponse(new ServiceResource($service),__('messages.service_retrieved_successfully'));
-        // return response()->json(['data' => $service]);
+    
     }
 
     public function store(StoreServiceRequest $request)
