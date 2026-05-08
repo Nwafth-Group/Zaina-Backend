@@ -15,8 +15,7 @@ class Category extends Model
         'name_ar',
         'name_en',
         'parent_id',
-        'is_active',
-        'sort_order',
+        'status',
         'created_by',
         'updated_by',
     ]; 
