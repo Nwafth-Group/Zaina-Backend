@@ -23,8 +23,8 @@ class ProfileController extends Controller
 
      }
    public function show()
-    {
-        $user = auth()->user();
+    {   
+        $user = auth('sanctum')->user();
         return $this->successResponse(
             new UserResource($user),
             __('messages.profile_fetched_successfully')

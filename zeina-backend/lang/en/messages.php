@@ -159,6 +159,25 @@ return [
      'service_updated_successfully' => 'Service updated successfully.',
      'error_occurred' => 'An unexpected error occurred. Please try again later.',
      'service_retrieved_successfully' => 'Service retrieved successfully.',
+    'points_summary_retrieved' => 'Points summary retrieved successfully.',
+
+    'points' => [
+        'complete_services_title' => 'Complete :count Services',
+        'steps_remaining' => ':count steps remaining to earn your reward points.',
+         'history_retrieved' => 'Points transaction history retrieved successfully.',
+         'summary_retrieved' => 'Points summary retrieved successfully.',
+    ],
+    'kyc_not_verified' => 'Your account must be verified first to access this service.',
+    'kyc_already_submitted' => 'You have already submitted a KYC request. Please wait for it to be processed.',
+    'kyc_submission_success' => 'KYC documents submitted successfully. Your verification status is now pending review.',
+    'kyc_already_submitted_pending' => 'Your KYC verification is currently pending review. Please wait for the process to complete.',
+    'kyc_already_submitted_approved' => 'Your KYC verification has already been approved. No further action is needed.',
+    'kyc_pending_users_fetched_successfully' => 'Users with pending KYC requests fetched successfully.',
+    'kyc_approval_successfully' => 'Customer account KYC approved successfully.',
+    'reason_required' => 'Rejection reason is required for the customer to be able to modify their KYC information.',
+    'kyc_rejection_successfully' => 'Customer account KYC rejected successfully. Rejection reason saved.',
+
+   
     
     
 ];

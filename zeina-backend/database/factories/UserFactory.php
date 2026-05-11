@@ -30,6 +30,7 @@ class UserFactory extends Factory
             'phone_number' => fake()->unique()->numerify('05########'), 
             'email' => fake()->unique()->safeEmail(),
             'password' => Hash::make('password'),
+            'verification_status' => fake()->randomElement(['pending', 'approved', 'rejected']),
             'status' => fake()->randomElement(['active', 'active', 'inactive']), // نسبة الـ active أعلى
             'preferred_language' => fake()->randomElement(['ar', 'en']),
             'remember_token' => Str::random(10), 

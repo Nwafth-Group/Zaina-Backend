@@ -16,8 +16,8 @@ class UserResource extends JsonResource
     public function toArray(Request $request): array
     {
        $roles = $this->roles->pluck('name');
-       $primaryRole = $roles->first();
-       $otherRolesCount = $roles->count() > 1 ? $roles->count() - 1 : 0;
+       $primaryRole = $roles?->first();
+       $otherRolesCount = $roles?->count() > 1 ? $roles->count() - 1 : 0;
        $image  = $this->media()->where('collection', 'user/profilePhoto')->first();
         return [
             'id' => $this->id,
@@ -25,6 +25,8 @@ class UserResource extends JsonResource
             'first_name' => $this->first_name,
             'last_name' => $this->last_name,
             'full_name' =>$this->full_name,
+            'verification_status' => $this->verification_status,
+            'rejection_reason' => $this->rejection_reason,
             'wallet_balance' => $this->wallet_balance,
             'gender' => $this->gender,
             'email' =>$this->email,

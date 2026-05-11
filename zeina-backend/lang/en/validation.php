@@ -491,9 +491,27 @@ return [
         'image_max' => 'The image must not be greater than 4MB.',
      ],
 
+     'history' => [
+        'date_required' => 'The date field is required.',
+        'date_date_format' => 'The date must be in the format YYYY-MM-DD.',
+        'date_before_or_equal' => 'The date cannot be in the future.',
+     ],
 
-    
-  
+     'valid_account' => [
+        'id_front_required' => 'The front ID image is required.',
+        'id_front_image' => 'The front ID image must be a valid image.',
+        'id_front_mimes' => 'The front ID image must be a file of type: jpeg, png, jpg.',
+        'id_front_max' => 'The front ID image must not be greater than 5MB.',
+        'id_back_required' => 'The back ID image is required.',
+        'id_back_image' => 'The back ID image must be a valid image.',
+        'id_back_mimes' => 'The back ID image must be a file of type: jpeg, png, jpg.',
+        'id_back_max' => 'The back ID image must not be greater than 5MB.',
+        'selfie_required' => 'The selfie image is required.',
+        'selfie_image' => 'The selfie image must be a valid image.',
+        'selfie_mimes' => 'The selfie image must be a file of type: jpeg, png, jpg.',
+        'selfie_max' => 'The selfie image must not be greater than 5MB.',
+     ],
+     
 
 
 

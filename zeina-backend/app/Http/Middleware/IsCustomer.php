@@ -22,6 +22,9 @@ class IsCustomer
         if (!$user || $user->type !== 'customer') {
              return $this->errorResponse(__('messages.forbidden'), 403);
         }
+        if($user->verification_status !== 'approved') {
+            return $this->errorResponse(__('messages.kyc_not_verified'), 403);
+        }
         return $next($request);
     }
 }

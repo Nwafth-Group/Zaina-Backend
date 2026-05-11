@@ -22,6 +22,8 @@ return new class extends Migration
             $table->decimal('wallet_balance', 10, 2)->default(0.00);
             $table->string('job_title',100)->nullable();
             $table->enum('gender', ['Male', 'Female'])->nullable();
+            $table->enum('verification_status', ['unverified', 'pending', 'approved', 'rejected'])->default('unverified');
+            $table->text('rejection_reason')->nullable();
             $table->string('email')->nullable()->unique();// Email is optional for customers but usually required for Admins/Operations
             $table->string('password')->nullable();// Nullable because Customers login via OTP, while Admins might use a password
             $table->enum('type',['customer','operation','super_admin','driver'])->default('customer');

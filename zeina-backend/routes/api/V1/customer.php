@@ -6,7 +6,9 @@ use App\Http\Controllers\Api\V1\Customer\AuthController;
 use App\Http\Controllers\Api\V1\Customer\BookingController;
 use App\Http\Controllers\Api\V1\Customer\CategoryController;
 use App\Http\Controllers\Api\V1\Customer\HomeController;
+use App\Http\Controllers\Api\V1\Customer\KycController;
 use App\Http\Controllers\Api\V1\Customer\LocationController;
+use App\Http\Controllers\Api\V1\Customer\PointsController;
 use App\Http\Controllers\Api\V1\Customer\ProfileController;
 use App\Http\Controllers\Api\V1\Customer\SearchController;
 use App\Http\Controllers\Api\V1\Customer\ServiceController;
@@ -27,6 +29,8 @@ Route::prefix('customer')->group(function () {
         // Route::post('verify-register', [AuthController::class, 'verifyRegister']);
         Route::post('send-otp', [AuthController::class, 'sendotp']);
         Route::post('verify-otp', [AuthController::class, 'verifyOtp']);
+        Route::post('/verify', [KycController::class, 'submit'])->middleware('auth:sanctum');
+
     });
 
     // ==========================================
@@ -46,12 +50,14 @@ Route::prefix('customer')->group(function () {
     Route::get('locations/governorates', [LocationController::class, 'governorates']);
     Route::get('locations/cities', [LocationController::class, 'cities']);
     Route::get('locations/areas', [LocationController::class, 'areas']);
+      Route::get('/profile', [ProfileController::class, 'show']);
     Route::middleware(['auth:sanctum' , IsCustomer::class])->group(function () {
         // Auth
         Route::post('auth/logout', [AuthController::class, 'logout']);
+        
         // Profile
         Route::prefix('profile')->group(function () {
-            Route::get('/', [ProfileController::class, 'show']); //Donee 
+           //Donee 
             Route::post('complete', [ProfileController::class, 'completeProfile']); //Donee 
             Route::post('send-delete-otp', [ProfileController::class, 'sendDeleteOtp']);
             Route::post('delete', [ProfileController::class, 'deleteAccount']);
@@ -76,6 +82,11 @@ Route::prefix('customer')->group(function () {
        Route::get('cards', [UserCardController::class, 'index']);
        Route::post('cards', [UserCardController::class, 'store']);
        Route::delete('cards/{id}', [UserCardController::class, 'destroy']);
+
+
+       //Points
+       Route::get('points/summary', [PointsController::class, 'summary']);
+       Route::get('points/history', [PointsController::class, 'history']);
 
     });
 

@@ -160,5 +160,22 @@ return [
     'service_updated_successfully' => 'تم تحديث الخدمة بنجاح.',
     'error_occurred' => 'حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى لاحقًا.',
     'service_retrieved_successfully' => 'تم جلب الخدمة بنجاح.',
+    'points_summary_retrieved' => 'تم جلب ملخص النقاط بنجاح.',
+    'points' => [
+        'complete_services_title' => 'أكمل :count خدمات',
+        'steps_remaining' => 'تبقى :count خطوات لكسب نقاط المكافأة الخاصة بك.',
+        'history_retrieved' => 'تم جلب سجل النقاط بنجاح.',
+    ],
+    'kyc_not_verified' => 'يجب توثيق حسابك أولاً للوصول إلى هذه الخدمة.',
+    'kyc_already_submitted' => 'لقد قمت بالفعل بتقديم طلب KYC. يرجى الانتظار حتى يتم معالجته.',
+    'kyc_submission_success' => 'تم تقديم مستندات KYC بنجاح. حالة التوثيق الخاصة بك الآن قيد المراجعة.',
+    'kyc_already_submitted_pending' => 'التحقق من المعلومات الشخصية قيد المراجعة حاليا, يرجى الانتظار حتى تكتمل العملية.',
+    'kyc_already_submitted_approved' => 'تمت الموافقة على المعلومات الشخصية بنجاح ، لا حاجة لاتخاذ أي إجراء إضافي.',
+    'kyc_pending_users_fetched_successfully' => 'تم جلب المستخدمين الذين لديهم طلبات KYC قيد المراجعة بنجاح.',
+    'kyc_approval_successfully' => 'تمت الموافقة على توثيق حساب العميل بنجاح.',
+    'reason_required' => 'سبب الرفض مطلوب ليتمكن العميل من تعديل معلومات KYC الخاصة به.',
+    'kyc_rejection_successfully' => 'تم رفض طلب توثيق حساب العميل بنجاح. تم حفظ سبب الرفض.',
+
+
 
 ];

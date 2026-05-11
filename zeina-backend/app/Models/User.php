@@ -30,6 +30,8 @@ class User extends Authenticatable implements Auditable
         'last_name',
         'wallet_balance',
         'full_name',
+        'verification_status',
+        'rejection_reason',
         'gender',
         'phone_number',
         'email',
@@ -65,8 +67,6 @@ class User extends Authenticatable implements Auditable
         ];
     }
 
-    
-
     public function addresses(){
         return $this->hasMany(CustomerAddress::class, 'user_id');
     }
@@ -75,9 +75,12 @@ class User extends Authenticatable implements Auditable
         return $this->belongsTo(Country::class, 'country_id');
     }
 
-
     public function media(){
         return $this->morphMany(Media::class,'model');
+    }
+
+    public function bookings(){
+        return $this->hasMany(Booking::class, 'customer_id');
     }
 
     // علاقة المستخدم بحركات المحفظة
@@ -117,5 +120,21 @@ class User extends Authenticatable implements Auditable
         return $this->hasMany(UserCard::class);
     }
 
+    public function pointTransactions()
+    {
+        return $this->hasMany(PointTransaction::class);
+    }
+
+    public function getTotalPointsAttribute()
+    {
+        $earned = $this->pointTransactions()->where('type', 'earn')->sum('amount');
+        $redeemed = $this->pointTransactions()->where('type', 'redeem')->sum('amount');
+        
+        return $earned - $redeemed;
+    }
+
+
+
 
 }
+

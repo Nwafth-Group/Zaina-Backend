@@ -22,7 +22,7 @@ class IsAdmin
             return $this->errorResponse(__('messages.unauthenticated'), 401);
         }
     
-        if(!auth()->user()->type || !in_array(auth()->user()->type, ['admin', 'super_admin'])) {
+        if(!auth()->user()->type || !in_array(auth()->user()->type, ['operation', 'super_admin'])) {
             return $this->errorResponse(__('messages.forbidden'), 403);
         }
 

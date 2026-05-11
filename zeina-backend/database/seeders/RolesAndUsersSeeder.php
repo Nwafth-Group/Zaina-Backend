@@ -65,6 +65,7 @@ class RolesAndUsersSeeder extends Seeder
                 'last_name' => 'ZainahApp',
                 'email' => 'admin@zeina.com',
                 'password' => Hash::make('admin'),
+                'verification_status' => 'approved',
                 'type' => 'super_admin',
                 'status' => 'active',
             ]
@@ -105,6 +106,7 @@ class RolesAndUsersSeeder extends Seeder
                 'email' => 'sara@example.com',
                 'password' => Hash::make('password'), 
                 'type' => 'customer',
+                'verification_status' => 'approved',
                 'status' => 'active',
             ]
         );
