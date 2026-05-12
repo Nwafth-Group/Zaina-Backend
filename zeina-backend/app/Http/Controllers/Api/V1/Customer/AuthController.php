@@ -178,6 +178,7 @@ class AuthController extends Controller
                 'phone_number' => $mobile,
                 'type'         => 'customer',
                 'status'       => 'active',
+                'verification_status' => 'unverified',
                 'preferred_language' => 'en',
             ]);
             $isNewUser = true;
