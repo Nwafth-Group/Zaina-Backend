@@ -131,18 +131,19 @@ class BookingController extends Controller
         }
 
         // الدبل تشيك: هل العامل لا يزال متاحاً؟
-        $isWorkerBusy = Booking::where('worker_id', $request->worker_id)
-            ->where('booking_date', $request->date)
-            ->whereIn('status', ['Upcoming', 'inService'])
-            ->where(function ($query) use ($start, $end) {
-                $query->where('start_time', '<', $end->format('H:i:s'))
-                      ->where('end_time', '>', $start->format('H:i:s'));
-            })
-            ->exists();
+       $isWorkerBusy = Booking::where('worker_id', $request->worker_id)
+    ->where('booking_date', $request->date)
+    ->whereIn('status', ['Upcoming', 'inService'])
+    ->where(function ($query) use ($start, $end) {
+        $query->where('start_time', '<', $end->format('H:i:s'))
+              ->where('end_time', '>', $start->format('H:i:s'));
+    })
+    ->lockForUpdate() // 🌟 هذا القفل يمنع أي حجز متزامن على نفس العامل في نفس الثانية 🌟
+    ->exists();
 
-        if ($isWorkerBusy) {
-            return $this->errorResponse(__('messages.worker_busy'), 422);
-        }
+if ($isWorkerBusy) {
+    return $this->errorResponse(__('messages.worker_busy'), 422);
+}
 
         // حساب الأسعار بناءً على عنوان العميل
         $address = CustomerAddress::with('area')->findOrFail($request->address_id);

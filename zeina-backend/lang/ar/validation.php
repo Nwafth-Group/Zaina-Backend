@@ -507,5 +507,24 @@ return [
         'selfie_max' => 'صورة السيفري يجب ألا تتجاوز 5 ميجابايت.',
      ],
 
+     'getAvaliableDurations' => [
+        'date_required' => 'تاريخ الخدمة مطلوب.',
+        'date_date_format' => 'تاريخ الخدمة يجب أن يكون بصيغة YYYY-MM-DD.',
+        'start_time_required' => 'وقت بدء الخدمة مطلوب.',
+        'start_time_date_format' => 'وقت بدء الخدمة يجب أن يكون بصيغة HH:MM.',
+     ],
+
+    'getAvailableWorkers' => [
+        'service_id_required' => 'معرف الخدمة مطلوب.',
+        'service_id_exists' => 'الخدمة المحددة غير موجودة.',
+        'date_required' => 'تاريخ الخدمة مطلوب.',
+        'date_date_format' => 'تاريخ الخدمة يجب أن يكون بصيغة YYYY-MM-DD.',
+        'start_time_required' => 'وقت بدء الخدمة مطلوب.',
+        'start_time_date_format' => 'وقت بدء الخدمة يجب أن يكون بصيغة HH:MM.',
+        'duration_minutes_required' => 'مدة الخدمة بالدقائق مطلوبة.',
+        'duration_minutes_integer' => 'مدة الخدمة بالدقائق يجب أن تكون رقماً صحيحاً.',
+        'duration_minutes_min' => 'مدة الخدمة لا يمكن أن تكون أقل من 60 دقيقة (ساعة واحدة).',
+     ],
+
 ];
     

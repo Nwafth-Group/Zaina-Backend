@@ -511,6 +511,26 @@ return [
         'selfie_mimes' => 'The selfie image must be a file of type: jpeg, png, jpg.',
         'selfie_max' => 'The selfie image must not be greater than 5MB.',
      ],
+
+     'getAvaliableDurations' => [
+        'date_required' => 'The date field is required.',
+        'date_date_format' => 'The date must be in the format YYYY-MM-DD.',
+        'start_time_required' => 'The start time field is required.',
+        'start_time_date_format' => 'The start time must be in the format HH:MM.',
+     ],
+
+     'getAvailableWorkers' => [
+        'date_required' => 'The date field is required.',
+        'date_date_format' => 'The date must be in the format YYYY-MM-DD.',
+        'start_time_required' => 'The start time field is required.',
+        'start_time_date_format' => 'The start time must be in the format HH:MM.',
+        'duration_required' => 'The duration field is required.',
+        'duration_integer' => 'The duration must be an integer representing hours.',
+        'duration_min' => 'The duration must be at least 1 hour.',
+     ],
+
+     
+
      
 
 

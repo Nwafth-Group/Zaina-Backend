@@ -41,6 +41,7 @@ Route::prefix('customer')->group(function () {
     Route::get('/categories/{category}/sub', [CategoryController::class, 'getSubcategories']);//
     Route::get('/services/{service}', [ServiceController::class, 'show']); //3
     Route::get('services/{service}/shifts', [ServiceController::class, 'getShiftsForDate']);//
+    Route::get('services/{service}/available-duration', [ServiceController::class, 'getAvailableDurations']);//
     Route::get('/services/{service}/available-workers', [ServiceController::class, 'getAvailableWorkers']);
     Route::get('/services', [ServiceController::class, 'index']); // 1  // لجلب كل الخدمات مع Paginate
     Route::get('/categories/{category}/services', [ServiceController::class, 'getServicesByCategory']);// 2 
@@ -50,7 +51,7 @@ Route::prefix('customer')->group(function () {
     Route::get('locations/governorates', [LocationController::class, 'governorates']);
     Route::get('locations/cities', [LocationController::class, 'cities']);
     Route::get('locations/areas', [LocationController::class, 'areas']);
-      Route::get('/profile', [ProfileController::class, 'show']);
+    Route::get('/profile', [ProfileController::class, 'show']);
     Route::middleware(['auth:sanctum' , IsCustomer::class])->group(function () {
         // Auth
         Route::post('auth/logout', [AuthController::class, 'logout']);
@@ -82,8 +83,6 @@ Route::prefix('customer')->group(function () {
        Route::get('cards', [UserCardController::class, 'index']);
        Route::post('cards', [UserCardController::class, 'store']);
        Route::delete('cards/{id}', [UserCardController::class, 'destroy']);
-
-
        //Points
        Route::get('points/summary', [PointsController::class, 'summary']);
        Route::get('points/history', [PointsController::class, 'history']);

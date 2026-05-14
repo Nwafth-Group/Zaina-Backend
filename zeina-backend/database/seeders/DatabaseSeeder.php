@@ -28,7 +28,7 @@ class DatabaseSeeder extends Seeder
             CategoryAndServiceSeeder::class,
             ProviderSeeder::class,
             AdSeeder::class,
-            WorkderSeeder::class,
+            WorkerSeeder::class,
             CustomerAddressSeeder::class,
             BookingSeeder::class,
             WalletSeeder::class,
