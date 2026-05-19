@@ -176,6 +176,7 @@ return [
     'kyc_approval_successfully' => 'Customer account KYC approved successfully.',
     'reason_required' => 'Rejection reason is required for the customer to be able to modify their KYC information.',
     'kyc_rejection_successfully' => 'Customer account KYC rejected successfully. Rejection reason saved.',
+    'providers_fetch_successfully' => 'Providers retrieved successfully.',
 
    
     

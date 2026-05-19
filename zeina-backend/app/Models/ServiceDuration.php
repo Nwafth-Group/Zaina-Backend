@@ -11,7 +11,7 @@ class ServiceDuration extends Model
     use HasFactory;
 
     protected $fillable = [
-        'service_id', 'allowed_durations', 'allowed_contract_durations', 
+        'service_id', 'service_period_hours', 
         'min_duration_hours', 'min_contract_months'
     ];
 

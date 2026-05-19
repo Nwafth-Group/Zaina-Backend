@@ -233,13 +233,17 @@ return [
     'duration_required' => 'Duration details are required.',
     'duration_array'    => 'Duration details must be an array.',
     
-    'allowed_durations_required_if' => 'Allowed durations are required for hourly services.',
-    'allowed_durations_array'       => 'Allowed durations must be an array.',
-    'allowed_durations_numeric'     => 'Each allowed duration must be a number.',
+    // 'allowed_durations_required_if' => 'Allowed durations are required for hourly services.',
+    // 'allowed_durations_array'       => 'Allowed durations must be an array.',
+    // 'allowed_durations_numeric'     => 'Each allowed duration must be a number.',
     
-    'min_duration_hours_required_if' => 'Minimum duration hours are required for hourly services.',
-    'min_duration_hours_numeric'     => 'Minimum duration hours must be a number.',
-    'min_duration_hours_lte'         => 'Minimum duration hours must be less than or equal to the smallest allowed duration.',
+    // 'min_duration_hours_required_if' => 'Minimum duration hours are required for hourly services.',
+    // 'min_duration_hours_numeric'     => 'Minimum duration hours must be a number.',
+    // 'min_duration_hours_lte'         => 'Minimum duration hours must be less than or equal to the smallest allowed duration.',
+
+    'service_period_hours_required_if' => 'Service period hours are required for moqema services.',
+    'service_period_hours_integer'     => 'Service period hours must be an integer.',
+    'service_period_hours_min'         => 'Service period hours must be at least 1 hour.',
     
     'allowed_contract_durations_required_if' => 'Allowed contract durations are required for moqema services.',
     'allowed_contract_durations_array'       => 'Allowed contract durations must be an array.',
@@ -298,6 +302,82 @@ return [
     
     'coverages_status_required' => 'The coverage status is required.',
     'coverages_status_in'       => 'The selected coverage status is invalid.',
+],
+
+
+'update_service' => [
+    // Basic Data
+    'category_id_exists'                     => 'The selected category does not exist.',
+    'type_in'                                => 'The service type must be either hourly, moqema, or both.',
+    'name_ar_max'                            => 'The Arabic name may not be greater than 100 characters.',
+    'name_en_max'                            => 'The English name may not be greater than 100 characters.',
+    'status_in'                              => 'The selected service status is invalid.',
+    
+    // Durations
+    'durations_array'                        => 'The durations must be an array.',
+    'service_period_hours_required_if'       => 'The service period hours field is required when type is hourly or both.',
+    'service_period_hours_integer'          => 'The service period hours must be an integer.',
+    'service_period_hours_min'              => 'The service period hours must be at least 1 hour.',
+    'allowed_contract_durations_required_if' => 'The allowed contract durations field is required when type is moqema or both.',
+    'allowed_contract_durations_array'       => 'The allowed contract durations must be an array.',
+    'min_contract_months_required_if'        => 'The minimum contract months field is required when type is moqema or both.',
+    'min_contract_months_integer'           => 'The minimum contract months must be an integer.',
+    'min_contract_months_min'               => 'The minimum contract months must be at least 1 month.',
+
+    // Workers
+    'workers_required'                       => 'At least one worker must be assigned to the service.',
+    'workers_array'                          => 'The workers must be an array.',
+    'workers_min'                            => 'You must select at least one worker.',
+    'worker_id_integer'                      => 'The worker ID must be an integer.',
+    'worker_id_exists'                       => 'One or more of the selected workers do not exist.',
+
+    // Service Rules
+    'rules_array'                            => 'The rules must be an array.',
+    'free_cancel_cutoff_hours_integer'       => 'The free cancellation cutoff hours must be an integer.',
+    'free_cancel_cutoff_hours_min'           => 'The free cancellation cutoff hours cannot be less than 0.',
+    'reschedule_cutoff_hours_integer'        => 'The reschedule cutoff hours must be an integer.',
+    'reschedule_cutoff_hours_min'            => 'The reschedule cutoff hours cannot be less than 0.',
+    'lead_time_min_hours_integer'            => 'The minimum lead time hours must be an integer.',
+    'lead_time_min_hours_min'                => 'The minimum lead time hours cannot be less than 0.',
+    'lead_time_max_days_integer'             => 'The maximum lead time days must be an integer.',
+    'lead_time_max_days_min'                 => 'The maximum lead time days must be at least 1 day.',
+    'late_cancel_action_in'                  => 'The selected late cancellation action is invalid.',
+    'late_cancel_fee_type_in'                => 'The late cancellation fee type must be either percent or fixed.',
+    'late_cancel_fee_value_numeric'          => 'The late cancellation fee value must be a number.',
+    'late_cancel_fee_value_min'              => 'The late cancellation fee value cannot be less than 0.',
+    'no_show_policy_in'                      => 'The selected no-show policy is invalid.',
+    'max_changes_per_booking_integer'        => 'The maximum changes per booking must be an integer.',
+    'max_changes_per_booking_min'            => 'The maximum changes per booking cannot be less than 0.',
+
+    // Coverages
+    'coverages_required'                     => 'At least one coverage location is required.',
+    'coverages_array'                        => 'The coverages must be an array.',
+    'coverages_min'                          => 'You must provide at least one coverage area.',
+    'coverage_city_required'                 => 'The city field is required for each coverage item.',
+    'coverage_city_exists'                   => 'The selected city is invalid.',
+    'coverage_area_exists'                   => 'The selected area is invalid.',
+    'coverage_status_in'                     => 'The selected coverage status is invalid.',
+
+    // Prices
+    'prices_required'                        => 'At least one pricing setup is required.',
+    'prices_array'                           => 'The prices must be an array.',
+    'prices_min'                             => 'You must provide at least one price rule.',
+    'pricing_scope_required'                 => 'The pricing scope is required for each price item.',
+    'pricing_scope_in'                       => 'The selected pricing scope is invalid, must be city or area.',
+    'price_city_exists'                      => 'The selected city for pricing does not exist.',
+    'price_area_exists'                      => 'The selected area for pricing does not exist.',
+    'price_required'                         => 'The price per service period is required.',
+    'price_numeric'                          => 'The price must be a number.',
+    'price_min'                              => 'The price cannot be less than 0.',
+    'currency_max'                           => 'The currency code may not be greater than 10 characters.',
+    'effective_start_date'                   => 'The effective start date is not a valid date.',
+    'effective_end_date'                     => 'The effective end date is not a valid date.',
+    'effective_end_after'                    => 'The effective end date must be a date after or equal to the start date.',
+
+    // Image
+    'image_invalid'                          => 'The file must be an image.',
+    'image_mimes'                            => 'The image must be a file of type: jpeg, png, jpg, webp, svg.',
+    'image_max'                              => 'The image size may not be greater than 2 megabytes.',
 ],
 
      'store_service_price' => [
@@ -391,6 +471,16 @@ return [
     'duration_min' => 'The duration must be at least 1 hour.',
 ],
 
+'getAvailableWorkers' => [
+    'date_required' => 'The date is required.',
+    'date_format' => 'The date must be in the format YYYY-MM-DD.',
+    'start_time_required' => 'The start time is required.',
+    'start_time_format' => 'The start time must be in the format HH:MM.',
+    'periods_count_required' => 'The number of consecutive periods is required.',
+    'periods_count_integer' => 'The number of consecutive periods must be an integer.',
+    'periods_count_min' => 'The number of consecutive periods must be at least 1.',
+],
+
 'getShiftsForDate' => [
     'date_required' => 'The date is required.',
     'date_format' => 'The date must be in the format YYYY-MM-DD.',
@@ -398,23 +488,22 @@ return [
 ],
 
 'create_booking' => [
-    'service_id_required' => 'Service ID is required.',
-    'service_id_exists' => 'The selected service does not exist.',
-    'worker_id_required' => 'Worker ID is required.',
-    'worker_id_exists' => 'The selected worker does not exist.',
-    'address_id_required' => 'Address ID is required.',
-    'address_id_exists' => 'The selected address does not exist.',
-    'date_required' => 'Booking date is required.',
-    'date_date_format' => 'Booking date must be in the format YYYY-MM-DD.',
-    'start_time_required' => 'Start time is required.',
-    'start_time_date_format' => 'Start time must be in the format HH:MM.',
-    // 'duration_minutes_required' => 'Duration in minutes is required.',
-    // 'duration_minutes_integer' => 'Duration must be an integer representing minutes.',
-    // 'duration_minutes_min' => 'Duration must be at least 60 minutes (1 hour).', 
-    'end_time_required' => 'End time is required.',
-    'end_time_date_format' => 'End time must be in the format HH:MM.',
-    'end_time_after' => 'End time must be after the start time.',
-], 
+        'service_id_required'    => 'Please select the required service.',
+        'service_id_exists'      => 'The selected service is invalid or does not exist.',
+        'address_id_required'    => 'Please specify the service delivery address.',
+        'address_id_exists'      => 'The selected address is invalid or unavailable.',
+        'date_required'          => 'Please select a booking date.',
+        'date_date_format'       => 'The booking date format is invalid. It must be (Y-m-d).',
+        'start_time_required'    => 'Please select a booking start time.',
+        'start_time_date_format' => 'The start time format is invalid. It must be (H:i).',
+        'periods_count_required' => 'Please specify the number of required periods.',
+        'periods_count_integer'  => 'The periods count must be an integer.',
+        'periods_count_min'      => 'You must select at least one period to book.',
+        'worker_ids_required'    => 'Please select at least one service provider.',
+        'worker_ids_array'       => 'The selected workers format is invalid.',
+        'worker_ids_min'         => 'At least one worker must be chosen to perform the service.',
+        'worker_ids_exists'      => 'One or more of the selected workers does not exist or is currently unavailable.',
+    ],
 
 'report' => [
         'report_reason_required' => 'The report reason is required.',

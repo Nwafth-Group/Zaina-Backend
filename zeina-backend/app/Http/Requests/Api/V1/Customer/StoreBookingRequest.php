@@ -16,41 +16,42 @@ class StoreBookingRequest extends FormRequest
 
     /**
      * Get the validation rules that apply to the request.
-     *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
         return [
-            'service_id' => 'required|exists:services,id',
-            'worker_id'  => 'required|exists:workers,id',
-            'address_id' => 'required|exists:customer_addresses,id',
-            'date'       => 'required|date_format:Y-m-d',
-            'start_time' => 'required|date_format:H:i',
-            'end_time'   => 'required|date_format:H:i|after:start_time',
-            // 'duration_minutes' => 'required|integer|min:60',
+            'service_id'    => 'required|exists:services,id',
+            'address_id'    => 'required|exists:customer_addresses,id',
+            'date'          => 'required|date_format:Y-m-d',
+            'start_time'    => 'required|date_format:H:i',
+            
+            // 🌟 التعديلات الجديدة 🌟
+            'periods_count' => 'required|integer|min:1', // عدد الفترات المطلوبة
+            'worker_ids'    => 'required|array|min:1',   // مصفوفة العمال المختارين
+            'worker_ids.*'  => 'required|exists:workers,id',
         ];
     }
 
     public function messages(): array
     {
         return [
-            'service_id.required' => __('validation.create_booking.service_id_required'),
-            'service_id.exists' => __('validation.create_booking.service_id_exists'),
-            'worker_id.required' => __('validation.create_booking.worker_id_required'),
-            'worker_id.exists' => __('validation.create_booking.worker_id_exists'),
-            'address_id.required' => __('validation.create_booking.address_id_required'),
-            'address_id.exists' => __('validation.create_booking.address_id_exists'),
-            'date.required' => __('validation.create_booking.date_required'),
-            'date.date_format' => __('validation.create_booking.date_date_format'),
-            'start_time.required' => __('validation.create_booking.start_time_required'),
+            'service_id.required'    => __('validation.create_booking.service_id_required'),
+            'service_id.exists'      => __('validation.create_booking.service_id_exists'),
+            'address_id.required'    => __('validation.create_booking.address_id_required'),
+            'address_id.exists'      => __('validation.create_booking.address_id_exists'),
+            'date.required'          => __('validation.create_booking.date_required'),
+            'date.date_format'       => __('validation.create_booking.date_date_format'),
+            'start_time.required'    => __('validation.create_booking.start_time_required'),
             'start_time.date_format' => __('validation.create_booking.start_time_date_format'),
-            'end_time.required' => __('validation.create_booking.end_time_required'),
-            'end_time.date_format' => __('validation.create_booking.end_time_date_format'),
-            'end_time.after' => __('validation.create_booking.end_time_after'),
-            // 'duration_minutes.required' => __('validation.create_booking.duration_minutes_required'),
-            // 'duration_minutes.integer' => __('validation.create_booking.duration_minutes_integer'),
-            // 'duration_minutes.min' => __('validation.create_booking.duration_minutes_min'),
+            
+            // رسائل التعديلات الجديدة (يمكنك إضافتها لملف الترجمة لاحقاً)
+            'periods_count.required' => __('validation.create_booking.periods_count_required'),
+            'periods_count.integer'  => __('validation.create_booking.periods_count_integer'),
+            'periods_count.min'      => __('validation.create_booking.periods_count_min'),
+            'worker_ids.required'    => __('validation.create_booking.worker_ids_required'),
+            'worker_ids.array'       => __('validation.create_booking.worker_ids_array'),
+            'worker_ids.min'         => __('validation.create_booking.worker_ids_min'),
+            'worker_ids.*.exists'    => __('validation.create_booking.worker_ids_exists'),
         ];
     }
 }

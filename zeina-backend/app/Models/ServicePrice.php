@@ -12,15 +12,14 @@ class ServicePrice extends Model
 
     protected $fillable = [
         'service_id', 'pricing_scope', 'city_id', 'area_id', 
-        'base_price', 'price_per_hour', 'currency', 
+        'price_per_service_period', 'currency', 
         'effective_start', 'effective_end'
     ];
 
     protected $casts = [
         'effective_start' => 'date',
         'effective_end' => 'date',
-        'base_price' => 'decimal:2',
-        'price_per_hour' => 'decimal:2',
+        'price_per_service_period' => 'decimal:2',
     ];
 
     public function service()

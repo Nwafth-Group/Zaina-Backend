@@ -35,8 +35,9 @@ class StoreServiceRequest extends CustomFormRequest
             'workers'         => 'required|array|min:1',
             'workers.*'       => 'integer|exists:workers,id',
             // المدد الزمنية (Service Durations) - بناءً على نوع الخدمة
-            'durations.allowed_durations'          => 'required_if:type,hourly,both|array',
-            'durations.min_duration_hours'         => 'required_if:type,hourly,both|integer|min:1',
+            // 'durations.allowed_durations'          => 'required_if:type,hourly,both|array',
+            // 'durations.min_duration_hours'         => 'required_if:type,hourly,both|integer|min:1',
+            'durations.service_period_hours' => 'required_if:type,hourly,both|integer|min:1',
             'durations.allowed_contract_durations' => 'required_if:type,moqema,both|array',
             'durations.min_contract_months'        => 'required_if:type,moqema,both|integer|min:1',
             // قواعد الخدمة (Service Rules)
@@ -61,8 +62,8 @@ class StoreServiceRequest extends CustomFormRequest
             'prices.*.pricing_scope'  => 'required|in:city,area',
             'prices.*.city_id'        => 'nullable|exists:cities,id',
             'prices.*.area_id'        => 'nullable|exists:areas,id',
-            'prices.*.base_price'     => 'required|numeric|min:0',
-            'prices.*.price_per_hour' => 'required|numeric|min:0',
+            'prices.*.price_per_service_period'     => 'required|numeric|min:0',
+            // 'prices.*.price_per_hour' => 'required|numeric|min:0',
             'prices.*.currency'       => 'nullable|string|max:10',
             'prices.*.effective_start'=> 'nullable|date',
             'prices.*.effective_end'  => 'nullable|date|after_or_equal:prices.*.effective_start',
@@ -97,14 +98,18 @@ class StoreServiceRequest extends CustomFormRequest
             // 2. المدد (Durations)
             'duration.required'                               => __('validation.create_service.duration_required'),
             'duration.array'                                  => __('validation.create_service.duration_array'),
-            'duration.allowed_durations.required_if'          => __('validation.create_service.allowed_durations_required_if'),
-            'duration.allowed_durations.array'                => __('validation.create_service.allowed_durations_array'),
-            'duration.allowed_durations.*.numeric'            => __('validation.create_service.allowed_durations_numeric'),
+                // 'duration.allowed_durations.required_if'          => __('validation.create_service.allowed_durations_required_if'),
+                // 'duration.allowed_durations.array'                => __('validation.create_service.allowed_durations_array'),
+                // 'duration.allowed_durations.*.numeric'            => __('validation.create_service.allowed_durations_numeric'),
+                
+                // 'duration.min_duration_hours.required_if'         => __('validation.create_service.min_duration_hours_required_if'),
+                // 'duration.min_duration_hours.numeric'             => __('validation.create_service.min_duration_hours_numeric'),
+                // 'duration.min_duration_hours.lte'                 => __('validation.create_service.min_duration_hours_lte'),
+            'duration.service_period_hours.required_if'        => __('validation.create_service.service_period_hours_required_if'),
+            'duration.service_period_hours.integer'           => __('validation.create_service.service_period_hours_integer'),
+            'duration.service_period_hours.min'               => __('validation.create_service.service_period_hours_min'),
             
-            'duration.min_duration_hours.required_if'         => __('validation.create_service.min_duration_hours_required_if'),
-            'duration.min_duration_hours.numeric'             => __('validation.create_service.min_duration_hours_numeric'),
-            'duration.min_duration_hours.lte'                 => __('validation.create_service.min_duration_hours_lte'),
-            
+                
             'duration.allowed_contract_durations.required_if' => __('validation.create_service.allowed_contract_durations_required_if'),
             'duration.allowed_contract_durations.array'       => __('validation.create_service.allowed_contract_durations_array'),
             'duration.allowed_contract_durations.*.numeric'   => __('validation.create_service.allowed_contract_durations_numeric'),

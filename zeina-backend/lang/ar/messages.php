@@ -175,6 +175,8 @@ return [
     'kyc_approval_successfully' => 'تمت الموافقة على توثيق حساب العميل بنجاح.',
     'reason_required' => 'سبب الرفض مطلوب ليتمكن العميل من تعديل معلومات KYC الخاصة به.',
     'kyc_rejection_successfully' => 'تم رفض طلب توثيق حساب العميل بنجاح. تم حفظ سبب الرفض.',
+    'providers_fetch_successfully' => 'تم جلب مقدمي الخدمات بنجاح.',
+    
 
     
 

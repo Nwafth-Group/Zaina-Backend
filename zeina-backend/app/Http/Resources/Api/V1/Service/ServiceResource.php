@@ -55,9 +55,9 @@ class ServiceResource extends JsonResource
             //     ];
             //    }),    
 
-            'price_details'  => [
-                'base_price'        => $priceObj ? $priceObj->base_price : 0,
-                'price_per_hour'    => $priceObj ? $priceObj->price_per_hour : 0,
+             'price_details'  => [
+                // 'base_price'        => $priceObj ? $priceObj->base_price : 0,
+                'price_per_service_period'    => $priceObj ? $priceObj->price_per_hour : 0,
                 'currency'          => $priceObj ? $priceObj->currency : 'EGP',
                 'is_starting_price' => $isStartingPrice, // true = حط كلمة "يبدأ من"، false = هاد سعره النهائي
             ],

@@ -62,23 +62,15 @@ class ServiceController extends Controller
         return $this->successResponse(new ServiceResource($service),__('messages.service_details_retrieved'));
     }
 
- public function getShiftsForDate(GetShiftsForDateRequest $request, Service $service)
-{  
-   
+public function getShiftsForDate(GetShiftsForDateRequest $request, Service $service)
+{
     $date = Carbon::parse($request->date);
     $dayName = strtolower($date->format('l'));
-    // جلب الشفتات
-   
     $schedules = $service->schedules()->where('day', $dayName)->where('is_active', true)->get();
-    if ($schedules->isEmpty()) {
-        return $this->errorResponse(__('messages.service_not_available_in_this_day'), 404);
-    }
+    
+    // جلب طول الكتلة الثابتة للخدمة (بالدقائق)
+    $periodMinutes = ($service->duration->service_period_hours ?? 2) * 60;
 
-    // جلب الحد الأدنى لمدة الخدمة (افتراضي ساعة واحدة إذا لم يتم تحديده)
-    $serviceDuration = $service->duration;
-    $minDurationMinutes = ($serviceDuration->min_duration_hours ?? 1) * 60;
-
-    // جلب كل حجوزات عمال هذه الخدمة في هذا اليوم لمرة واحدة (لتقليل استعلامات قاعدة البيانات)
     $workerIds = $service->workers()->where('status', 'active')->pluck('workers.id');
     $existingBookings = Booking::whereIn('worker_id', $workerIds)
         ->where('booking_date', $date->format('Y-m-d'))
@@ -86,53 +78,54 @@ class ServiceController extends Controller
         ->get(['worker_id', 'start_time', 'end_time']);
 
     $shiftsData = [];
+
     foreach ($schedules as $schedule) {
+      
         $shiftStart = Carbon::parse($schedule->start_time);
         $shiftEnd = Carbon::parse($schedule->end_time);
         
-        $shiftName = $shiftStart->hour < 12 ? 'Morning Shift' : 'Evening Shift';
-        $dropdownLabel = $shiftName . ' - ' . $shiftStart->format('h:i A') . ' - ' . $shiftEnd->format('h:i A');
+        $dropdownLabel = "Shift: " . $shiftStart->format('h:i A') . ' - ' . $shiftEnd->format('h:i A');
+        $fixedBlocks = [];
+        $currentBlockStart = $shiftStart->copy();
 
-        $timeSlots = [];
-        $currentSlotStart = $shiftStart->copy();
-        $stepMinutes = 60; // الخطوة كل ساعة (يمكنك جعلها 30 إذا أردت)
-
-        // نمشي في الشفت طالما أن (الوقت الحالي + الحد الأدنى) لا يتجاوز نهاية الشفت
-        while ($currentSlotStart->copy()->addMinutes($minDurationMinutes)->lte($shiftEnd)) {
-            $slotStartStr = $currentSlotStart->format('H:i:s');
-            $slotEndStr = $currentSlotStart->copy()->addMinutes($minDurationMinutes)->format('H:i:s');
-            $isSlotAvailable = false;
-            // هل يوجد عامل واحد على الأقل متاح؟
+        // القفز بمقدار الكتلة الثابتة (مثلاً كل ساعتين تماماً)
+        while ($currentBlockStart->copy()->addMinutes($periodMinutes)->lte($shiftEnd)) {
+            $blockEnd = $currentBlockStart->copy()->addMinutes($periodMinutes);
+            
+            $startStr = $currentBlockStart->format('H:i:s');
+            $endStr = $blockEnd->format('H:i:s');
+            
+            // فحص هل يوجد على الأقل عامل واحد متاح في هذه الكتلة بالكامل؟
+            $isBlockAvailable = false;
             foreach ($workerIds as $workerId) {
-                // نبحث إذا كان هذا العامل لديه تضارب في هذا الوقت
                 $hasConflict = $existingBookings->where('worker_id', $workerId)
-                    ->where('start_time', '<', $slotEndStr)
-                    ->where('end_time', '>', $slotStartStr)
+                    ->where('start_time', '<', $endStr)
+                    ->where('end_time', '>', $startStr)
                     ->isNotEmpty();
 
-                // إذا وجدنا عاملاً بدون تضارب، إذن الوقت متاح، ونكسر حلقة العمال للوقت الحالي
                 if (!$hasConflict) {
-                    $isSlotAvailable = true;
+                    $isBlockAvailable = true;
                     break;
                 }
             }
 
-            // إذا الوقت متاح، نضيفه للمصفوفة
-            if ($isSlotAvailable) {
-                $timeSlots[] = $currentSlotStart->format('H:i');
-            } 
+            if ($isBlockAvailable) {
+                $fixedBlocks[] = [
+                    'start_time' => $currentBlockStart->format('H:i'),
+                    'end_time'   => $blockEnd->format('H:i'),
+                    'label'      => $currentBlockStart->format('h:i A') . ' - ' . $blockEnd->format('h:i A'),
+                ];
+            }
 
-            $currentSlotStart->addMinutes($stepMinutes);
+            // 🌟 القفزة الذكية: الانتقال لبداية الكتلة التالية مباشرة لمنع التداخل
+            $currentBlockStart->addMinutes($periodMinutes);
         }
 
-        // لا نرسل الشفت للموبايل إلا إذا كان فيه ساعات متاحة
-        if (count($timeSlots) > 0) {
+        if (count($fixedBlocks) > 0) {
             $shiftsData[] = [
                 'id' => $schedule->id,
                 'dropdown_label' => $dropdownLabel,
-                'start_time' => $shiftStart->format('H:i'),
-                'end_time' => $shiftEnd->format('H:i'),
-                'available_hours' => $timeSlots
+                'available_blocks' => $fixedBlocks // تعرض كـ بطاقات (Cards) للمستخدم ليختار منها
             ];
         }
     }
@@ -223,30 +216,33 @@ $date = Carbon::parse($request->date);
     return $this->successResponse(['durations' => $validDurations], 'تم جلب المدد بنجاح');
 }
 
-  public function getAvailableWorkers(Request $request, Service $service)
+ public function getAvailableWorkers(Request $request, Service $service)
 {
     $request->validate([
-        'date' => 'required|date_format:Y-m-d',
-        'start_time' => 'required|date_format:H:i',
-        'duration' => 'required|integer' // تأتي بالدقائق (مثلاً 120 لساعتين)
+        'date'          => 'required|date_format:Y-m-d',
+        'start_time'    => 'required|date_format:H:i',
+        'periods_count' => 'required|integer|min:1'
     ],
     [
-        'date.required' => __('validation.getAvailableWorkers.date_required'),
-        'date.date_format' => __('validation.getAvailableWorkers.date_date_format'),
-        'start_time.required' => __('validation.getAvailableWorkers.start_time_required'),
-        'start_time.date_format' => __('validation.getAvailableWorkers.start_time_date_format'),
-        'duration.required' => __('validation.getAvailableWorkers.duration_minutes_required'),
-        'duration.integer' => __('validation.getAvailableWorkers.duration_minutes_integer'),
+        'date.required'          => __('validation.getAvailableWorkers.date_required'),
+        'date.date_format'       => __('validation.getAvailableWorkers.date_format'),
+        'start_time.required'    => __('validation.getAvailableWorkers.start_time_required'),
+        'start_time.date_format' => __('validation.getAvailableWorkers.start_time_format'),
+        'periods_count.required' => __('validation.getAvailableWorkers.periods_count_required'),
+        'periods_count.integer'  => __('validation.getAvailableWorkers.periods_count_integer'),
+        'periods_count.min'      => __('validation.getAvailableWorkers.periods_count_min'),
     ]);
 
-    $date = $request->date;
-    $startStr = Carbon::parse($request->start_time)->format('H:i:s');
-    $endStr = Carbon::parse($request->start_time)->addMinutes((int) $request->duration)->format('H:i:s');
+    $periodHours = $service->duration->service_period_hours ?? 2;
+    $totalMinutes = $request->periods_count * $periodHours * 60;
 
-    // جلب العمال المتاحين في هذه الفترة بالتحديد
+    $startStr = Carbon::parse($request->start_time)->format('H:i:s');
+    $endStr = Carbon::parse($request->start_time)->addMinutes($totalMinutes)->format('H:i:s');
+
+    // 1. جلب العمال النشطين المتاحين بالكامل خلال هذه الفترات المتتالية (بدون أي تضارب)
     $availableWorkers = $service->workers()->where('status', 'active')
-        ->whereDoesntHave('bookings', function ($q) use ($date, $startStr, $endStr) {
-            $q->where('booking_date', $date)
+        ->whereDoesntHave('bookings', function ($q) use ($request, $startStr, $endStr) {
+            $q->where('booking_date', $request->date)
               ->whereIn('status', ['Upcoming', 'inService'])
               ->where(function ($timeQ) use ($startStr, $endStr) {
                   $timeQ->where('start_time', '<', $endStr)
@@ -254,20 +250,25 @@ $date = Carbon::parse($request->date);
               });
         })->get();
 
-    // فصل العمال مفضلين وغير مفضلين
-    $userId = auth()->id();
+    // 🌟 2. استعادة سحر العمال المفضلين (Preferred Workers) 🌟
+    $userId = auth('sanctum')->id(); // نضمن قراءة الـ ID للمستخدم الحالي بأمان
+
+    // جلب معرفات العمال الذين أتموا حجوزات سابقة ناجحة لنفس هذا العميل وفي نفس هذه الخدمة
     $preferredIds = Booking::where('customer_id', $userId)
         ->where('service_id', $service->id)
         ->where('status', 'completed')
-        ->pluck('worker_id')->toArray();
+        ->pluck('worker_id')
+        ->toArray();
 
+    // فصل العمال المتاحين إلى مجموعتين بناءً على تاريخ تعاملهم مع العميل
     $preferred = $availableWorkers->whereIn('id', $preferredIds)->values();
-    $others = $availableWorkers->whereNotIn('id', $preferredIds)->values();
+    $others    = $availableWorkers->whereNotIn('id', $preferredIds)->values();
 
     return $this->successResponse([
         'preferred_workers' => WorkerResource::collection($preferred),
-        'other_workers' => WorkerResource::collection($others),
-    ], __('messages.providers_fetch_success'));
+        'other_workers'     => WorkerResource::collection($others),
+    ], __('messages.providers_fetch_success') ?? 'تم جلب مقدمي الخدمة المتاحين بنجاح.');
 }
+
 
 }
