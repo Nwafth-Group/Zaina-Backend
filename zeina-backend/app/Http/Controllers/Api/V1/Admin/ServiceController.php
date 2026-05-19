@@ -27,10 +27,9 @@ class ServiceController extends Controller
 
    public function index()
     {
-
         $services = Service::with(['category', 'duration', 'rules', 'coverages', 'coverages.city', 'coverages.area'])->get();
         return $this->successResponse(ServiceResource::collection($services),__('messages.services_retrieved_successfully'));
-        return response()->json(['data' => $services]);
+     
     }
 
     public function show($id)
