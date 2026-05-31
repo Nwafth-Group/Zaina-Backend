@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    'community_sms' => [
+    'username' => env('COMMUNITY_SMS_USERNAME'),
+    'password' => env('COMMUNITY_SMS_PASSWORD'),
+    'sender'   => env('COMMUNITY_SMS_SENDER'),
+    'url'      => 'https://app.community-ads.net/SendSMSAPI/api/SMSSender/SendSMS',
+    ],
+
 ];

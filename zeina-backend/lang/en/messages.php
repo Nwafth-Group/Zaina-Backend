@@ -181,8 +181,10 @@ return [
     'rejection_reason_required' => 'Rejection reason is required.',
     'user_approved_success' => 'User approved successfully.',
     'user_rejected_success' => 'User rejected successfully.',
-
+    'otp_message' => 'Your verification code for Zainah app is: :otp',
+    'sms_failed_to_send' => 'Failed to send OTP. Please try again later.',
    
-    
+
+
     
 ];
