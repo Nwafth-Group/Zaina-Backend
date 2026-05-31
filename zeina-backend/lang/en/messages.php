@@ -177,6 +177,10 @@ return [
     'reason_required' => 'Rejection reason is required for the customer to be able to modify their KYC information.',
     'kyc_rejection_successfully' => 'Customer account KYC rejected successfully. Rejection reason saved.',
     'providers_fetch_successfully' => 'Providers retrieved successfully.',
+    'action_required' => 'Action is required approve or reject.',
+    'rejection_reason_required' => 'Rejection reason is required.',
+    'user_approved_success' => 'User approved successfully.',
+    'user_rejected_success' => 'User rejected successfully.',
 
    
     

@@ -26,14 +26,22 @@ Route::prefix('auth')->group(function(){
     
     Route::post('auth/logout',[AuthController::class,'logout'])->middleware('auth:sanctum');
 
+
+     Route::get('kyc/download/{media}', [UserController::class, 'downloadKycDoc'])
+            ->name('admin.kyc.download')
+            ->middleware('signed');
+   
+
 Route::middleware(['auth:sanctum' , IsAdmin::class ])->group(function(){
 
 Route::prefix('users')->group(function (){
+    Route::post('{user}/verify', [UserController::class, 'verifyUser']);
     Route::get("/", [UserController::class, "index"])->middleware('permission:users.view');
     Route::get('/{user}', [UserController::class, 'show'])->middleware('permission:users.view');
     Route::put('/{user}', [UserController::class, 'update'])->middleware('permission:users.edit');
     Route::patch('{user}/toggle-status', [UserController::class, 'toggleStatus'])->middleware('permission:users.edit');
     Route::post('/{user}/reset-password', [UserController::class, 'resetPassword'])->middleware('permission:users.edit');
+    Route::put('/{user}/verify', [UserController::class, 'verifyUser'])->middleware('permission:users.verify');
 });
 
 Route::apiResource('employees',EmployeeController::class);
@@ -55,14 +63,15 @@ Route::post('roles/{role}/duplicate',[RoleController::class, 'duplicate']);
 });
 
 // kyc routes  
-     Route::prefix('kyc')->group(function (){
+    //  Route::prefix('kyc')->group(function (){
 
-    Route::get('/pending', [KysController::class, 'index']);
-    Route::get('/{user}', [KysController::class, 'show']);
-    Route::post('/{user}/approve', [KysController::class, 'approve']);
-    Route::post('/{user}/reject', [KysController::class, 'reject']);
-    Route::get('/media/{mediaId}', [KysController::class, 'viewPrivateMedia']);
-     });
+    // Route::get('/pending', [KysController::class, 'index']);
+    // Route::get('/{user}', [KysController::class, 'show']);
+    // Route::post('/{user}/approve', [KysController::class, 'approve']);
+    // Route::post('/{user}/reject', [KysController::class, 'reject']);
+    // Route::get('/media/{mediaId}', [KysController::class, 'viewPrivateMedia']);
+    //  });
+
    
 
  Route::apiResource('categories', CategoryController::class);

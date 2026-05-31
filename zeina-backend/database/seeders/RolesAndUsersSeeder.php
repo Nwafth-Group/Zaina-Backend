@@ -20,6 +20,7 @@ class RolesAndUsersSeeder extends Seeder
         // 2. إنشاء الصلاحيات
         $permissions = [
             'users.view', 'users.create', 'users.edit', 'users.delete',
+            'users.verify', 'users.reset-password',
             'roles.view', 'roles.create', 'roles.edit', 'roles.delete',
             'bookings.view', 'bookings.edit', 'bookings.delete', 'location.edit',
             'providers.view','providers.create','providers.edit','providers.deactivate' ,'provider_eligibility.edit'

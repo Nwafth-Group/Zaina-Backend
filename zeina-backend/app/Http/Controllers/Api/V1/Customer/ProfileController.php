@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Customer;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Customer\CompleteProfileRequest;
 use App\Http\Requests\Api\V1\Customer\DeleteAccountRequest;
+use App\Http\Resources\Api\V1\User\CustomerUserResource;
 use App\Http\Resources\Api\V1\User\UserResource;
 use App\Service\MediaService;
 use App\Traits\ApiResponseTrait;
@@ -26,7 +27,7 @@ class ProfileController extends Controller
     {   
         $user = auth('sanctum')->user();
         return $this->successResponse(
-            new UserResource($user),
+            new CustomerUserResource($user),
             __('messages.profile_fetched_successfully')
         );
     }
@@ -56,7 +57,7 @@ class ProfileController extends Controller
         }
 
         return $this->successResponse(
-            new UserResource($user),
+            new CustomerUserResource($user),
             __('messages.profile_updated_successfully')
         );
     }
