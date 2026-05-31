@@ -41,7 +41,7 @@ Route::prefix('users')->group(function (){
     Route::put('/{user}', [UserController::class, 'update'])->middleware('permission:users.edit');
     Route::patch('{user}/toggle-status', [UserController::class, 'toggleStatus'])->middleware('permission:users.edit');
     Route::post('/{user}/reset-password', [UserController::class, 'resetPassword'])->middleware('permission:users.edit');
-    Route::put('/{user}/verify', [UserController::class, 'verifyUser'])->middleware('permission:users.verify');
+    Route::put('/{user}/verify', [UserController::class, 'verifyUser']);
 });
 
 Route::apiResource('employees',EmployeeController::class);
