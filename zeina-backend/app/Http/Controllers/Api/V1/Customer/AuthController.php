@@ -12,7 +12,7 @@ use App\Http\Requests\Api\V1\Customer\VerifyOtpRequest;
 use App\Http\Resources\Api\V1\User\CustomerUserResource;
 use App\Http\Resources\Api\V1\User\UserResource;
 use App\Models\User;
-use App\Services\SmsService;
+use App\Service\SmsService;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
