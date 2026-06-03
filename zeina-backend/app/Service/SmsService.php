@@ -45,7 +45,6 @@ class SmsService
             if ($response->successful() && $response->body() == '0') { //
                 return true;
             }
-
             // تسجيل الخطأ لو السيرفر رجع كود خطأ مثل -5 أو -1
             Log::error("Community SMS Failed. Response Code: " . $response->body() . " for numbers: " . $mobileNumber); // [cite: 435]
             return false;

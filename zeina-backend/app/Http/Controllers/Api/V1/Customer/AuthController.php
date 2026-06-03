@@ -31,17 +31,13 @@ class AuthController extends Controller
     if (RateLimiter::tooManyAttempts('send_otp_'.$mobile, 1)) {
         return $this->errorResponse(__('messages.too_many_attempts'));
     }
-
     // توليد الكود
     $otp = app()->environment('local') ? '123456' : rand(100000, 999999);
-    
     // حفظ الكود في الكاش لمدة 10 دقائق
     Cache::put('auth_otp_'.$mobile, $otp, now()->addMinutes(10));
     RateLimiter::hit('send_otp_'.$mobile, 60);
-
     // صياغة نص الرسالة
     $message = __('messages.otp_message', ['otp' => $otp]);
-
     // استدعاء الخدمة لإرسال الرسالة الحقيقية بالسيرفر
     $smsSent = $smsService->send($mobile, $message);
 
