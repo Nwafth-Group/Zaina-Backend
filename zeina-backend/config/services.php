@@ -40,6 +40,7 @@ return [
     'password' => env('COMMUNITY_SMS_PASSWORD'),
     'sender'   => env('COMMUNITY_SMS_SENDER'),
     'url'      => 'https://app.community-ads.net/SendSMSAPI/api/SMSSender/SendSMS',
+    'sandbox_mode' => env('SMS_SANDBOX_MODE', false),
     ],
 
 ];

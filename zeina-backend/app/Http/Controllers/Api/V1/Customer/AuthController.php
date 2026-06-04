@@ -23,7 +23,7 @@ class AuthController extends Controller
 {
     use ApiResponseTrait;
 
-  public function sendOtp(SendOtpRequest $request, SmsService $smsService)
+ public function sendOtp(SendOtpRequest $request, SmsService $smsService)
 {
     $mobile = $request->validated()['mobile_number'];
 
@@ -31,28 +31,38 @@ class AuthController extends Controller
     if (RateLimiter::tooManyAttempts('send_otp_'.$mobile, 1)) {
         return $this->errorResponse(__('messages.too_many_attempts'));
     }
-    // توليد الكود
-    $otp = app()->environment('local') ? '123456' : rand(100000, 999999);
-    // حفظ الكود في الكاش لمدة 10 دقائق
+
+    // جلب وضع التجربة من الـ Config مباشرة لمنع الخربطة
+    $isSandbox = config('services.community_sms.sandbox_mode');
+
+    // توليد الكود بناءً على وضع التجربة
+    $otp = $isSandbox ? '123456' : rand(100000, 999999);
+    
+    // حفظ الكود في الكاش لمدة 10 دقائق وسجل محاولة الـ RateLimit
     Cache::put('auth_otp_'.$mobile, $otp, now()->addMinutes(10));
     RateLimiter::hit('send_otp_'.$mobile, 60);
+
     // صياغة نص الرسالة
     $message = __('messages.otp_message', ['otp' => $otp]);
-    // استدعاء الخدمة لإرسال الرسالة الحقيقية بالسيرفر
+
+    // استدعاء خدمة الـ SMS
     $smsSent = $smsService->send($mobile, $message);
 
-    if (!$smsSent && !app()->environment('local')) {
+    // إذا فشل الإرسال الحقيقي (ولسنا في وضع التجربة) رجع خطأ
+    if (!$smsSent && !$isSandbox) {
         return $this->errorResponse(__('messages.sms_failed_to_send'), 500);
     }
 
-    // أفضل طريقة للـ Response: نرجع الـ OTP فقط في الـ local عشان الـ testing
+    // نرجع الـ OTP بالـ Response فقط إذا كنا بوضع التجربة (Sandbox) لتسهيل الفحص وأمان الـ Production
     $responseData = [];
-    if (app()->environment('local')) {
+    if ($isSandbox) {
         $responseData['otp'] = $otp; 
     }
 
     return $this->successResponse($responseData, __('messages.otp_sent'));
 }
+
+
 
         
     public function verifyOtp(VerifyOtpRequest $request)
