@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\Admin\AuthController;
 use App\Http\Controllers\Api\V1\Admin\CategoryController;
 use App\Http\Controllers\Api\V1\Admin\CityController;
 use App\Http\Controllers\Api\V1\Admin\CountryController;
+use App\Http\Controllers\Api\V1\Admin\CouponController;
 use App\Http\Controllers\Api\V1\Admin\EmployeeController;
 use App\Http\Controllers\Api\V1\Admin\KysController;
 use App\Http\Controllers\Api\V1\Admin\ProviderController;
@@ -13,7 +14,6 @@ use App\Http\Controllers\Api\V1\Admin\ServiceController;
 use App\Http\Controllers\Api\V1\Admin\ServicePriceController;
 use App\Http\Controllers\Api\V1\Admin\UserController;
 use App\Http\Controllers\Api\V1\Admin\WorkerController;
-
 use App\Http\Middleware\IsAdmin;
 use App\Models\Role;
 use Illuminate\Support\Facades\Route;
@@ -93,6 +93,11 @@ Route::post('roles/{role}/duplicate',[RoleController::class, 'duplicate']);
 //     });
   
 });
+
+
+//coupon routes 
+
+Route::apiResource('coupons', CouponController::class);
 
 
 

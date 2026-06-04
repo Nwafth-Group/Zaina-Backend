@@ -19,6 +19,7 @@ return new class extends Migration
             $table->foreignId('address_id')->constrained('customer_addresses');
             $table->foreignId('provider_id')->nullable()->constrained('providers');// Nullable: لأن الحجز في البداية يكون بدون مزود، ثم يقوم النظام أو الموظف بتعيينه
             $table->foreignId('worker_id')->nullable()->constrained('workers');
+            $table->foreignId('coupon_id')->nullable()->constrained('coupons'); // ربط الحجز بالكوبون المستخدم (إن وجد)
             $table->date('booking_date'); // تاريخ الحجز
             $table->time('start_time');   // وقت بداية الحجز
             $table->time('end_time');     // وقت نهاية الحجز

@@ -115,4 +115,10 @@ public function getCustomerPrice()
    public function workers(){
     return $this->belongsToMany(Worker::class, 'service_workers');
    }
+
+   public function coupons(){
+    return $this->belongsToMany(Coupon::class, 'coupon_services');
+   }
+
+   
 }

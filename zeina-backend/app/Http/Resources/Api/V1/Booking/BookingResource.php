@@ -17,9 +17,12 @@ class BookingResource extends JsonResource
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array
-    {
+    {  
+        $this->load(['service.rules', 'coupon']); // تأكد من تحميل قواعد الخدمة والكوبون لتوفير المعلومات اللازمة في الـ UI
         $lang = app()->getLocale();
         $serviceName = $lang == 'ar' ? $this->service->name_ar : $this->service->name_en;
+
+
 
         // حساب المدة لتطابق التصميم (مثال: 3 Hours)
         $hours = floor($this->duration_minutes / 60);
@@ -27,36 +30,40 @@ class BookingResource extends JsonResource
 
         // جلب صورة الخدمة (الأيقونة أو الغلاف حسب المتوفر)
         $media = $this->service->media->where('collection', 'service/icon')->first();
-            //   ?? $this->service->media->where('collection', 'service/cover')->first();
 
         return [
             'id' => $this->id,
             'booking_ref' => $this->booking_ref,
             'status' => $this->status, // Upcoming, inService, completed, cancelled
+            
             // بيانات الخدمة الأساسية
             'service_name' => $serviceName,
             'image' => $media ? (new MediaResource($media))->getFileUrl() : null,
-            'price' => (float) $this->total_amount,
+            'price' => (float) $this->total_amount, // السعر الصافي بعد الخصم
             'currency' => 'EGP',
             'duration' => $durationText,
+
             
             // 🌟 توقيتات وتواريخ مجهزة للـ UI 🌟
-            // للمربع الزهري في شاشة الـ List
-            'date_day' => Carbon::parse($this->booking_date)->format('d'), // "10"
-            'date_month' => Carbon::parse($this->booking_date)->format('M'), // "Nov"
+            'date_day' => Carbon::parse($this->booking_date)->format('d'), 
+            'date_month' => Carbon::parse($this->booking_date)->format('M'), 
             
-            // لشاشة التفاصيل (Booking Details)
-            'full_date' => Carbon::parse($this->booking_date)->format('d M, Y'), // "20 NOV, 2026"
+            'full_date' => Carbon::parse($this->booking_date)->format('d M, Y'), 
             'time_slot' => Carbon::parse($this->start_time)->format('h:i A') . ' - ' . Carbon::parse($this->end_time)->format('h:i A'),
             
-            // 🌟 العلاقات (تحمل فقط إذا طلبناها في الـ Show) 🌟
+            // 🌟 العلاقات 🌟
             'address' => new AddressResource($this->whenLoaded('address')),
             'worker' => new WorkerResource($this->whenLoaded('worker')),
+            
+            // 🌟 تحديث المصفوفة المالية لتشمل الكوبون والخصم بالتفصيل 🌟
             'price_summary' => [
-                'subtotal' => (float) $this->price_subtotal,
+                'subtotal' => (float) $this->price_subtotal, // السعر الأساسي قبل الخصم
                 'tax' => (float) $this->tax_amount,
-                'discount' => (float) $this->discount_amount,
-                'total' => (float) $this->total_amount,
+                'has_coupon' => !is_null($this->coupon_id), // يخبر الفرونت إند بوجود كوبون لتعديل الـ UI
+                'coupon_id' => $this->coupon_id, // ID الكوبون المطبق (إن وجد)
+                'coupon_code' => $this->relationLoaded('coupon') && $this->coupon ? $this->coupon->code : null, // كود الكوبون المطبق
+                'discount' => (float) $this->discount_amount, // قيمة الخصم المقتطعة
+                'total' => (float) $this->total_amount, // السعر النهائي والأساسي الجديد الي صار بعد الخصم
             ],
 
             // الملاحظات الهامة بناءً على قواعد الخدمة

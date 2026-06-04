@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\Customer\AddressController;
 use App\Http\Controllers\Api\V1\Customer\AuthController;
 use App\Http\Controllers\Api\V1\Customer\BookingController;
 use App\Http\Controllers\Api\V1\Customer\CategoryController;
+use App\Http\Controllers\Api\V1\Customer\CouponController;
 use App\Http\Controllers\Api\V1\Customer\HomeController;
 use App\Http\Controllers\Api\V1\Customer\KycController;
 use App\Http\Controllers\Api\V1\Customer\LocationController;
@@ -86,6 +87,8 @@ Route::prefix('customer')->group(function () {
        //Points
        Route::get('points/summary', [PointsController::class, 'summary']);
        Route::get('points/history', [PointsController::class, 'history']);
+
+       Route::apiResource('coupons', CouponController::class)->only(['index', 'show']);
 
     });
 

@@ -183,6 +183,18 @@ return [
     'user_rejected_success' => 'User rejected successfully.',
     'otp_message' => 'Your verification code for Zainah app is: :otp',
     'sms_failed_to_send' => 'Failed to send OTP. Please try again later.',
+    'coupon_created_successfully' => 'Coupon created successfully and its parameters set.',
+    'coupon_not_found_or_expired' => 'Coupon not found or expired.',
+    'coupon_details_retrieved' => 'Coupon details retrieved successfully.',
+    'coupons_retrieved' => 'Available coupons retrieved successfully.',
+    'invalid_coupon' => 'Invalid coupon code. Please check and try again.',
+    'invalid_or_expired_coupon' => 'Invalid or expired coupon. Please check the code and try again.',
+    'coupon_not_for_you'=> 'Sorry, this coupon is not valid for your account.',
+    'coupon_usage_limit_reached' => 'Sorry, this coupon has reached its maximum usage limit.',
+    'user_coupon_usage_limit_reached' => 'Sorry, you have already used this coupon the maximum number of times allowed.',
+    'coupon_fully_consumed' => 'Sorry, this coupon has been fully consumed and is no longer available.',
+    'coupon_does_not_include_service' => 'Sorry, this coupon does not include the selected service.',
+    'coupon_min_amount_not_met' => 'Sorry, the minimum booking amount for this coupon is :min_amount. Please add more services to your booking to use this coupon.',
    
 
 

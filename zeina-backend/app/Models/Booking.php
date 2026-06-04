@@ -12,7 +12,7 @@ class Booking extends Model
   protected $fillable = [
         'booking_ref', 'customer_id', 'service_id', 'address_id', 'provider_id',
         'scheduled_at', 'duration_minutes', 'number_of_workers',
-        'price_subtotal', 'tax_amount', 'discount_amount', 'total_amount',
+        'price_subtotal', 'tax_amount', 'discount_amount', 'total_amount', 'coupon_id',
         'status', 'payment_status', 'customer_notes' , 'start_time', 'end_time', 'booking_date' , 'worker_id'
     ];
 
@@ -59,6 +59,11 @@ class Booking extends Model
     public function histories()
     {
         return $this->hasMany(BookingHistory::class);
+    }
+
+    public function coupon()
+    {
+        return $this->belongsTo(Coupon::class);
     }
 
 }
