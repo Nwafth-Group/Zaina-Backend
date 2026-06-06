@@ -62,6 +62,8 @@ class ServiceController extends Controller
         return $this->successResponse(new ServiceResource($service),__('messages.service_details_retrieved'));
     }
 
+
+
 public function getShiftsForDate(GetShiftsForDateRequest $request, Service $service)
 {
     $date = Carbon::parse($request->date);
@@ -71,13 +73,19 @@ public function getShiftsForDate(GetShiftsForDateRequest $request, Service $serv
     // جلب طول الكتلة الثابتة للخدمة (بالدقائق)
     $periodMinutes = ($service->duration->service_period_hours ?? 2) * 60;
 
-    $workerIds = $service->workers()->where('status', 'active')->pluck('workers.id');
+    // 🌟 التعديل الجغرافي: جلب عمال الخدمة النشطين والذين يغطون منطقة العميل الحالية فقط
+    $workerQuery = $service->workers()->where('status', 'active');    
+    $workerIds = $workerQuery->pluck('workers.id');
+
+    // جلب الحجوزات القائمة لهؤلاء العمال في هذا التاريخ
     $existingBookings = Booking::whereIn('worker_id', $workerIds)
         ->where('booking_date', $date->format('Y-m-d'))
         ->whereIn('status', ['Upcoming', 'inService'])
         ->get(['worker_id', 'start_time', 'end_time']);
 
     $shiftsData = [];
+    $isToday = $date->isToday(); // 🌟 فحص هل التاريخ المطلوب هو اليوم؟
+    $now = now(); // الوقت الحالي الفعلي للسيرفر
 
     foreach ($schedules as $schedule) {
       
@@ -88,10 +96,22 @@ public function getShiftsForDate(GetShiftsForDateRequest $request, Service $serv
         $fixedBlocks = [];
         $currentBlockStart = $shiftStart->copy();
 
-        // القفز بمقدار الكتلة الثابتة (مثلاً كل ساعتين تماماً)
+        // القفز بمقدار الكتلة الثابتة 
         while ($currentBlockStart->copy()->addMinutes($periodMinutes)->lte($shiftEnd)) {
             $blockEnd = $currentBlockStart->copy()->addMinutes($periodMinutes);
             
+            // 🌟 التعديل الحرج: إذا كان التاريخ هو اليوم، نتخطى الكتل التي مرت في الماضي 🌟
+            // نقوم بدمج تاريخ اليوم مع وقت نهاية الكتلة لنقارنه مع الوقت الحالي للسيرفر بالدقيقة
+            if ($isToday) {
+                $blockEndDateTime = Carbon::parse($date->format('Y-m-d') . ' ' . $blockEnd->format('H:i:s'));
+                
+                if ($blockEndDateTime->lte($now)) {
+                    // الانتقال للكتلة التالية مباشرة لأن هذه الكتلة انتهت في الماضي
+                    $currentBlockStart->addMinutes($periodMinutes);
+                    continue;
+                }
+            }
+
             $startStr = $currentBlockStart->format('H:i:s');
             $endStr = $blockEnd->format('H:i:s');
             
@@ -117,7 +137,7 @@ public function getShiftsForDate(GetShiftsForDateRequest $request, Service $serv
                 ];
             }
 
-            // 🌟 القفزة الذكية: الانتقال لبداية الكتلة التالية مباشرة لمنع التداخل
+            // الانتقال لبداية الكتلة التالية مباشرة لمنع التداخل
             $currentBlockStart->addMinutes($periodMinutes);
         }
 
@@ -125,7 +145,7 @@ public function getShiftsForDate(GetShiftsForDateRequest $request, Service $serv
             $shiftsData[] = [
                 'id' => $schedule->id,
                 'dropdown_label' => $dropdownLabel,
-                'available_blocks' => $fixedBlocks // تعرض كـ بطاقات (Cards) للمستخدم ليختار منها
+                'available_blocks' => $fixedBlocks 
             ];
         }
     }
