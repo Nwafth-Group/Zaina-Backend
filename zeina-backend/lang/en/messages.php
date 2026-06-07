@@ -104,7 +104,7 @@ return [
     'worker_toggle_success' => 'Worker status changed to :status successfully.',
 
     'service_details_retrieved' => 'Service details retrieved successfully.',
-    'service_not_available' => 'This service is currently not available.',
+    'service_not_available' => 'This service is currently not available in your location.',
 
     'shifts_retrieved' => 'Shifts retrieved successfully.',
    

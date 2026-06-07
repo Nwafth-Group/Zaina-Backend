@@ -106,7 +106,7 @@ return [
     'worker_toggle_success' => 'تم تغيير حالة العامل إلى :status بنجاح.',
 
     'service_details_retrieved' => 'تم جلب تفاصيل الخدمة بنجاح.',
-    'service_not_available' => 'هذه الخدمة غير متاحة حالياً.',
+    'service_not_available' => 'هذه الخدمة غير متاحة حالياً في موقعك.',
 
     'shifts_retrieved' => 'تم جلب الشفتات بنجاح.',
  
