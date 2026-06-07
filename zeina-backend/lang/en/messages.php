@@ -198,6 +198,7 @@ return [
     'coupon_min_amount_not_met' => 'Sorry, the minimum booking amount for this coupon is :min_amount. Please add more services to your booking to use this coupon.',
     'invalid_worker_for_service' => 'Sorry, the selected worker is not valid for this service.',
     'worker_already_booked' => 'Sorry, the selected worker is already booked for the requested time.',
+    'booking_in_progress' => 'You have an ongoing booking process. Please wait before initiating a new one.',
 
 
     

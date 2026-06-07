@@ -22,6 +22,7 @@ use App\Models\Worker;
 use App\Traits\ApiResponseTrait;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class BookingController extends Controller
@@ -75,6 +76,12 @@ class BookingController extends Controller
 public function store(StoreBookingRequest $request) 
 {
     $user = auth()->user();
+    $lockKey = 'booking_lock_user_' . $user->id . '_service_' . $request->service_id;
+
+    $lock = Cache::lock($lockKey, 10); // قفل لمدة 10 ثواني لمنع الحجز المتزامن
+    if (!$lock->get()) {
+        return $this->errorResponse(__('messages.booking_in_progress'), 429);
+    }
     $address = CustomerAddress::with('area')
         ->where('user_id', $user->id)
         ->where('is_active', true)
