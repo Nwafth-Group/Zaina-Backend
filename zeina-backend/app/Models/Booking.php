@@ -35,11 +35,12 @@ class Booking extends Model
         return $this->belongsTo(Service::class);
     }
 
-    public function workers()
-    {
-        return $this->belongsToMany(Worker::class, 'booking_assignments', 'booking_id', 'worker_id');
-    }
-
+   public function workers()
+{
+    return $this->belongsToMany(Worker::class, 'booking_assignments', 'booking_id', 'worker_id')
+                ->wherePivot('status', 'active')
+                ->withTimestamps();
+}
     public function address()
     {
         return $this->belongsTo(CustomerAddress::class, 'address_id');

@@ -19,6 +19,11 @@ class BookingAssignment extends Model
         return $this->belongsTo(Booking::class);
     }
 
+    public function worker()
+    {
+        return $this->belongsTo(Worker::class);
+    }
+
     
     // الموظف (الـ Operations) الذي قام بهذا التعيين
     public function assignedBy()

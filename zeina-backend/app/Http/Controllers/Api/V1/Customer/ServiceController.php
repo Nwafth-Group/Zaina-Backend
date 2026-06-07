@@ -189,25 +189,30 @@ public function getAvailableWorkers(Request $request, Service $service)
     $startStr = Carbon::parse($request->start_time)->format('H:i:s');
     $endStr = Carbon::parse($request->start_time)->addMinutes($totalMinutes)->format('H:i:s');
 
-    // 🌟 1. التعديل الجوهري: جلب العمال النشطين الذين "ليس لديهم" تخصيص حجز (Assignment) نشط يتداخل مع هذه الفترة 🌟
-    $availableWorkers = $service->workers()->where('status', 'active')
-        ->whereDoesntHave('workers', function ($q) use ($request, $startStr, $endStr) {
-            $q->where('status', 'active') // التخصيص فعال في جدول الـ booking_assignments
-              ->whereHas('booking', function ($bookingQ) use ($request, $startStr, $endStr) {
-                  $bookingQ->where('booking_date', $request->date)
-                           ->whereIn('status', ['Upcoming', 'inService']) // الحجوزات القائمة فقط
-                           ->where(function ($timeQ) use ($startStr, $endStr) {
-                               $timeQ->where('start_time', '<', $endStr)
-                                     ->where('end_time', '>', $startStr);
-                           });
-              });
-        })->get();
+    // 🌟 1. جلب معرفات (IDs) العمال المشغولين في هذه الفترة من جدول الـ Assignments مباشرة 🌟
+    $busyWorkerIds = BookingAssignment::where('status', 'active')
+        ->whereHas('booking', function ($bookingQ) use ($request, $startStr, $endStr) {
+            $bookingQ->where('booking_date', $request->date)
+                     ->whereIn('status', ['Upcoming', 'inService']) // الحجوزات القائمة فقط
+                     ->where(function ($timeQ) use ($startStr, $endStr) {
+                         $timeQ->where('start_time', '<', $endStr)
+                               ->where('end_time', '>', $startStr);
+                     });
+        })
+        ->pluck('worker_id')
+        ->unique()
+        ->toArray();
 
-    // 🌟 2. استعادة سحر العمال المفضلين (Preferred Workers) 🌟
+    // 🌟 2. جلب العمال النشطين التابعين للخدمة مع استثناء المشغولين عبر whereNotIn 🌟
+    $availableWorkers = $service->workers()
+        ->where('status', 'active')
+        ->whereNotIn('workers.id', $busyWorkerIds) // استثناء طاقم العمال المشغولين بالكامل
+        ->get();
+
+    // 🌟 3. استعادة سحر العمال المفضلين (Preferred Workers) 🌟
     $userId = auth('sanctum')->id(); 
 
     // جلب معرفات العمال الذين أتموا حجوزات سابقة ناجحة لنفس هذا العميل وفي نفس هذه الخدمة
-    // هنا نبحث أيضاً في جدول الـ assignments لضمان دقة جلب العمال التاريخية
     $preferredIds = BookingAssignment::whereHas('booking', function($q) use ($userId, $service) {
             $q->where('customer_id', $userId)
               ->where('service_id', $service->id)
@@ -226,8 +231,6 @@ public function getAvailableWorkers(Request $request, Service $service)
         'other_workers'     => WorkerResource::collection($others),
     ], __('messages.providers_fetch_success') ?? 'تم جلب مقدمي الخدمة المتاحين بنجاح.');
 }
-
-
 
 
 }

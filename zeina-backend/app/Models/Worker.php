@@ -22,9 +22,17 @@ class Worker extends Model
         return $this->belongsToMany(Service::class,'service_workers');
     } 
 
+    public function assignments()
+{
+    // العامل لديه العديد من التخصيصات في الجدول الوسيط
+    return $this->hasMany(BookingAssignment::class, 'worker_id');
+}
+
    public function bookings()
     {
-        return $this->hasMany(Booking::class, 'worker_id');
+        return $this->belongsToMany(Booking::class, 'booking_assignments', 'worker_id', 'booking_id')
+                    ->wherePivot('status', 'active') // فقط الحجزات النشطة
+                    ->withTimestamps();
     }
     public function media()
     {
