@@ -56,7 +56,7 @@ class BookingController extends Controller
     // 2. جلب تفاصيل حجز معين (شاشة Booking Details)
     public function show(Booking $booking)
     {
-        $booking->load(['service.media', 'service.rules', 'address.city', 'address.area', 'worker']);
+        $booking->load(['service.media', 'service.rules', 'address.city', 'address.area', 'workers']);
         
         // حماية: التأكد أن الحجز يتبع للمستخدم الحالي
         // if ($booking->customer_id !== auth()->id()) {
@@ -72,43 +72,64 @@ class BookingController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-  public function store(StoreBookingRequest $request) 
+public function store(StoreBookingRequest $request) 
 {
     $user = auth()->user();
+    $address = CustomerAddress::with('area')
+        ->where('user_id', $user->id)
+        ->where('is_active', true)
+        ->findOrFail($request->address_id);
+
     $service = Service::with('duration')->findOrFail($request->service_id);
     
     if ($user->wallet_balance < 0) {
         return $this->errorResponse(__('messages.unpaid_penalties', ['amount' => abs($user->wallet_balance)]), 402);
     }
-
     // 2. حساب وقت البداية والنهاية الكلي بناءً على عدد الكتل الثابتة
     $periodHours = $service->duration->service_period_hours ?? 2; 
     $totalMinutes = $request->periods_count * $periodHours * 60;
 
     $start = Carbon::parse($request->start_time);
     $end = $start->copy()->addMinutes($totalMinutes);
+    
+    $bookingDate = $request->date;
+    $startStr = $start->format('H:i:s');
+    $endStr = $end->format('H:i:s');
+    $dayName = strtolower($date = Carbon::parse($bookingDate)->format('l'));
 
-    // 3. فحص أمان متزامن (Pessimistic Lock) لمنع الـ Race Condition
-    $isAnyWorkerBusy = Booking::whereIn('worker_id', $request->worker_ids)
-        ->where('booking_date', $request->date)
-        ->whereIn('status', ['Upcoming', 'inService'])
-        ->where(function ($query) use ($start, $end) {
-            $query->where('start_time', '<', $end->format('H:i:s'))
-                  ->where('end_time', '>', $start->format('H:i:s'));
-        })
-        ->lockForUpdate() 
-        ->exists();
-
-    if ($isAnyWorkerBusy) {
-        return $this->errorResponse(__('messages.worker_busy') ?? 'عذراً، أحد العمال المختارين تم حجزه في هذا الوقت قبل قليل.', 422);
-    }
-
-    // 4. حساب الأسعار بناءً على النطاق الجغرافي لعنوان العميل
-    $address = CustomerAddress::with('area')->findOrFail($request->address_id);
+    // 🌟 3. حماية ثغرة العمال (Comprehensive Worker Validation) 🌟
     $areaId = $address->area_id;
     $cityId = $address->area->city_id;
-    $today = now()->toDateString();
+    $workerIds = $request->worker_ids;
 
+    foreach ($workerIds as $workerId) {
+        // أ. فحص هل العامل مسجل في هذه الخدمة ونشط؟
+        $workerExists = $service->workers()
+            ->where('workers.id', $workerId)
+            ->where('workers.status', 'active')
+            ->exists();
+
+        if (!$workerExists) {
+            return $this->errorResponse(__('messages.invalid_worker_for_service') ?? 'عذراً، أحد العمال المختارين غير مدرج في تقديم هذه الخدمة.', 422);
+        }
+
+        // ج. فحص التداخل والجدولة الزمنية (هل العامل مشغول بحجز آخر متقاطع؟)
+        $hasConflict = Booking::where('worker_id', $workerId)
+            ->where('booking_date', $bookingDate)
+            ->whereIn('status', ['Upcoming', 'inService'])
+            ->where(function ($query) use ($startStr, $endStr) {
+                $query->where('start_time', '<', $endStr)
+                      ->where('end_time', '>', $startStr);
+            })
+            ->exists();
+
+        if ($hasConflict) {
+            return $this->errorResponse(__('messages.worker_already_booked') ?? 'عذراً، أحد العمال المختارين تم حجزه في هذا الوقت قبل قليل.', 422);
+        }
+    }
+
+    // 4. حساب الأسعار بناءً على النطاق الجغرافي لعنوان العميل الموثق
+    $today = now()->toDateString();
     $servicePrice = ServicePrice::where('service_id', $request->service_id)
         ->where(function ($query) use ($areaId, $cityId) {
             $query->where(function ($q) use ($areaId) {
@@ -130,20 +151,18 @@ class BookingController extends Controller
         return $this->errorResponse(__('messages.service_not_available'), 400);
     }
 
-    // 5. معادلة الحسبة الأساسية للتسعير الجذري 
+    // 5. معادلة الحسبة الأساسية للتسعير 
     $pricePerPeriod = (float) $servicePrice->price_per_service_period; 
-    $workersCount = count($request->worker_ids);
+    $workersCount = count($workerIds);
     $periodsCount = (int) $request->periods_count;
-
     $subtotal = $pricePerPeriod * $periodsCount * $workersCount;
     
-    // 🌟 خطوة الكوبون الجديدة: حساب الخصومات ديناميكياً 🌟
+    // خطوة الكوبون وحساب الخصومات ديناميكياً
     $discountAmount = 0;
     $coupon = null;
 
     if ($request->filled('coupon_code')) {
         $now = now();
-        // جلب الكوبون والتحقق من صلاحيته ونشاطه زمنياً
         $coupon = Coupon::where('code', $request->coupon_code)
             ->where('status', 'active')
             ->where('start_date', '<=', $now)
@@ -151,57 +170,49 @@ class BookingController extends Controller
             ->first();
 
         if (!$coupon) {
-            return $this->errorResponse(__('messages.invalid_or_expired_coupon') ?? 'كود الكوبون غير صحيح أو منتهي الصلاحية.', 422);
+            return $this->errorResponse(__('messages.invalid_or_expired_coupon'), 422);
         }
 
-        // أ. فحص العميل (User Scope) وعمّا إذا تخطى الحد الشخصي للاستخدام
         if (!$coupon->is_for_all_users) {
             $isUserEligible = $coupon->users()->where('user_id', $user->id)->exists();
             if (!$isUserEligible) {
-                return $this->errorResponse(__('messages.coupon_not_for_you') ?? 'هذا الكوبون غير مخصص لحسابك الشخصي.', 422);
+                return $this->errorResponse(__('messages.coupon_not_for_you'), 422);
             }
         }
 
-        // ب. فحص كم مرة استخدم هذا العميل تحديداً هذا الكوبون في قاعدة البيانات
         $userUsageCount = Booking::where('customer_id', $user->id)
             ->where('coupon_id', $coupon->id)
             ->whereIn('status', ['Upcoming', 'inService', 'completed'])
             ->count();
 
         if ($userUsageCount >= $coupon->user_usage_limit) {
-            return $this->errorResponse(__('messages.coupon_usage_limit_reached') ?? 'لقد استنفدت الحد المسموح لك لاستخدام هذا الكوبون.', 422);
+            return $this->errorResponse(__('messages.coupon_usage_limit_reached'), 422);
         }
 
-        // ج. فحص إجمالي عدد مرات الاستخدام الكلي للنظام
         if ($coupon->usage_limit && $coupon->used_count >= $coupon->usage_limit) {
-            return $this->errorResponse(__('messages.coupon_fully_consumed') ?? 'عذراً، انتهت صلاحية استخدام هذا الكوبون بالكامل.', 422);
+            return $this->errorResponse(__('messages.coupon_fully_consumed'), 422);
         }
 
-        // د. فحص الخدمة المشمولة (Service Scope)
         if (!$coupon->is_for_all_services) {
             $isServiceEligible = $coupon->services()->where('service_id', $service->id)->exists();
             if (!$isServiceEligible) {
-                return $this->errorResponse(__('messages.coupon_does_not_include_service') ?? 'هذا الكوبون لا يشمل الخدمة المطلوبة.', 422);
+                return $this->errorResponse(__('messages.coupon_does_not_include_service'), 422);
             }
         }
 
-        // هـ. فحص الحد الأدنى لقيمة الحجز (Min Booking Amount)
         if ($subtotal < $coupon->min_booking_amount) {
-            return $this->errorResponse(__('messages.coupon_min_amount_not_met', ['amount' => $coupon->min_booking_amount]) ?? 'قيمة الحجز أقل من الحد الأدنى لتفعيل هذا الكوبون.', 422);
+            return $this->errorResponse(__('messages.coupon_min_amount_not_met', ['amount' => $coupon->min_booking_amount]), 422);
         }
 
-        // و. حساب قيمة الخصم بناءً على نوع الكوبون
         if ($coupon->type === 'fixed') {
             $discountAmount = (float) $coupon->value;
         } elseif ($coupon->type === 'percentage') {
             $discountAmount = $subtotal * ($coupon->value / 100);
-            // تطبيق سقف الخصم الأعلى إن وجد
             if ($coupon->max_discount && $discountAmount > $coupon->max_discount) {
                 $discountAmount = (float) $coupon->max_discount;
             }
         }
 
-        // حماية: التأكد أن الخصم لا يتجاوز قيمة الحجز الإجمالية
         if ($discountAmount > $subtotal) {
             $discountAmount = $subtotal;
         }
@@ -210,58 +221,67 @@ class BookingController extends Controller
     $tax = 0; 
     $total = ($subtotal - $discountAmount) + $tax;
 
-    // 6. فحص الرصيد الكافي قبل إتمام الحجز
     if ($user->wallet_balance < $total) {
-        return $this->errorResponse(__('messages.insufficient_balance') ?? 'عذراً، رصيد المحفظة غير كافٍ.', 402);
+        return $this->errorResponse(__('messages.insufficient_balance'), 402);
     }
 
+    // تفعيل الـ Pessimistic Lock هنا لحماية خطوة الحجز النهائية للعمال المجمعين ككتلة واحدة
     DB::beginTransaction();
     try {
-        // 7. إنشاء الحجز الرئيسي في جدول bookings متضمناً الخصومات والكوبون المطبق
+        // إعادة فحص الحماية بقفل Lock ذكي داخل الـ Transaction لضمان عدم حدوث تداخل أجزاء من الثانية
+        Booking::whereIn('worker_id', $workerIds)
+            ->where('booking_date', $bookingDate)
+            ->whereIn('status', ['Upcoming', 'inService'])
+            ->where(function ($query) use ($startStr, $endStr) {
+                $query->where('start_time', '<', $endStr)
+                      ->where('end_time', '>', $startStr);
+            })
+            ->lockForUpdate()
+            ->exists();
+
+        // 7. إنشاء الحجز الرئيسي في جدول bookings
         $booking = Booking::create([
             'booking_ref'      => 'HC-' . rand(100000, 999999),
             'customer_id'      => $user->id,
             'service_id'       => $request->service_id,
             'address_id'       => $request->address_id,
-            'worker_id'        => $request->worker_ids[0], 
-            'coupon_id'        => $coupon ? $coupon->id : null, // 🌟 تخزين الكوبون المطبق كمرجع
-            'booking_date'     => $request->date,
-            'start_time'       => $start->format('H:i:s'),
-            'end_time'         => $end->format('H:i:s'),
+            // 'worker_id'        => $workerIds[0], 
+            'coupon_id'        => $coupon ? $coupon->id : null,
+            'booking_date'     => $bookingDate,
+            'start_time'       => $startStr,
+            'end_time'         => $endStr,
             'duration_minutes' => $totalMinutes,
             'price_subtotal'   => $subtotal,
             'tax_amount'       => $tax,
-            'discount_amount'  => $discountAmount, // 🌟 تسجيل قيمة الخصم الفعلي
+            'discount_amount'  => $discountAmount,
             'total_amount'     => $total,
             'status'           => 'Upcoming',
             'payment_status'   => 'paid', 
         ]);
 
         // 8. تسجيل جميع العمال في جدول الـ BookingAssignments
-        foreach ($request->worker_ids as $workerId) {
+        foreach ($workerIds as $workerId) {
             BookingAssignment::create([
                 'booking_id' => $booking->id,
                 'worker_id'  => $workerId,
                 'status'     => 'active',
+                'assigned_at' => now(),
             ]);
         }
 
-        // 9. إذا تم استخدام كوبون، نقوم بتحديث عدّاد الاستخدام الكلي للكوبون بزيادة 1
         if ($coupon) {
             $coupon->increment('used_count');
         }
 
-        // 10. تسجيل التاريخ (History)
         BookingHistory::create([
             'booking_id' => $booking->id,
             'new_status' => 'Upcoming',
             'note'       => $coupon 
                 ? "تم إنشاء الحجز وتطبيق الكوبون ({$coupon->code}) بخصم قدره {$discountAmount} جنيه."
-                : "تم إنشاء الحجز بنظام الكتل الثابتة والدفع من المحفظة لـ {$workersCount} عمال.",
+                : "تم إنشاء الحجز بنظام الكتل الثابتة والدفع لـ {$workersCount} عمال.",
             'created_by' => $user->id,
         ]);
 
-        // 11. الخصم من المحفظة وتسجيل الحركة المالية بالـ Net Total المخصوم
         $user->withdraw($total, 'Payment - Booking', $booking->booking_ref);
         
         DB::commit();
@@ -271,31 +291,135 @@ class BookingController extends Controller
         DB::rollBack();
         return response()->json(['success' => false, 'message' => 'حدث خطأ أثناء معالجة الحجز.', 'error' => $e->getMessage()], 500);
     }
+    }
+
+
+
+    public function getRescheduleShifts(Request $request, $id)
+{
+    // 1. التحقق من المدخلات الأساسية (التاريخ المطلوب للجدولة)
+    $request->validate([
+        'date' => 'required|date_format:Y-m-d',
+    ]);
+
+    // 2. جلب الحجز الحالي مع العمال المخصصين له (Assignments) لضمان فحص توفرهم هم بالذات
+    $booking = Booking::with(['service.duration', 'workers'])->findOrFail($id);
+    
+    // حماية أمنية: التأكد أن الحجز يخص المستخدم الحالي
+    if ($booking->customer_id !== auth()->id()) {
+        return $this->errorResponse(__('messages.unauthorized'), 403);
+    }
+
+    $date = Carbon::parse($request->date);
+    $dayName = strtolower($date->format('l'));
+    
+    // 3. جلب الشفتات الرسمية للخدمة بناءً على اليوم الجديد المختار
+    $schedules = ServiceSchedule::where('service_id', $booking->service_id)
+        ->where('day', $dayName)
+        ->where('is_active', true)
+        ->get();
+        
+    // حساب طول الكتلة الثابتة للخدمة بالدقائق (مثلاً ساعتين = 120 دقيقة)
+    $periodMinutes = ($booking->service->duration->service_period_hours ?? 2) * 60;
+    // 4. استخراج الـ IDs للعمال الحاليين المرتبطين بالحجز
+    $workerIds = $booking->workers->pluck('id')->toArray();
+    // 5. جلب الحجوزات القائمة لهؤلاء العمال "فقط" في التاريخ الجديد المختار
+    // 🌟 ملاحظة حاسمة: نستثني الحجز الحالي نفسه (id != $booking->id) لكي لا يحجبه السيرفر لو كان في نفس اليوم
+    $existingBookings = Booking::whereIn('worker_id', $workerIds)
+        ->where('id', '!=', $booking->id) 
+        ->where('booking_date', $date->format('Y-m-d'))
+        ->whereIn('status', ['Upcoming', 'inService'])
+        ->get(['worker_id', 'start_time', 'end_time']);
+
+    $shiftsData = [];
+    $isToday = $date->isToday(); 
+    $now = now(); 
+
+    // 6. تقسيم الشفتات إلى كتل ثابتة (Blocks) وفحص توافقها مع العمال
+    foreach ($schedules as $schedule) {
+        $shiftStart = Carbon::parse($schedule->start_time);
+        $shiftEnd = Carbon::parse($schedule->end_time);
+        
+        $dropdownLabel = "Shift: " . $shiftStart->format('h:i A') . ' - ' . $shiftEnd->format('h:i A');
+        $fixedBlocks = [];
+        $currentBlockStart = $shiftStart->copy();
+
+        while ($currentBlockStart->copy()->addMinutes($periodMinutes)->lte($shiftEnd)) {
+            $blockEnd = $currentBlockStart->copy()->addMinutes($periodMinutes);
+            
+            // حماية منطقية: إذا كان التاريخ المختار هو "اليوم"، نتخطى الكتل التي مضت في الساعات السابقة
+            if ($isToday) {
+                $blockEndDateTime = Carbon::parse($date->format('Y-m-d') . ' ' . $blockEnd->format('H:i:s'));
+                if ($blockEndDateTime->lte($now)) {
+                    $currentBlockStart->addMinutes($periodMinutes);
+                    continue;
+                }
+            }
+
+            $startStr = $currentBlockStart->format('H:i:s');
+            $endStr = $blockEnd->format('H:i:s');
+            
+            // 🌟 الفحص الجوهري لشاشة الفيجما: يجب أن يكون "جميع" عمال الحجز متاحين معاً في هذه الكتلة
+            $areAllWorkersAvailable = true;
+            
+            foreach ($workerIds as $workerId) {
+                // نتحقق إذا كان هذا العامل بالذات لديه تضارب في هذه الكتلة الزمنية
+                $hasConflict = $existingBookings->where('worker_id', $workerId)
+                    ->where('start_time', '<', $endStr)
+                    ->where('end_time', '>', $startStr)
+                    ->isNotEmpty();
+
+                if ($hasConflict) {
+                    // بمجرد انشغال عامل واحد من المجموعة، تسقط هذه الكتلة الزمنية فوراً
+                    $areAllWorkersAvailable = false;
+                    break;
+                }
+            }
+
+            // إذا كان كافة العمال المخصصين للحجز فارغين، نعيد الوقت ككتلة متاحة للفرونت إند
+            if ($areAllWorkersAvailable) {
+                $fixedBlocks[] = [
+                    'start_time' => $currentBlockStart->format('H:i'),
+                    'end_time'   => $blockEnd->format('H:i'),
+                    'label'      => $currentBlockStart->format('h:i A') . ' - ' . $blockEnd->format('h:i A'),
+                ];
+            }
+
+            // الانتقال للكتلة التالية
+            $currentBlockStart->addMinutes($periodMinutes);
+        }
+
+        if (count($fixedBlocks) > 0) {
+            $shiftsData[] = [
+                'id' => $schedule->id,
+                'dropdown_label' => $dropdownLabel,
+                'available_blocks' => $fixedBlocks 
+            ];
+        }
+    }
+
+    return $this->successResponse(['shifts' => $shiftsData], __('messages.shifts_retrieved'));
 }
-    // public function update(Request $request, string $id)
-    // {
-    //     //
-    // }
 
-    // /**
-    //  * Remove the specified resource from storage.
-    //  */
-    // public function destroy(string $id)
-    // {
-    //     //
-    // }
 
-    public function reschedule(RescheduleBookingRequest $request, $id)
+
+
+  public function reschedule(RescheduleBookingRequest $request, $id)
     {
-        $booking = Booking::with('service.rules')->findOrFail($id);
-        // حماية وصلاحيات
+        // 1. جلب الحجز مع علاقة العمال (assignments) والـ rules لحماية الأداء لمنع الـ N+1
+        $booking = Booking::with(['service.rules', 'workers'])->findOrFail($id);
+        
+        // 🔒 حماية وصلاحيات: التأكد أن الحجز يخص المستخدم الحالي المسجل دخوله
         if ($booking->customer_id !== auth()->id()) {
             return $this->errorResponse(__('messages.unauthorized'), 403);
         }
+
+        // الحجز يجب أن يكون بحالة Upcoming ليقبل إعادة الجدولة
         if ($booking->status !== 'Upcoming') {
             return $this->errorResponse(__('messages.booking_not_upcoming'), 400);
         }
-        // 1. حساب المدة الجديدة ومقارنتها بالقديمة (منع تغيير الساعات)
+
+        // 2. حساب المدة الجديدة ومقارنتها بالقديمة (تأمين صارم: يمنع تلاعب الفرونت إند بزيادة أو نقصان الساعات)
         $newStart = Carbon::parse($request->new_start_time);
         $newEnd = Carbon::parse($request->new_end_time);
         $newDurationMinutes = (int) $newStart->diffInMinutes($newEnd);
@@ -303,17 +427,19 @@ class BookingController extends Controller
         if ($newDurationMinutes !== $booking->duration_minutes) {
             return $this->errorResponse(__('messages.reschedule_duration_mismatch'), 422);
         }
-        // 2. تطبيق قواعد الـ Business (Service Rules)
+
+        // 3. تطبيق قواعد الـ Business (Service Rules) المحددة من الأدمن
         $rules = $booking->service->rules;
         if ($rules) {
             $oldBookingDateTime = Carbon::parse($booking->booking_date . ' ' . $booking->start_time);
             $cutoffHours = $rules->reschedule_cutoff_hours;
             
+            // أ. فحص الـ Cutoff: منع التعديل إذا اقترب موعد الحجز الأصلي وتخطى الحد المسموح (مثلاً قبل الحجز بـ ساعتين)
             if (now()->addHours($cutoffHours)->greaterThan($oldBookingDateTime)) {
-
-                return $this->errorResponse(__('messages.reschedule_cutoff'), 400);
+                return $this->errorResponse(__('messages.reschedule_cutoff') ?? 'عذراً، لا يمكن إعادة الجدولة لاقتراب موعد الخدمة.', 400);
             }
 
+            // ب. فحص الحد الأقصى لعدد مرات إعادة الجدولة المسموحة للحجز الواحد
             if ($rules->max_changes_per_booking > 0) {
                 $changesCount = BookingHistory::where('booking_id', $booking->id)
                     ->where('note', 'like', '%إعادة جدولة%')
@@ -326,16 +452,18 @@ class BookingController extends Controller
 
             $newBookingDateTime = Carbon::parse($request->new_date . ' ' . $request->new_start_time);
             
+            // ج. فحص الـ Lead Time الأدنى (أقل فترة زمنية مسموحة بين لحظة التعديل والموعد الجديد)
             if (now()->addHours($rules->lead_time_min_hours)->greaterThan($newBookingDateTime)) {
                 return $this->errorResponse(__('messages.reschedule_lead_time_min'), 400);
             }
 
+            // د. فحص الـ Lead Time الأقصى (أبعد فترة زمنية مسموحة للحجز في المستقبل)
             if (now()->addDays($rules->lead_time_max_days)->endOfDay()->lessThan($newBookingDateTime)) {
                 return $this->errorResponse(__('messages.reschedule_lead_time_max'), 400);
             }
         }
 
-        // 3. فحص الشفتات للموعد الجديد
+        // 4. فحص الشفتات الرسمية للخدمة في اليوم الجديد (للتأكد أن الموعد يقع بالكامل ضمن دوام الشركة)
         $dayName = strtolower(Carbon::parse($request->new_date)->format('l'));
         $schedules = ServiceSchedule::where('service_id', $booking->service_id)
             ->where('day', $dayName)
@@ -343,70 +471,90 @@ class BookingController extends Controller
             ->get();
 
         if ($schedules->isEmpty()) {
-            
             return $this->errorResponse(__('messages.service_not_scheduals'), 422);
         }
 
         $isValidShift = false;
+        $newStartStr  = $newStart->format('H:i:s');
+        $newEndStr    = $newEnd->format('H:i:s');
+
         foreach ($schedules as $schedule) {
             $shiftStart = Carbon::parse($schedule->start_time)->format('H:i:s');
-            $shiftEnd = Carbon::parse($schedule->end_time)->format('H:i:s');
+            $shiftEnd   = Carbon::parse($schedule->end_time)->format('H:i:s');
             
-            if ($newStart->format('H:i:s') >= $shiftStart && $newEnd->format('H:i:s') <= $shiftEnd) {
+            if ($newStartStr >= $shiftStart && $newEndStr <= $shiftEnd) {
                 $isValidShift = true;
                 break;
             }
         }
 
         if (!$isValidShift) {
-            return $this->errorResponse(__('messages.service_not_scheduals'), 422);
+            return $this->errorResponse(__('messages.service_not_scheduals') ?? 'الموعد المختار يقع خارج ساعات شفتات الخدمة.', 422);
         }
 
-        // 4. فحص توفر العامل في الموعد الجديد
-        $isWorkerBusy = Booking::where('worker_id', $booking->worker_id)
+        // 5. استخراج الـ IDs لطاقم العمال الحاليين المثبتين بالحجز لفحص توفرهم
+        $workerIds = $booking->workers->pluck('id')->toArray();
+
+        // 🌟 فحص التوفر الصارم لتجنب التعارض (Double Booking Check) 🌟
+        // نتحقق من عدم انشغال "أي" عامل من المجموعة، مع استثناء الحجز الحالي نفسه لكي لا يرى موعده القديم كتعارض
+        $isAnyWorkerBusy = Booking::whereIn('worker_id', $workerIds)
             ->where('id', '!=', $booking->id) 
             ->where('booking_date', $request->new_date)
             ->whereIn('status', ['Upcoming', 'inService'])
-            ->where(function ($query) use ($newStart, $newEnd) {
-                $query->where('start_time', '<', $newEnd->format('H:i:s'))
-                      ->where('end_time', '>', $newStart->format('H:i:s'));
-            })->exists();
+            ->where(function ($query) use ($newStartStr, $newEndStr) {
+                $query->where('start_time', '<', $newEndStr)
+                      ->where('end_time', '>', $newStartStr);
+            })
+            ->exists();
 
-        if ($isWorkerBusy) {
-            return $this->errorResponse(__('messages.worker_busy'), 422);
+        if ($isAnyWorkerBusy) {
+            return $this->errorResponse(__('messages.worker_busy') ?? 'عذراً، أحد العمال المخصصين لحجزك مشغول في هذا الوقت المختار.', 422);
         }
 
-        // 5. التحديث في قاعدة البيانات
+        // 6. بدء المعاملة الآمنة والتحديث بقفل الحماية من الـ Race Condition
         DB::beginTransaction();
         try {
+            // تفعيل الـ Pessimistic Lock (lockForUpdate) على العمال لمنع أي حجز متزامن في نفس الجزء من الثانية
+            Booking::whereIn('worker_id', $workerIds)
+                ->where('id', '!=', $booking->id)
+                ->where('booking_date', $request->new_date)
+                ->whereIn('status', ['Upcoming', 'inService'])
+                ->where(function ($query) use ($newStartStr, $newEndStr) {
+                    $query->where('start_time', '<', $newEndStr)
+                          ->where('end_time', '>', $newStartStr);
+                })
+                ->lockForUpdate()
+                ->exists();
+
+            // تحديث المواعيد في جدول الحجز الرئيسي
             $booking->update([
-                'booking_date'     => $request->new_date,
-                'start_time'       => $newStart->format('H:i:s'),
-                'end_time'         => $newEnd->format('H:i:s'),
-                'duration_minutes' => $newDurationMinutes, 
+                'booking_date' => $request->new_date,
+                'start_time'   => $newStartStr,
+                'end_time'     => $newEndStr,
             ]);
 
+            // تسجيل العملية رسمياً في سجل حركات الحجز (History)
             BookingHistory::create([
                 'booking_id' => $booking->id,
                 'old_status' => 'Upcoming',
                 'new_status' => 'Upcoming',
-                'note'       => 'عملية إعادة جدولة - تم تعديل الموعد إلى: ' . $request->new_date . ' ' . $newStart->format('H:i'),
+                'note'       => 'عملية إعادة جدولة - تم تعديل الموعد إلى: ' . $request->new_date . ' ' . $newStart->format('h:i A'),
                 'created_by' => auth()->id(),
             ]);
 
             DB::commit();
 
+            // إرجاع الـ Resource الموحد والمترجم مع الـ Eager Loading لكافة تفاصيل الحجز لشاشة التفاصيل
             return $this->successResponse(
-                new BookingResource($booking), 
-              __('messages.booking_rescheduled_successfully')
+                new BookingResource($booking->load(['service.rules', 'coupon', 'address', 'workers'])), 
+                __('messages.booking_rescheduled_successfully')
             );
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return $this->errorResponse('حدث خطأ أثناء إعادة الجدولة: ' . $e->getMessage(), 500);
+            return $this->errorResponse('حدث خطأ أثناء معالجة إعادة الجدولة: ' . $e->getMessage(), 500);
         }
     }
-
 
     // ---------------------------------------------------------
     // 5. إلغاء الحجز (Cancel Booking)

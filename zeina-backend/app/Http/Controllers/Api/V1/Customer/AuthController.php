@@ -62,9 +62,6 @@ class AuthController extends Controller
     return $this->successResponse($responseData, __('messages.otp_sent'));
 }
 
-
-
-        
     public function verifyOtp(VerifyOtpRequest $request)
     {
         $data = $request->validated();

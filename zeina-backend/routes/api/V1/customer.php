@@ -71,6 +71,7 @@ Route::prefix('customer')->group(function () {
 
        //Bookings
        Route::apiResource('bookings', BookingController::class);
+       Route::get('bookings/{booking}/shifts/schedule', [BookingController::class, 'getRescheduleShifts']);//
        Route::post('bookings/{booking}/reschedule', [BookingController::class, 'reschedule']);
        Route::put('bookings/{booking}/cancel', [BookingController::class,'cancel']);
        Route::post('bookings/{id}/report', [BookingController::class, 'report']);

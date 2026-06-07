@@ -39,9 +39,9 @@ return new class extends Migration
         Schema::create('booking_assignments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('booking_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('provider_id')->nullable()->constrained('providers');
+            // $table->foreignId('provider_id')->nullable()->constrained('providers');
             $table->foreignId('worker_id')->nullable()->constrained('workers');
-            $table->foreignId('assigned_by')->nullable()->constrained('users'); 
+            // $table->foreignId('assigned_by')->nullable()->constrained('users'); 
             $table->enum('status', ['active', 'replaced', 'cancelled'])->default('active');
             $table->timestamp('assigned_at')->useCurrent();
             $table->timestamps();

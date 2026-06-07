@@ -8,7 +8,7 @@ use Illuminate\Support\Str;
 
 class SmsService
 {
-   protected $username;
+    protected $username;
     protected $password;
     protected $sender;
     protected $url;
@@ -23,9 +23,9 @@ class SmsService
 
     public function send($mobileNumber, $message)
     {   
-        // 👈 الاعتماد على sandbox_mode المخزن بالـ config بدلاً من environment('local')
+        //  الاعتماد على sandbox_mode المخزن بالـ config بدلاً من environment('local')
         if (config('services.community_sms.sandbox_mode')) {
-            Log::info("SMS Sandbox Active - Simulated to {$mobileNumber}: {$message}");
+            Log::info("SMS Sandbox Active - Simulated to {$mobileNumber}: your verification code is 123456");
             return true;
         }
 

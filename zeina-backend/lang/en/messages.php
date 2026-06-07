@@ -117,6 +117,7 @@ return [
     'service_not_available_in_this_day' => 'Sorry, this service is not available on the selected day.',
     'service_not_scheduals' => 'Sorry, this service is not scheduled for the selected day.',
     'worker_not_provide_service' => 'Sorry, the selected worker does not provide this service.',
+   
     'unauthorized' => 'Unauthorized access.',
     // 'booking_not_upcoming' => 'Cannot reschedule this booking in its current status.',
     'reschedule_duration_mismatch' => 'In rescheduling, you cannot change the service duration. Please choose an end time that matches the original hours of the booking.',
@@ -195,7 +196,8 @@ return [
     'coupon_fully_consumed' => 'Sorry, this coupon has been fully consumed and is no longer available.',
     'coupon_does_not_include_service' => 'Sorry, this coupon does not include the selected service.',
     'coupon_min_amount_not_met' => 'Sorry, the minimum booking amount for this coupon is :min_amount. Please add more services to your booking to use this coupon.',
-   
+    'invalid_worker_for_service' => 'Sorry, the selected worker is not valid for this service.',
+    'worker_already_booked' => 'Sorry, the selected worker is already booked for the requested time.',
 
 
     

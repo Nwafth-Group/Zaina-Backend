@@ -10,6 +10,7 @@ use App\Http\Resources\Api\V1\Worker\WorkerResource;
 use App\Models\Booking;
 use App\Models\Category;
 use App\Models\Service;
+use App\Models\ServiceSchedule;
 use App\Traits\ApiResponseTrait;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -64,8 +65,10 @@ class ServiceController extends Controller
 
 
 
-public function getShiftsForDate(GetShiftsForDateRequest $request, Service $service)
+ public function getShiftsForDate(GetShiftsForDateRequest $request, Service $service)
+
 {
+
     $date = Carbon::parse($request->date);
     $dayName = strtolower($date->format('l'));
     $schedules = $service->schedules()->where('day', $dayName)->where('is_active', true)->get();
@@ -153,89 +156,6 @@ public function getShiftsForDate(GetShiftsForDateRequest $request, Service $serv
     return $this->successResponse(['shifts' => $shiftsData], __('messages.shifts_retrieved'));
 }
 
-
-public function getAvailableDurations(Request $request, Service $service)
-{
-    $request->validate([
-        'date' => 'required|date_format:Y-m-d',
-        'start_time' => 'required|date_format:H:i',
-    ],
-    [
-        'data.required' => __('validation.getAvaliableDurations.date_required'),
-        'date.date_format' => __('validation.getAvaliableDurations.date_format'),
-        'start_time.required' => __('validation.getAvaliableDurations.start_time_required'),
-        'start_time.date_format' => __('validation.getAvaliableDurations.start_time_format'),
-    ]);
-$date = Carbon::parse($request->date);
-    $startTimeStr = Carbon::parse($request->start_time)->format('H:i:s');
-    $dayName = strtolower($date->format('l'));
-
-    // 🌟 التعديل 1: جلب الشفت الخاص بهذا اليوم لمعرفة متى ينتهي الدوام 🌟
-    $schedule = $service->schedules()
-        ->where('day', $dayName)
-        ->where('is_active', true)
-        ->where('start_time', '<=', $startTimeStr)
-        ->where('end_time', '>', $startTimeStr)
-        ->first();
-
-    // حماية إضافية لو أرسل الموبايل وقت خارج الشفتات
-    if (!$schedule) {
-        return response()->json(['success' => false, 'message' => 'لا يوجد شفت فعال يغطي وقت البداية المختار.'], 400);
-    }
-
-    $shiftEndStr = Carbon::parse($schedule->end_time)->format('H:i:s');
-
-    $serviceDuration = $service->duration;
-    // نفترض أن allowed_durations مخزنة كـ Array في قاعدة البيانات مثلاً [2, 3, 4, 6, 8]
-    $allowedDurationsHours = $serviceDuration->allowed_durations ?? [1]; 
-
-    $workerIds = $service->workers()->where('status', 'active')->pluck('workers.id');
-    $existingBookings = Booking::whereIn('worker_id', $workerIds)
-        ->where('booking_date', $date->format('Y-m-d'))
-        ->whereIn('status', ['Upcoming', 'inService'])
-        ->get(['worker_id', 'start_time', 'end_time']);
-
-    $validDurations = [];
-
-    // نفحص كل مدة مسموحة (مثلاً 2 ساعة، 3 ساعات)
-    foreach ($allowedDurationsHours as $durationHours) {
-        $durationMinutes = $durationHours * 60;
-        $endTimeStr = Carbon::parse($startTimeStr)->addMinutes($durationMinutes)->format('H:i:s');
-        
-        // 🌟 التعديل 2: حماية تمنع المدة من تجاوز وقت نهاية الشفت 🌟
-        // إذا كان وقت الانتهاء يتجاوز نهاية الشفت، إذن هذه المدة غير صالحة
-        if ($endTimeStr > $shiftEndStr) {
-            continue; // نعمل Skip لهاد اللوب وننتقل للمدة اللي بعدها
-        }
-
-        $isDurationAvailable = false;
-
-        foreach ($workerIds as $workerId) {
-            $hasConflict = $existingBookings->where('worker_id', $workerId)
-                ->where('start_time', '<', $endTimeStr)
-                ->where('end_time', '>', $startTimeStr)
-                ->isNotEmpty();
-
-            if (!$hasConflict) {
-                $isDurationAvailable = true;
-                break;
-            }
-        }
-
-        // إذا كان هناك عامل يقدر يغطي هذه المدة بالكامل، نرجعها للعميل
-        if ($isDurationAvailable) {
-            $validDurations[] = [
-                'hours' => $durationHours,
-                'minutes' => $durationMinutes,
-                'label' => $durationHours .' ساعات',
-                'label-hour' => \Carbon\Carbon::parse($startTimeStr)->format('h:i A') . ' - ' . \Carbon\Carbon::parse($endTimeStr)->format('h:i A')
-            ];
-        }
-    }
-
-    return $this->successResponse(['durations' => $validDurations], 'تم جلب المدد بنجاح');
-}
-
  public function getAvailableWorkers(Request $request, Service $service)
 {
     $request->validate([
@@ -289,6 +209,9 @@ $date = Carbon::parse($request->date);
         'other_workers'     => WorkerResource::collection($others),
     ], __('messages.providers_fetch_success') ?? 'تم جلب مقدمي الخدمة المتاحين بنجاح.');
 }
+
+
+
 
 
 }

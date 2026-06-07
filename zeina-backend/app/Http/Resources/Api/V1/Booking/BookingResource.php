@@ -22,8 +22,6 @@ class BookingResource extends JsonResource
         $lang = app()->getLocale();
         $serviceName = $lang == 'ar' ? $this->service->name_ar : $this->service->name_en;
 
-
-
         // حساب المدة لتطابق التصميم (مثال: 3 Hours)
         $hours = floor($this->duration_minutes / 60);
         $durationText = $hours > 0 ? "{$hours} Hours" : "{$this->duration_minutes} Mins";
@@ -53,7 +51,7 @@ class BookingResource extends JsonResource
             
             // 🌟 العلاقات 🌟
             'address' => new AddressResource($this->whenLoaded('address')),
-            'worker' => new WorkerResource($this->whenLoaded('worker')),
+            'workers' => WorkerResource::collection($this->whenLoaded('workers')),
             
             // 🌟 تحديث المصفوفة المالية لتشمل الكوبون والخصم بالتفصيل 🌟
             'price_summary' => [
