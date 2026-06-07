@@ -191,7 +191,7 @@ public function getAvailableWorkers(Request $request, Service $service)
 
     // 🌟 1. التعديل الجوهري: جلب العمال النشطين الذين "ليس لديهم" تخصيص حجز (Assignment) نشط يتداخل مع هذه الفترة 🌟
     $availableWorkers = $service->workers()->where('status', 'active')
-        ->whereDoesntHave('assignments', function ($q) use ($request, $startStr, $endStr) {
+        ->whereDoesntHave('workers', function ($q) use ($request, $startStr, $endStr) {
             $q->where('status', 'active') // التخصيص فعال في جدول الـ booking_assignments
               ->whereHas('booking', function ($bookingQ) use ($request, $startStr, $endStr) {
                   $bookingQ->where('booking_date', $request->date)
