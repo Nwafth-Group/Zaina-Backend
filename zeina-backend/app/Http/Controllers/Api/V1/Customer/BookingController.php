@@ -78,7 +78,7 @@ public function store(StoreBookingRequest $request)
     $user = auth()->user();
     $lockKey = 'booking_lock_user_' . $user->id . '_service_' . $request->service_id;
 
-    $lock = Cache::lock($lockKey, 10); // قفل لمدة 10 ثواني لمنع الحجز المتزامن
+    $lock = Cache::lock($lockKey, 30); // قفل لمدة 10 ثواني لمنع الحجز المتزامن
     if (!$lock->get()) {
         return $this->errorResponse(__('messages.booking_in_progress'), 429);
     }
