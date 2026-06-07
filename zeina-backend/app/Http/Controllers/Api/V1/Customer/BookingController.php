@@ -355,7 +355,7 @@ class BookingController extends Controller
         'date' => 'required|date_format:Y-m-d',
     ]);
 
-    // 2. جلب الحجز الحالي مع العمال المخصصين له (Assignments) لضمان فحص توفرهم هم بالذات
+    // 2. جلب الحجز الحالي مع العمال المخصصين له عبر العلاقة المباشرة المحدثة (workers)
     $booking = Booking::with(['service.duration', 'workers'])->findOrFail($id);
     
     // حماية أمنية: التأكد أن الحجز يخص المستخدم الحالي
@@ -372,17 +372,30 @@ class BookingController extends Controller
         ->where('is_active', true)
         ->get();
         
-    // حساب طول الكتلة الثابتة للخدمة بالدقائق (مثلاً ساعتين = 120 دقيقة)
+    // حساب طول الكتلة الثابتة للخدمة بالدقائق
     $periodMinutes = ($booking->service->duration->service_period_hours ?? 2) * 60;
+    
     // 4. استخراج الـ IDs للعمال الحاليين المرتبطين بالحجز
     $workerIds = $booking->workers->pluck('id')->toArray();
-    // 5. جلب الحجوزات القائمة لهؤلاء العمال "فقط" في التاريخ الجديد المختار
-    // 🌟 ملاحظة حاسمة: نستثني الحجز الحالي نفسه (id != $booking->id) لكي لا يحجبه السيرفر لو كان في نفس اليوم
-    $existingBookings = Booking::whereIn('worker_id', $workerIds)
-        ->where('id', '!=', $booking->id) 
-        ->where('booking_date', $date->format('Y-m-d'))
-        ->whereIn('status', ['Upcoming', 'inService'])
-        ->get(['worker_id', 'start_time', 'end_time']);
+
+    // 🌟 5. التعديل الجوهري: جلب الحجوزات القائمة لهؤلاء العمال من جدول الـ Assignments 🌟
+    // نضمن استثناء الحجز الحالي نفسه (booking_id != $booking->id)
+    $existingBookings = BookingAssignment::whereIn('worker_id', $workerIds)
+        ->where('status', 'active') // التخصيص فعال
+        ->where('booking_id', '!=', $booking->id) // استثناء الحجز الحالي من كشف التعارضات
+        ->whereHas('booking', function ($q) use ($date) {
+            $q->where('booking_date', $date->format('Y-m-d'))
+              ->whereIn('status', ['Upcoming', 'inService']); // الحجوزات القائمة فقط
+        })
+        ->with('booking:id,start_time,end_time') // منع الـ N+1 أثناء الـ Loop
+        ->get()
+        ->map(function ($assignment) {
+            return [
+                'worker_id'  => $assignment->worker_id,
+                'start_time' => $assignment->booking->start_time,
+                'end_time'   => $assignment->booking->end_time,
+            ];
+        });
 
     $shiftsData = [];
     $isToday = $date->isToday(); 
@@ -400,7 +413,7 @@ class BookingController extends Controller
         while ($currentBlockStart->copy()->addMinutes($periodMinutes)->lte($shiftEnd)) {
             $blockEnd = $currentBlockStart->copy()->addMinutes($periodMinutes);
             
-            // حماية منطقية: إذا كان التاريخ المختار هو "اليوم"، نتخطى الكتل التي مضت في الساعات السابقة
+            // حماية منطقية: إذا كان التاريخ المختار هو "اليوم"، نتخطى الكتل التي مرت في الماضي
             if ($isToday) {
                 $blockEndDateTime = Carbon::parse($date->format('Y-m-d') . ' ' . $blockEnd->format('H:i:s'));
                 if ($blockEndDateTime->lte($now)) {
@@ -408,22 +421,18 @@ class BookingController extends Controller
                     continue;
                 }
             }
-
             $startStr = $currentBlockStart->format('H:i:s');
             $endStr = $blockEnd->format('H:i:s');
-            
             // 🌟 الفحص الجوهري لشاشة الفيجما: يجب أن يكون "جميع" عمال الحجز متاحين معاً في هذه الكتلة
             $areAllWorkersAvailable = true;
-            
             foreach ($workerIds as $workerId) {
-                // نتحقق إذا كان هذا العامل بالذات لديه تضارب في هذه الكتلة الزمنية
+                // نتحقق إذا كان هذا العامل بالذات لديه تضارب في هذه الكتلة الزمنية من خلال الـ Collection المفلترة
                 $hasConflict = $existingBookings->where('worker_id', $workerId)
                     ->where('start_time', '<', $endStr)
                     ->where('end_time', '>', $startStr)
                     ->isNotEmpty();
 
                 if ($hasConflict) {
-                    // بمجرد انشغال عامل واحد من المجموعة، تسقط هذه الكتلة الزمنية فوراً
                     $areAllWorkersAvailable = false;
                     break;
                 }
@@ -453,8 +462,6 @@ class BookingController extends Controller
 
     return $this->successResponse(['shifts' => $shiftsData], __('messages.shifts_retrieved'));
 }
-
-
 
 
   public function reschedule(RescheduleBookingRequest $request, $id)
