@@ -184,7 +184,7 @@ class CategoryAndServiceSeeder extends Seeder
                     DB::table('service_prices')->updateOrInsert(
                         ['service_id' => $service->id, 'city_id' => $city->id, 'area_id' => null],
                         [
-                            'pricing_scope'            => 'city',
+                
                             'price_per_service_period' => $data['price'], // السعر الأساسي للكتلة
                             'currency'                 => 'EGP',
                             'created_at'               => now(), 
@@ -209,7 +209,7 @@ class CategoryAndServiceSeeder extends Seeder
                     DB::table('service_prices')->updateOrInsert(
                         ['service_id' => $service->id, 'city_id' => $selectedArea->city_id, 'area_id' => $selectedArea->id],
                         [
-                            'pricing_scope'            => 'area',
+                           
                             'price_per_service_period' => $areaCustomPrice, 
                             'currency'                 => 'EGP',
                             'created_at'               => now(), 
