@@ -14,10 +14,9 @@ return new class extends Migration
         Schema::create('service_prices', function (Blueprint $table) {
             $table->id();
             $table->foreignId('service_id')->constrained('services')->cascadeOnDelete();
-            $table->enum('pricing_scope', ['city', 'area'])->default('area');
-            $table->foreignId('city_id')->nullable()->constrained('cities')->cascadeOnDelete();
+            // $table->enum('pricing_scope', ['city', 'area'])->default('area');
+            $table->foreignId('city_id')->constrained('cities')->cascadeOnDelete();
             $table->foreignId('area_id')->nullable()->constrained('areas')->cascadeOnDelete();
-            // $table->decimal('base_price', 10, 2)->default(0);
             $table->decimal('price_per_service_period', 10, 2)->default(0);
             $table->string('currency', 10)->default('EGP');
             $table->date('effective_start')->nullable();

@@ -33,7 +33,8 @@ class Service extends Model
     public function coverages()
     {
         return $this->hasMany(ServiceCoverage::class,'service_id');
-    }
+    } 
+
 
     public function priceRules()
     {

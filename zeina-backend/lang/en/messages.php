@@ -128,7 +128,7 @@ return [
     'booking_rescheduled_successfully' => 'Booking rescheduled successfully.',
     'booking_cancelled_successfully' => 'Booking cancelled successfully.',
    
-    'booking_not_upcoming' => 'Cannot cancel this booking in :status status.',
+    'booking_not_upcoming' => 'Cannot reschedule this booking in :status status.',
     'late_cancel_blocked' => 'Sorry, you have exceeded the free cancellation time (:cutoffHours hours). Please contact customer support.',
     'late_cancel_fee_applied' => 'A late cancellation fee of :fee has been applied.',
     'booking_reported_successfully' => 'Booking reported successfully.',
