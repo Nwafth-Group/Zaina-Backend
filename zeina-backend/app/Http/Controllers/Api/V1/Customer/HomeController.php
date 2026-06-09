@@ -22,7 +22,6 @@ class HomeController extends Controller
      */
    public function index(Request $request)
     { 
-       
         // 1. الإعلانات (Banners)
         $now = now()->toDateString();
         $banners = Ad::where('status', 'active')
@@ -45,9 +44,7 @@ class HomeController extends Controller
             ->get();
 
             $currentDate = now()->toDateString();
-        $currentTime = now()->toTimeString();
-
-            
+            $currentTime = now()->toTimeString();
             // 3. الموعد القادم (Upcoming Appointment)
             $upcomingBooking = null;
 

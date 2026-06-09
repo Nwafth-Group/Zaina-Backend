@@ -65,6 +65,7 @@ public function getCustomerPrice()
     $user = auth('sanctum')->user(); 
     
     if ($user) {
+        // جلب العنوان الافتراضي للكستمر مع تفاصيل المنطقة والمدينة المربوطة به
         $defaultAddress = $user->addresses()->where('is_default', true)->with('area')->first();
        
         if ($defaultAddress && $defaultAddress->area) {
@@ -72,43 +73,42 @@ public function getCustomerPrice()
             $cityId = $defaultAddress->area->city_id; 
             $now = now()->toDateString();
 
-            $specificPrice = $this->priceRules()
+            // 🌟 الفحص الهرمي الذكي الجديد بدون حقل pricing_scope 🌟
+            $specificPrice = $this->priceRules() // أو اسم العلاقة عندك للأسعار مثل prices()
+                ->where('city_id', $cityId) // تطابق المدينة إجباري
+                ->where(function ($query) use ($areaId) {
+                    // السعر يطابق المنطقة تحديداً، أو السعر العام للمدينة (حيث المنطقة null)
+                    $query->where('area_id', $areaId)
+                          ->orWhereNull('area_id');
+                })
                 ->where(function ($query) use ($now) {
                     $query->whereNull('effective_start')->orWhere('effective_start', '<=', $now);
                 })
                 ->where(function ($query) use ($now) {
                     $query->whereNull('effective_end')->orWhere('effective_end', '>=', $now);
                 })
-                ->where(function ($query) use ($cityId, $areaId) {
-                    $query->where(function ($q) use ($areaId){
-                        $q->where('pricing_scope', 'area')->where('area_id', $areaId);
-                    })
-                    ->orWhere(function ($q) use ($cityId) {
-                        $q->where('pricing_scope', 'city')->where('city_id', $cityId)->whereNull('area_id');
-                    });
-                })
+                // الترتيب السحري: إذا وجد سعر للمنطقة يظهر أولاً، وإلا يرجع سعر المدينة كـ Fallback
                 ->orderByRaw('area_id IS NULL ASC')
                 ->first();
 
             if ($specificPrice) {
-                // نخبر الأوبجيكت إنه سعر مخصص بناءً على منطقة العميل (سعر نهائي ثابث)
+                // العميل لديه سعر مخصص وموثق جغرافياً لمنطقته الحالية (سعر نهائي ثابت بالـ UI)
                 $specificPrice->is_fallback = false; 
                 return $specificPrice;
             }
         }
     }
 
-    // إذا لم يسجل دخول أو لم يملك عنواناً افتراضياً، نرجع السعر الافتراضي العام للخدمة
+    // إذا لم يسجل دخول أو لم يملك عنواناً افتراضياً، نرجع السعر العام المتاح للخدمة كـ Fallback
     $fallbackPrice = $this->startingPrice;
     
     if ($fallbackPrice) {
-         // نخبر الأوبجيكت إنه مجرد خطة بديلة (فيُعرض في التطبيق بكلمة "يبدأ من")
+         // نخبر الأوبجيكت والفرونت إند إنه مجرد خطة بديلة (فيُعرض بالـ UI بكلمة "يبدأ من")
          $fallbackPrice->is_fallback = true;
     }
 
     return $fallbackPrice; 
 }
-
    public function media(){
     return $this->morphMany(Media::class,'model');
    }
