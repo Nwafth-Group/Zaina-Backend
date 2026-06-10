@@ -26,6 +26,7 @@ class SmsService
         //  الاعتماد على sandbox_mode المخزن بالـ config بدلاً من environment('local')
         if (config('services.community_sms.sandbox_mode')) {
             Log::info("SMS Sandbox Active - Simulated to {$mobileNumber}: your verification code is 123456");
+            Log::info('to show message in local and test the message is : ' . $message);
             return true;
         }
 
@@ -55,4 +56,19 @@ class SmsService
             return false;
         }
     }
+
+    public function getRemainingBalance()
+{
+    $response = Http::post('https://app.community-ads.net/SendSMSService/SMSSender.asmx/GetBalance', [
+        'UserName' => config('services.community_sms.username'),
+        'Password' => config('services.community_sms.password'),
+    ]);
+
+    if ($response->successful()) {
+        // السيرفر برجع رقم الرصيد المتبقي مباشرة، مثلاً: 4500
+        return (int) $response->body(); 
+    }
+
+    return 0;
+}
 }

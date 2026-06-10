@@ -199,6 +199,11 @@ return [
     'invalid_worker_for_service' => 'Sorry, the selected worker is not valid for this service.',
     'worker_already_booked' => 'Sorry, the selected worker is already booked for the requested time.',
     'booking_in_progress' => 'You have an ongoing booking process. Please wait before initiating a new one.',
+    'otp_rate_limit_exceeded' => 'You have exceeded the allowed limit for requesting OTPs. Please try again after 15 minutes.',
+    'otp_rate_limit_exceeded_seconds' => 'You have exceeded the allowed limit for requesting OTPs. Please try again after :seconds seconds.',
+    'otp_sent_successfully' => 'OTP sent successfully to the new number.',
+    'otp_invalid' => 'Invalid OTP. Please check and try again.',
+   
 
 
     

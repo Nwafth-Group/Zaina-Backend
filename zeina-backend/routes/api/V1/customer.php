@@ -32,13 +32,14 @@ Route::prefix('customer')->group(function () {
         Route::post('verify-otp', [AuthController::class, 'verifyOtp']);
         Route::post('/verify', [KycController::class, 'submit'])->middleware('auth:sanctum');
 
+
     });
 
     // ==========================================
     // Protected Routes (Require Authentication)
     // ==========================================
     Route::get('home',[HomeController::class,'index']);
-    Route::get('/categories', [CategoryController::class, 'getMainCategories']);//4
+    Route::get('/categories', [CategoryController::class,'getMainCategories']);//4
     Route::get('/categories/{category}/sub', [CategoryController::class, 'getSubcategories']);//
     Route::get('/services/{service}', [ServiceController::class, 'show']); //3
     Route::get('services/{service}/shifts', [ServiceController::class, 'getShiftsForDate']);//
@@ -56,6 +57,9 @@ Route::prefix('customer')->group(function () {
     Route::middleware(['auth:sanctum' , IsCustomer::class])->group(function () {
         // Auth
         Route::post('auth/logout', [AuthController::class, 'logout']);
+
+        Route::post('auth/send-change-phone-otp', [AuthController::class, 'sendUpdatePhoneOtp']);
+        Route::post('auth/verify-change-phone', [AuthController::class, 'verifyAndUpdatePhone']);
         
         // Profile
         Route::prefix('profile')->group(function () {
