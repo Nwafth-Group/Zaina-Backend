@@ -29,7 +29,6 @@ class ServiceController extends Controller
 
         $services = Service::with([
                 'category', 
-                'startingPrice',
                 'media'
             ])
             ->where('status', 'active') // تأكد إن الخدمة مفعلة
@@ -59,7 +58,7 @@ class ServiceController extends Controller
             return $this->errorResponse(__('messages.service_not_available'), 404);
         }
 
-        $service->load(['category', 'duration', 'rules', 'coverages', 'coverages.city', 'coverages.area', 'startingPrice', 'media' , 'schedules']);
+        $service->load(['category', 'duration', 'rules', 'coverages', 'coverages.city', 'coverages.area', 'media' , 'schedules']);
 
         return $this->successResponse(new ServiceResource($service),__('messages.service_details_retrieved'));
     }

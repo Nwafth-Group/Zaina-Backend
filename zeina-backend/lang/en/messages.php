@@ -167,6 +167,8 @@ return [
         'steps_remaining' => ':count steps remaining to earn your reward points.',
          'history_retrieved' => 'Points transaction history retrieved successfully.',
          'summary_retrieved' => 'Points summary retrieved successfully.',
+         'task_already_completed' => 'This task has already been completed.',
+         'task_completed_and_points_earned' => 'Congratulations! +:points points have been added to your account.',
     ],
     'kyc_not_verified' => 'Your account must be verified first to access this service.',
     'kyc_already_submitted' => 'You have already submitted a KYC request. Please wait for it to be processed.',

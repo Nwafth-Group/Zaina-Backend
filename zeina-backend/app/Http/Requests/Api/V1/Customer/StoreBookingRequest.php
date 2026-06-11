@@ -24,6 +24,7 @@ class StoreBookingRequest extends FormRequest
             'address_id'    => 'required|exists:customer_addresses,id',
             'date'          => 'required|date_format:Y-m-d',
             'start_time'    => 'required|date_format:H:i',
+            'payment_method' => 'required|string|in:points,wallet,card',
             
             // 🌟 التعديلات الجديدة 🌟
             'periods_count' => 'required|integer|min:1', // عدد الفترات المطلوبة
@@ -43,6 +44,9 @@ class StoreBookingRequest extends FormRequest
             'date.date_format'       => __('validation.create_booking.date_date_format'),
             'start_time.required'    => __('validation.create_booking.start_time_required'),
             'start_time.date_format' => __('validation.create_booking.start_time_date_format'),
+            'payment_method.required' => __('validation.create_booking.payment_method_required'),
+            'payment_method.string'   => __('validation.create_booking.payment_method_string'),
+            'payment_method.in'       => __('validation.create_booking.payment_method_in'),
             
             // رسائل التعديلات الجديدة (يمكنك إضافتها لملف الترجمة لاحقاً)
             'periods_count.required' => __('validation.create_booking.periods_count_required'),
