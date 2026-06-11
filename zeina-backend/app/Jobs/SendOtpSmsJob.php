@@ -30,7 +30,8 @@ class SendOtpSmsJob implements ShouldQueue
     public function handle(SmsService $smsService): void
     {      
         try {
-            $smsSent = $smsService->send($this->mobile, $this->message);
+            $cleanMobile = preg_replace('/[^0-9]/', '', $this->mobile);
+            $smsSent = $smsService->send($cleanMobile, $this->message);
 
             if (!$smsSent) {
                 // هان بنرمي الـ Exception المخصص لو الـ API رجع كود غير الـ 0
