@@ -24,7 +24,7 @@ class WalletSeeder extends Seeder
             $balance = 0;
 
             // 1. حركة من 20 يوم (لاختبار فلتر Last 30 Days) - إيداع (سهم أخضر)
-            $amount1 = 500.00;
+            $amount1 = 1000.00;
             WalletTransaction::create([
                 'user_id'      => $user->id,
                 'type'         => 'credit',

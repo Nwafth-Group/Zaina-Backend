@@ -18,7 +18,7 @@ class CategoryAndServiceSeeder extends Seeder
     {
         $admin = User::first(); 
         
-        // 🌟 جلب جميع المدن والمناطق المتوفرة لبناء سيناريو توزيع جغرافي حقيقي
+        // 🌟 جلب جميع المدن والمناطق المتوفرة لبناء سيناريو توزيع جغرافي حقيقي ومضمون
         $cities = City::all();
         $areas = Area::all();
 
@@ -123,7 +123,7 @@ class CategoryAndServiceSeeder extends Seeder
             ['sub' => 'hair_makeup',     'type' => 'both',   'en' => 'Pedicure & Manicure',        'ar' => 'بديكير ومنكير',      'price' => 150, 'period' => 1],
         ];
 
-        // 4. إدخال الخدمات وتركيب القواعد والأسعار والمناطق المتعددة
+        // 4. إدخال الخدمات وتركيب القواعد والأسعار والمناطق
         foreach ($servicesData as $index => $data) {
             $features = [
                 ['en' => 'Dusting All Surfaces', 'ar' => 'مسح جميع الأسطح'],
@@ -171,45 +171,43 @@ class CategoryAndServiceSeeder extends Seeder
                 ]
             );
 
-            // 🌟 التعديل الجوهري: توزيع جيو-تسعيري ذكي (Geographical Distribution) 🌟
-            // لضمان التنوع التام سنقوم بخلط النطاقات بناءً على مؤشر الخدمة ($index)
-            if ($index % 2 === 0) {
-                // السيناريو أ: الخدمة مغطاة ومسعرة على مستوى مدن متعددة (City Scope)
-                foreach ($cities as $city) {
-                    DB::table('service_coverages')->updateOrInsert(
-                        ['service_id' => $service->id, 'city_id' => $city->id, 'area_id' => null],
-                        ['status' => 'active', 'created_at' => now(), 'updated_at' => now()]
-                    );
+            // 🌟 التعديل الجوهري والمضمون: التوزيع الجغرافي والأسعار 🌟
+            // أولاً: نضمن إدراج الخدمة في جميع المدن المتوفرة كـ سعر أساسي عام للمدينة (area_id = null)
+            foreach ($cities as $city) {
+                DB::table('service_coverages')->updateOrInsert(
+                    ['service_id' => $service->id, 'city_id' => $city->id, 'area_id' => null],
+                    ['status' => 'active', 'created_at' => now(), 'updated_at' => now()]
+                );
 
-                    DB::table('service_prices')->updateOrInsert(
-                        ['service_id' => $service->id, 'city_id' => $city->id, 'area_id' => null],
-                        [
-                
-                            'price_per_service_period' => $data['price'], // السعر الأساسي للكتلة
-                            'currency'                 => 'EGP',
-                            'created_at'               => now(), 
-                            'updated_at'               => now()
-                        ]
-                    );
-                }
-            } else {
-                // السيناريو ب: الخدمة مسعرة بشكل مخصص ومكثف على مستوى مناطق معينة (Area Scope)
-                // نأخذ مصفوفة عشوائية من المناطق لنربط بها هذه الخدمة
+                DB::table('service_prices')->updateOrInsert(
+                    ['service_id' => $service->id, 'city_id' => $city->id, 'area_id' => null],
+                    [
+                        'price_per_service_period' => $data['price'], // السعر الثابت للمدينة
+                        'currency'                 => 'EGP',
+                        'created_at'               => now(), 
+                        'updated_at'               => now()
+                    ]
+                );
+            }
+
+            // ثانياً: نطبق سيناريو تخصيص بعض المناطق لبعض الخدمات بشكل إضافي (تنوع البيانات للبوستمان)
+            // إذا كان مؤشر الخدمة فردياً، سنقوم بتخصيص أسعار مميزة لـ 3 مناطق عشوائية فوق سعر المدينة
+            if ($index % 2 !== 0) {
                 $randomAreas = $areas->random(min(3, $areas->count()));
 
                 foreach ($randomAreas as $selectedArea) {
+                    // إدراج التغطية الخاصة بالمنطقة
                     DB::table('service_coverages')->updateOrInsert(
                         ['service_id' => $service->id, 'city_id' => $selectedArea->city_id, 'area_id' => $selectedArea->id],
                         ['status' => 'active', 'created_at' => now(), 'updated_at' => now()]
                     );
 
-                    // نغير السعر قليلاً (+- 10 أو 20) للمناطق المختلفة عشان تلاحظ الفرق عند الفحص بالبوستمان
-                    $areaCustomPrice = $data['price'] + rand(-1, 2) * 10;
+                    // سعر مخصص للمنطقة (+- 10 أو 20) لغايات الفحص والاختبار بالبوستمان
+                    $areaCustomPrice = $data['price'] + rand(1, 2) * 10;
 
                     DB::table('service_prices')->updateOrInsert(
                         ['service_id' => $service->id, 'city_id' => $selectedArea->city_id, 'area_id' => $selectedArea->id],
                         [
-                           
                             'price_per_service_period' => $areaCustomPrice, 
                             'currency'                 => 'EGP',
                             'created_at'               => now(), 
@@ -219,7 +217,7 @@ class CategoryAndServiceSeeder extends Seeder
                 }
             }
 
-            // إضافة أوقات العمل للشفت (من 9 صباحاً لـ 5 مساءً)
+            // إضافة أوقات العمل للشفت (من 9 صباحاً لـ 5 مساءً ومن 6 مساءً لـ 11 مساءً)
             $workingDays = ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday'];
             foreach ($workingDays as $day) {
                 DB::table('service_schedules')->updateOrInsert(
@@ -273,6 +271,6 @@ class CategoryAndServiceSeeder extends Seeder
                 );
             }
         }
-        $this->command->info('Categories and Services seeded successfully with dynamic geographical distribution!');
+        $this->command->info('Categories and Services seeded successfully with comprehensive fallback city prices and custom area scopes!');
     }
 }

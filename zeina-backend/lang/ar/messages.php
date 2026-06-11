@@ -165,6 +165,8 @@ return [
         'complete_services_title' => 'أكمل :count خدمات',
         'steps_remaining' => 'تبقى :count خطوات لكسب نقاط المكافأة الخاصة بك.',
         'history_retrieved' => 'تم جلب سجل النقاط بنجاح.',
+        'task_already_completed' => 'تم إكمال هذه المهمة بالفعل.',
+        'task_completed_and_points_earned' => 'تهانينا! تم إضافة :points نقاط إلى حسابك.',
     ],
     'kyc_not_verified' => 'يجب توثيق حسابك أولاً للوصول إلى هذه الخدمة.',
     'kyc_already_submitted' => 'لقد قمت بالفعل بتقديم طلب KYC. يرجى الانتظار حتى يتم معالجته.',

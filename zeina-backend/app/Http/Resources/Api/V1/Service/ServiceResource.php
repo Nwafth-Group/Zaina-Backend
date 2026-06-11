@@ -44,19 +44,8 @@ class ServiceResource extends JsonResource
                 'rules' => new ServiceRuleResource($this->whenLoaded('rules')),
                 'coverages' => ServiceCoverageResource::collection($this->whenLoaded('coverages')),
                 'image' => $media ? (new MediaResource($media))->getFileUrl() : null,
-                // 'basePrice' => $this->whenLoaded('startingPrice', function () {
-                //     return $this->startingPrice?->base_price;
-                // }),
-            //     'price' => $this->whenLoaded('startingPrice', function () {
-            //     return [
-            //         'base_price' => (float) $this->startingPrice?->base_price,
-            //         'price_per_hour' => (float) $this->startingPrice?->price_per_hour,
-            //         'currency' => $this->startingPrice?->currency,
-            //     ];
-            //    }),    
 
-             'price_details'  => [
-                // 'base_price'        => $priceObj ? $priceObj->base_price : 0,
+               'price_details'  => [
                 'price_per_service_period'    => $priceObj ? $priceObj->price_per_service_period : 0,
                 'currency'          => $priceObj ? $priceObj->currency : 'EGP',
                 'is_starting_price' => $isStartingPrice, // true = حط كلمة "يبدأ من"، false = هاد سعره النهائي

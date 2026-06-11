@@ -92,6 +92,7 @@ Route::prefix('customer')->group(function () {
        //Points
        Route::get('points/summary', [PointsController::class, 'summary']);
        Route::get('points/history', [PointsController::class, 'history']);
+       Route::post('points/complete-task', [PointsController::class, 'completeTask']);
 
        Route::apiResource('coupons', CouponController::class)->only(['index', 'show']);
 
