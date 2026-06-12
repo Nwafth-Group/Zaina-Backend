@@ -167,6 +167,7 @@ return [
         'history_retrieved' => 'تم جلب سجل النقاط بنجاح.',
         'task_already_completed' => 'تم إكمال هذه المهمة بالفعل.',
         'task_completed_and_points_earned' => 'تهانينا! تم إضافة :points نقاط إلى حسابك.',
+        'earn_points_retrieved' => 'تم جلب مهام كسب النقاط بنجاح.',
     ],
     'kyc_not_verified' => 'يجب توثيق حسابك أولاً للوصول إلى هذه الخدمة.',
     'kyc_already_submitted' => 'لقد قمت بالفعل بتقديم طلب KYC. يرجى الانتظار حتى يتم معالجته.',
@@ -199,6 +200,8 @@ return [
     'otp_rate_limit_exceeded_seconds' => 'لقد تجاوزت الحد المسموح به لطلب رموز التحقق. يرجى المحاولة بعد :seconds ثانية.',
     'otp_sent_successfully' => 'تم إرسال رمز التحقق بنجاح إلى الرقم الجديد.',
     'otp_invalid' => 'رمز التحقق غير صالح. يرجى التحقق والمحاولة مرة أخرى.',
+    'my_reports_retrieved_successfully' => 'تم جلب تقاريرك بنجاح.',
+    'report_details_retrieved_successfully' => 'تم جلب تفاصيل التقرير بنجاح.',
     
 
 

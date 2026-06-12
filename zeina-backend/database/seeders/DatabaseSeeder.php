@@ -34,7 +34,8 @@ class DatabaseSeeder extends Seeder
             WalletSeeder::class,
             PointSystemSeeder::class,
             CouponSeeder::class,
-            PointSystemSeeder::class
+            PointSystemSeeder::class,
+            LegalDocumentsSeeder::class
         ]);
     }
 }
