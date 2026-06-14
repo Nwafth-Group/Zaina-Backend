@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\V1\Customer\ServiceController;
 use App\Http\Controllers\Api\V1\Customer\TestController;
 use App\Http\Controllers\Api\V1\Customer\UserCardController;
 use App\Http\Controllers\Api\V1\Customer\WalletController;
+use App\Http\Controllers\Api\V1\Notification\DeviceTokenController;
 use App\Http\Middleware\IsCustomer;
 use Illuminate\Support\Facades\Route;
 
@@ -63,8 +64,10 @@ Route::prefix('customer')->group(function () {
         // Auth
         Route::post('auth/logout', [AuthController::class, 'logout']);
 
-        Route::post('auth/send-change-phone-otp', [AuthController::class, 'sendUpdatePhoneOtp']);
-        Route::post('auth/verify-change-phone', [AuthController::class, 'verifyAndUpdatePhone']);
+        // Route::post('auth/send-change-phone-otp', [AuthController::class, 'sendUpdatePhoneOtp']);
+        // Route::post('auth/verify-change-phone', [AuthController::class, 'verifyAndUpdatePhone']);
+
+        Route::post('notification/update-device-token', [DeviceTokenController::class,'updateToken']);
         
         // Profile
         Route::prefix('profile')->group(function () {

@@ -138,6 +138,10 @@ class User extends Authenticatable implements Auditable
          return $this->belongsToMany(Coupon::class, 'coupon_users')->withPivot('used_count')->withTimestamps();
     }
 
+    public function devices(){
+      return $this->hasMany(UserDevice::class,'user_id');
+    }
+
 
 
 

@@ -6,4 +6,11 @@ return [
 'booking_rescheduled_sms' => "Dear customer, your booking No. :ref has been successfully rescheduled. New schedule: :date at :time. Thank you for choosing Zinah.",    
 'booking_cancelled_sms' => "Booking No. :ref has been successfully cancelled. For assistance, please contact technical support.",
 'phone_update_otp' => "Your OTP for phone number update in Zeinah app is: ",
+'booking_confirmed' => "Booking Confirmed! 🎉",
+'booking_confirmed_message' => "Your booking with reference number :ref is now officially confirmed and scheduled successfully.",
+'booking_rescheduled_title' => "Booking Rescheduled! 🔄",
+'booking_rescheduled_message' => "Your booking with reference number :ref has been rescheduled to :date at :time. We look forward to serving you.",
+'booking_cancelled_title' => "Booking Cancelled ❌",
+'booking_cancelled_message' => "Your booking with reference number :ref has been cancelled. If this was a mistake or you need assistance, please contact our support team."
+
 ];
