@@ -97,9 +97,9 @@ Route::post('roles/{role}/duplicate',[RoleController::class, 'duplicate']);
 
 //coupon routes 
 
-Route::apiResource('coupons', CouponController::class);
-
-
+Route::prefix('admin')->group(function () {
+    Route::apiResource('coupons', CouponController::class);
+});
 
 
 
