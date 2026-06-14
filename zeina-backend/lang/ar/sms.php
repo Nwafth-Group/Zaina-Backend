@@ -11,6 +11,10 @@ return [
 'booking_rescheduled_title' => "تم إعادة جدولة الحجز! 🔄",
 'booking_rescheduled_message' => "حجزك برقم :ref تم إعادة جدولته إلى :date الساعة :time. نحن نتطلع إلى خدمتكم.",
 'booking_cancelled_title' => "تم إلغاء الحجز! ❌",
-'booking_cancelled_message' => "حجزك برقم :ref تم إلغائه. إذا كان هذا خطأ أو كنت بحاجة إلى مساعدة، يرجى التواصل مع فريق الدعم."
+'booking_cancelled_message' => "حجزك برقم :ref تم إلغائه. إذا كان هذا خطأ أو كنت بحاجة إلى مساعدة، يرجى التواصل مع فريق الدعم.",
+'reminder_1hour_title' => "تذكير: خدمتك بعد ساعة واحدة ⏰",
+'reminder_1hour_message' => "هذا تذكير ودي بأن حجزك برقم :ref مقرر في :date الساعة :time. يرجى الاستعداد للخدمة.",
+'reminder_15min_title' => "مقدم الخدمة في الطريق! 🚗",
+'reminder_15min_message' => "مقدم الخدمة في الطريق! 🚗",
 
 ];
