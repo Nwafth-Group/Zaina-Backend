@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\Customer\CategoryController;
 use App\Http\Controllers\Api\V1\Customer\CouponController;
 use App\Http\Controllers\Api\V1\Customer\HomeController;
 use App\Http\Controllers\Api\V1\Customer\KycController;
+use App\Http\Controllers\Api\V1\Customer\LegalDocumentController;
 use App\Http\Controllers\Api\V1\Customer\LocationController;
 use App\Http\Controllers\Api\V1\Customer\PointsController;
 use App\Http\Controllers\Api\V1\Customer\ProfileController;
@@ -31,8 +32,6 @@ Route::prefix('customer')->group(function () {
         Route::post('send-otp', [AuthController::class, 'sendotp']);
         Route::post('verify-otp', [AuthController::class, 'verifyOtp']);
         Route::post('/verify', [KycController::class, 'submit'])->middleware('auth:sanctum');
-
-
     });
 
     // ==========================================
@@ -46,7 +45,13 @@ Route::prefix('customer')->group(function () {
     Route::get('services/{service}/available-duration', [ServiceController::class, 'getAvailableDurations']);//
     Route::get('/services/{service}/available-workers', [ServiceController::class, 'getAvailableWorkers']);
     Route::get('/services', [ServiceController::class, 'index']); // 1  // لجلب كل الخدمات مع Paginate
-    Route::get('/categories/{category}/services', [ServiceController::class, 'getServicesByCategory']);// 2 
+    Route::get('/categories/{category}/services', [ServiceController::class, 'getServicesByCategory']);// 2
+    
+    Route::prefix('legal')->group(function(){
+        Route::get('terms-conditions', [LegalDocumentController::class, 'getTerms']);
+        Route::get('privacy', [LegalDocumentController::class, 'getPrivacy']);
+
+    });
 
     //fetch counttries and govrenrates and citites and areas .. 
     Route::get('locations/countries', [LocationController::class, 'countries']);
@@ -74,6 +79,8 @@ Route::prefix('customer')->group(function () {
         //Home page
 
        //Bookings
+       Route::get('/reports', [BookingController::class, 'myReports']);
+       Route::get('/reports/{report}', [BookingController::class, 'showReport']);
        Route::apiResource('bookings', BookingController::class);
        Route::get('bookings/{booking}/shifts/schedule', [BookingController::class, 'getRescheduleShifts']);//
        Route::post('bookings/{booking}/reschedule', [BookingController::class, 'reschedule']);
@@ -90,9 +97,13 @@ Route::prefix('customer')->group(function () {
        Route::post('cards', [UserCardController::class, 'store']);
        Route::delete('cards/{id}', [UserCardController::class, 'destroy']);
        //Points
-       Route::get('points/summary', [PointsController::class, 'summary']);
-       Route::get('points/history', [PointsController::class, 'history']);
-       Route::post('points/complete-task', [PointsController::class, 'completeTask']);
+       Route::prefix('points')->group(function (){
+           Route::get('/summary', [PointsController::class, 'summary']);
+           Route::get('/history', [PointsController::class, 'history']);
+           Route::get('/earn-points',[PointsController::class, 'earnPoints']);
+           Route::post('/complete-task', [PointsController::class, 'completeTask']);
+
+       });
 
        Route::apiResource('coupons', CouponController::class)->only(['index', 'show']);
 

@@ -169,6 +169,7 @@ return [
          'summary_retrieved' => 'Points summary retrieved successfully.',
          'task_already_completed' => 'This task has already been completed.',
          'task_completed_and_points_earned' => 'Congratulations! +:points points have been added to your account.',
+            'earn_points_retrieved' => 'Earn points tasks retrieved successfully.',
     ],
     'kyc_not_verified' => 'Your account must be verified first to access this service.',
     'kyc_already_submitted' => 'You have already submitted a KYC request. Please wait for it to be processed.',
@@ -205,6 +206,9 @@ return [
     'otp_rate_limit_exceeded_seconds' => 'You have exceeded the allowed limit for requesting OTPs. Please try again after :seconds seconds.',
     'otp_sent_successfully' => 'OTP sent successfully to the new number.',
     'otp_invalid' => 'Invalid OTP. Please check and try again.',
+    'my_reports_retrieved_successfully' => 'Your reports have been retrieved successfully.',
+    'report_details_retrieved_successfully' => 'Report details retrieved successfully.',
+    
    
 
 

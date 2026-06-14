@@ -26,6 +26,7 @@ class ProfileController extends Controller
    public function show()
     {   
         $user = auth('sanctum')->user();
+       
         return $this->successResponse(
             new CustomerUserResource($user),
             __('messages.profile_fetched_successfully')

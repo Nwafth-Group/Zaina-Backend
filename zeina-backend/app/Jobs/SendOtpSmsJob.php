@@ -2,25 +2,22 @@
 
 namespace App\Jobs;
 
-use App\Service\SmsService;
+use App\Service\SmsService; // ⚠️ تأكد أن هذا المسار يطابق تماماً مجلد السيرفس الحقيقي عندك
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 use Throwable;
 
 class SendOtpSmsJob implements ShouldQueue
 {
     use Queueable;
 
-   protected $mobile;
-   protected $message; 
+    protected $mobile;
+    protected $message; 
 
     public $tries = 3;   
     public $backoff = 5;
 
-    // المبرمج بيمرر البيانات هان لما يستدعي الـ Job
     public function __construct(string $mobile, string $message)
     {
         $this->mobile = $mobile;
@@ -30,26 +27,37 @@ class SendOtpSmsJob implements ShouldQueue
     /**
      * Execute the job.
      */
-  public function handle(SmsService $smsService): void
-{      
-    try {
-        $smsSent = $smsService->send($this->mobile, $this->message);
+    public function handle(SmsService $smsService): void
+    {      
+        try {
+            $cleanMobile = preg_replace('/[^0-9]/', '', $this->mobile);
+            $smsSent = $smsService->send($cleanMobile, $this->message);
 
-        if (!$smsSent) {
-            throw new \Exception("Failed to send SMS via Community Ads API.");
+            if (!$smsSent) {
+                // هان بنرمي الـ Exception المخصص لو الـ API رجع كود غير الـ 0
+                throw new \Exception("Failed to send SMS via Community Ads API.");
+            }
+        } catch (\Exception $e) {
+            // 🔥 تعديل ذهبي: بنطبع الـ Exception نفسه مع الـ Stack Trace بالـ log الأساسي
+            Log::error("Queue SMS Handle Exception: " . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
+            throw $e; 
         }
-    } catch (\Exception $e) {
-        Log::error("Queue SMS Error: " . $e->getMessage());
-        throw $e; 
     }
-}
 
-public function failed(Throwable $exception): void
-{
-    // 1. تسجيل تنبيه خطير في الـ Logs
-    Log::critical("⚠️ فشل نهائي في إرسال رسالة الـ OTP للرقم: {$this->mobile}. السبب: " . $exception->getMessage());
-
-    // 2. [إختياري] يمكنك هنا عمل أكشن مخصص:
-}
-
+    /**
+     * دالة الفشل النهائي بعد استنفاد الـ 3 محاولات
+     */
+    public function failed(Throwable $exception): void
+    {
+        // 🔥 هون السحر! الـ $exception بيمسك السبب الحقيقي بالظبط (سواء كود خطأ أو مشكلة كلاس)
+        Log::critical("⚠️ فشل نهائي في إرسال رسالة الـ OTP للرقم: {$this->mobile}.", [
+            'reason' => $exception->getMessage(),
+            'file'   => $exception->getFile(),
+            'line'   => $exception->getLine(),
+            'trace'  => $exception->getTraceAsString() // بيطبعلك شجرة الخطأ كاملة بالـ log
+        ]);
+    }
 }

@@ -18,7 +18,6 @@ return new class extends Migration
             $table->decimal('amount', 10, 2);
             $table->string('title'); 
             $table->string('reference_id')->nullable();//رقم مرجعي لربط الحركة بالحجز أو بعملية الدفع (اختياري بس مهم للبزنس)
- 
             $table->timestamps();
         });
     }

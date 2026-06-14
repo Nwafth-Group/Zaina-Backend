@@ -17,7 +17,7 @@ return new class extends Migration
                 $table->foreignId('customer_id')->constrained('users')->cascadeOnDelete();
                 $table->string('reason'); // 'worker_absent', 'late_arrival', 'poor_quality', 'wrong_charges', 'other'
                 $table->text('description')->nullable(); // when 'other' is selected
-                $table->enum('status', ['pending', 'resolved', 'closed'])->default('pending');
+                $table->enum('status', ['submitted', 'under_review', 'resolved'])->default('submitted');
                 $table->timestamps();
         });
     }

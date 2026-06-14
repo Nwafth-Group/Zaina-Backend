@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Api\V1\Customer;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Customer\RescheduleBookingRequest;
+use App\Http\Requests\Api\V1\Customer\ReviewBookingRequest;
 use App\Http\Requests\Api\V1\Customer\RportBookingRequest;
 use App\Http\Requests\Api\V1\Customer\StoreBookingRequest;
 use App\Http\Resources\Api\V1\Booking\BookingResource;
+use App\Http\Resources\Api\V1\Reports\ReportsResource;
 use App\Jobs\SendBookingNotificationSmsJob;
 use App\Models\Booking;
 use App\Models\BookingAssignment;
@@ -28,7 +30,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use App\Http\Requests\Api\V1\Customer\ReviewBookingRequest;
 
 class BookingController extends Controller
 {
@@ -371,4 +372,24 @@ class BookingController extends Controller
         ], $statusCode);
     }
 }
+
+
+public function myReports()
+{
+    $user = auth()->user();
+    $reports = Report::query()->where('customer_id',$user->id)
+     ->get();
+
+     return $this->successResponse(ReportsResource::collection($reports), __('messages.my_reports_retrieved_successfully'));
+}
+
+public function showReport(Report $report){
+
+ return $this->successResponse(new ReportsResource($report), __('messages.report_details_retrieved_successfully'));
+
+}
+
+
+
+
 }

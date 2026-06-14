@@ -100,7 +100,7 @@ class RolesAndUsersSeeder extends Seeder
 
         // إضافة عميل واحد ببيانات معروفة للفحص السريع
         $testCustomer = User::firstOrCreate(
-            ['phone_number' => '0599000003'],
+            ['phone_number' => '+200599000003'],
             [
                 'first_name' => 'Sara',
                 'last_name' => 'Customer',

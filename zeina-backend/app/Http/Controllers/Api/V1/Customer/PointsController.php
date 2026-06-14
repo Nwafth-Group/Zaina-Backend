@@ -39,7 +39,7 @@ public function summary()
                           ->pluck('task_id')
                           ->toArray();
 
-    $tasks = RewardTasks::where('status', true)->get()->map(function ($task) use ($completedTaskIds) {
+    $tasks = RewardTasks::where('status', true)->get()->take(3)->map(function ($task) use ($completedTaskIds) {
         return [
             'id'           => $task->id,
             'title'        => app()->getLocale() == 'ar' ? $task->title_ar : $task->title_en,
@@ -124,8 +124,6 @@ public function history(Request $request)
 
     return $this->successResponse($formattedHistory, __('messages.points.history_retrieved'));
 }
-
-
 public function completeTask(Request $request)
 {
     $request->validate([
@@ -170,6 +168,29 @@ public function completeTask(Request $request)
         DB::rollBack();
         return $this->errorResponse('حدث خطأ: ' . $e->getMessage(), 500);
     }
+}
+
+
+public function earnPoints()
+{
+    $user = auth()->user();
+    $completedTaskIds = DB::table('user_reward_tasks')
+                          ->where('user_id', $user->id)
+                          ->pluck('task_id')
+                          ->toArray();
+    $tasks = RewardTasks::where('status', true)->get()->map(function ($task) use ($completedTaskIds) {
+        return [
+            'id'           => $task->id,
+            'title'        => app()->getLocale() == 'ar' ? $task->title_ar : $task->title_en,
+            'subtitle'     => app()->getLocale() == 'ar' ? $task->subtitle_ar : $task->subtitle_en,
+            'points'       => '+' . $task->points . ' Pts',
+            'action_type'  => $task->action_type,
+            'action_link'  => $task->action_link,
+            'is_completed' => in_array($task->id, $completedTaskIds),
+        ];
+    });
+
+    return $this->successResponse($tasks, __('messages.points.earn_points_retrieved'));
 }
 
 

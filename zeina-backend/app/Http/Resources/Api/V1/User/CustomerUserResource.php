@@ -32,6 +32,7 @@ class CustomerUserResource extends JsonResource
             'verification_status'    => $this->verification_status, // unverified, pending, approved, rejected
             'rejection_reason'       => $this->rejection_reason,    // يظهر للكستمر فقط لو تم رفضه ليعرف السبب
             'wallet_balance'         => (float) $this->wallet_balance,
+            'points'                 => (int) $this->getTotalPointsAttribute(),
             'gender'                 => $this->gender,
             'email'                  => $this->email,
             'mobile_number'          => $this->phone_number,
