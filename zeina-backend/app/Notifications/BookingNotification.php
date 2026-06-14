@@ -7,6 +7,7 @@ use App\Service\SmsService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Facades\Log;
 
 class BookingNotification extends Notification implements ShouldQueue
 {
@@ -33,7 +34,7 @@ class BookingNotification extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return ['database', FirebaseChannel::class , 'sms'];
+        return ['database', FirebaseChannel::class ,\App\Channels\SmsChannel::class];
     }
 
     /**
@@ -64,16 +65,22 @@ class BookingNotification extends Notification implements ShouldQueue
         ];
     }
 
-    public function toSms(object $notifiable)
-{
-    $smsService = app(SmsService::class);
-    $smsMessage = __('sms.booking_created_sms', [
-        'ref'           => $this->extraData['booking_ref'] ?? '',
-        'date'          => $this->extraData['booking_date'] ?? '',
-        'status'        => 'Upcoming',
-        'workers_count' => $this->extraData['workers_count'] ?? 1
-    ]);
+  public function toSms(object $notifiable)
+    {
+        try {
+            $smsService = app(SmsService::class);
+            $smsMessage = __('sms.booking_created_sms', [
+                'ref'           => $this->extraData['booking_ref'] ?? '',
+                'date'          => $this->extraData['booking_date'] ?? '',
+                'status'        => 'Upcoming',
+                'workers_count' => $this->extraData['workers_count'] ?? 1
+            ]);
 
-    $smsService->send($notifiable->phone_number, $smsMessage);
-}
+            $smsService->send($notifiable->phone_number, $smsMessage);
+            
+        } catch (\Exception $e) {
+            // تسجيل الخطأ في ملف الـ Log بدون تعطيل باقي الإشعارات
+            Log::error('SMS Failed to send for user: ' . $notifiable->phone_number . ' | Error: ' . $e->getMessage());
+        }
+    }
 }
