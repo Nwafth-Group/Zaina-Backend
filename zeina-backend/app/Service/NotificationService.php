@@ -10,10 +10,9 @@ use Kreait\Firebase\Messaging\Notification;
 class NotificationService
 {
     protected $messaging;
-    // حقن محرك الـ Firebase Messaging تلقائياً عبر الـ Service Provider للـ Package
+
     public function __construct()
     {
-        // حماية: نتحقق أن الملف والكونفيج مهيأ بالكامل لتجنب كراش السيرفر لو تعطل الفايربيز
         if (app()->has('firebase.messaging')) {
             $this->messaging = app('firebase.messaging');
         }
@@ -24,7 +23,9 @@ class NotificationService
      */
     public function sendPushNotification(int $userId, string $title, string $body, array $extraData = [])
     {
-        // 1. جلب جميع الـ FCM Tokens النشطة المرتبطة بهذا المستخدم من جدولنا
+        Log::info("Attempting to send Firebase Push Notification in Notification Service to User ID: {$userId} with Title: '{$title}'"); 
+        Log::info("Fetching FCM Tokens for User ID: {$userId} from database...");
+        
         $tokens = DB::table('user_devices')
             ->where('user_id', $userId)
             ->pluck('fcm_token')
@@ -35,36 +36,43 @@ class NotificationService
             return false;
         }
 
-        // 2. إذا لم تكن خدمة الفايربيز مهيأة بالـ .env للتطوير، نكتفي بكتابتها في الـ Log لتسهيل التيست
         if (!$this->messaging) {
             Log::warning("Firebase Messaging is not configured. Notification Logged: [Title: {$title} | Body: {$body}] for User ID: {$userId}");
             return true;
         }
 
         try {
-            // 3. بناء هيكل الإشعار القياسي الذي يفهمه نظام الـ iOS والـ Android
+            Log::info("Building Firebase Cloud Message for User ID: {$userId}...");
             $notification = Notification::create($title, $body);
 
-            // 4. إرسال الإشعار لكافة الأجهزة دفعة واحدة (Multicast Sending)
-            // الـ extraData مفيدة جداً للموبايل عشان يفتح شاشة تفاصيل الحجز مباشرة عند النقر على الإشعار
+            // 🌟 الحل الجذري والعبقري: تنظيف وتأمين مصفوفة البيانات الإضافية 🌟
+            // نقوم بعمل تحويل قسري (String Casting) لكافة القيم بداخل المصفوفة لإرضاء معايير جوجل الصارمة
+            $cleanExtraData = [];
+            foreach ($extraData as $key => $value) {
+                // لو كانت القيمة مصفوفة (Array) نحولها لـ JSON String، غير ذلك نحولها لـ String عادي
+                $cleanExtraData[$key] = is_array($value) ? json_encode($value) : (string) $value;
+            }
+
+            Log::info("Preparing Firebase Cloud Message for User ID: {$userId}...");
+            
+            // دمج المصفوفة النظيفة مع بارامترات النظام الإلزامية ونوعها نصي أيضاً
             $message = CloudMessage::new()
                 ->withNotification($notification)
-                ->withData(array_merge($extraData, [
-                    'click_action' => 'FLUTTER_NOTIFICATION_CLICK', // مرجعية قياسية لنظام الموبايل
+                ->withData(array_merge($cleanExtraData, [
+                    'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
                     'sent_at'      => now()->toIso8601String()
                 ]));
 
-            // إرسال الإشعار لـ قائمة الـ Tokens المستهدفة
+            Log::info("Sending Firebase Push Notification to User ID: {$userId}...");
             $report = $this->messaging->sendMulticast($message, $tokens);
 
             // 5. هندسة ذكية وتنظيف تلقائي لقاعدة البيانات (Database Clean-up)
-            // إذا أفاد الفايربيز أن هناك Token منتهي الصلاحية (مثلاً العميل مسح التطبيق)، نحذفه فوراً من جدولنا
             if ($report->hasFailures()) {
                 foreach ($report->failures()->asArray() as $failure) {
-                    // إذا كان الخطأ أن التوكن غير صالح أو منتهي
                     if ($failure->error()->getMessage() === 'The registration token is not a valid FCM registration token' || 
                         str_contains($failure->error()->getMessage(), 'not-found')) {
                         
+                        Log::info("Found invalid FCM Token for User ID: {$userId}");
                         $invalidToken = $failure->target()->value();
                         
                         DB::table('user_devices')->where('fcm_token', $invalidToken)->delete();
@@ -72,7 +80,8 @@ class NotificationService
                     }
                 }
             }
-
+            
+            Log::info("Successfully sent Firebase Push Notification to User ID: {$userId}");
             return true;
 
         } catch (\Exception $e) {

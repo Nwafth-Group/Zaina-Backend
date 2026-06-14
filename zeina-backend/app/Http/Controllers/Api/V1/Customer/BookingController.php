@@ -107,9 +107,9 @@ class BookingController extends Controller
         // بما أن الـ Notification مدمج بـ `ShouldQueue` سينطلق فورا بالخلفية دون تأخير الـ API
         try {
             $user->notify(new \App\Notifications\BookingNotification(
-                __('sms.booking_confirmed'), // عنوان الإشعار على الهاتف وفي الـ Inbox
+                __('sms.booking_confirmed',[]), // عنوان الإشعار على الهاتف وفي الـ Inbox
                 __('sms.booking_confirmed_message', [
-                    'booking_ref' => $booking->booking_ref
+                    'ref' => $booking->booking_ref
                 ]), 
                 $booking->id, // الـ ID للتوجه لشاشة التفاصيل
                 [
@@ -278,7 +278,7 @@ class BookingController extends Controller
             $user->notify(new \App\Notifications\BookingNotification(
                 __('sms.booking_rescheduled_title'), // عنوان الإشعار (مثلاً: تم تعديل موعد الحجز 🔄)
                 __('sms.booking_rescheduled_message', [
-                    'booking_ref' => $booking->booking_ref,
+                    'ref' => $booking->booking_ref,
                     'date'        => $request->new_date,
                     'time'        => $newStart->format('h:i A'),
                 ]), 
@@ -329,7 +329,7 @@ public function cancel(Request $request, $id)
             $user->notify(new \App\Notifications\BookingNotification(
                 __('sms.booking_cancelled_title'), // عنوان الإشعار (مثلاً: تم إلغاء الحجز ❌)
                 __('sms.booking_cancelled_message', [
-                    'booking_ref' => $booking->booking_ref,
+                    'ref' => $booking->booking_ref,
                 ]), 
                 $booking->id, // الـ ID للتوجه لشاشة تفاصيل الحجز الملغي في الموبايل
                 [

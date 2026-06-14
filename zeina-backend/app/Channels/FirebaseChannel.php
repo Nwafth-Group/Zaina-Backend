@@ -2,8 +2,9 @@
 
 namespace App\Channels;
 
-use Illuminate\Notifications\Notification;
 use App\Service\NotificationService;
+use Illuminate\Notifications\Notification;
+use Illuminate\Support\Facades\Log;
 
 class FirebaseChannel
 {
@@ -19,7 +20,8 @@ class FirebaseChannel
      * إرسال الإشعار اللحظي عبر الفايربيز
      */
     public function send($notifiable, Notification $notification)
-    {
+    {    
+        Log::info("--- [Firebase Channel] Starting Custom Send Process ---");
         // نتحقق إذا كان ملف الـ Notification يحتوي على دالة toFirebase
         if (!method_exists($notification, 'toFirebase')) {
             return;

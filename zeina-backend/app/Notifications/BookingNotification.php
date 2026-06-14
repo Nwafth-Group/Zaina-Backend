@@ -41,7 +41,8 @@ class BookingNotification extends Notification implements ShouldQueue
      * 1. لوجيك الـ Database: كيف سيخزن الإشعار بجدول notifications للـ Inbox
      */
     public function toDatabase(object $notifiable): array
-    {
+    {   
+        Log::info("--- [Database Channel] Preparing Data for Database Storage ---");
         return [
             'booking_id' => $this->bookingId,
             'title'      => $this->title,
@@ -54,11 +55,18 @@ class BookingNotification extends Notification implements ShouldQueue
      * 2. لوجيك الـ Firebase: الداتا الممررة للموبايل كـ Push Notification
      */
     public function toFirebase(object $notifiable): array
-    {
+    {  
+
+        Log::info("--- [Firebase Channel] Preparing Data for Firebase Push ---");
+
+        $cleanExtraData = [];
+    foreach ($this->extraData as $key => $value) {
+        $cleanExtraData[$key] = is_array($value) ? json_encode($value) : (string) $value;
+    }
         return [
             'title'      => $this->title,
             'body'       => $this->body,
-            'extra_data' => array_merge($this->extraData, [
+            'extra_data' => array_merge($cleanExtraData, [
                 'booking_id'  => (string) $this->bookingId,
                 'action_type' => 'open_booking_details'
             ]),
@@ -66,7 +74,7 @@ class BookingNotification extends Notification implements ShouldQueue
     }
 
   public function toSms(object $notifiable)
-    {
+    {     
         try {
             $smsService = app(SmsService::class);
             $smsMessage = __('sms.booking_created_sms', [
@@ -75,8 +83,10 @@ class BookingNotification extends Notification implements ShouldQueue
                 'status'        => 'Upcoming',
                 'workers_count' => $this->extraData['workers_count'] ?? 1
             ]);
-
+            Log::info("[SMS Notification] Generated SMS Message Content: " . $smsMessage);
             $smsService->send($notifiable->phone_number, $smsMessage);
+
+            Log::info("[SMS Notification] Success! SMS triggered via Service.");
             
         } catch (\Exception $e) {
             // تسجيل الخطأ في ملف الـ Log بدون تعطيل باقي الإشعارات
