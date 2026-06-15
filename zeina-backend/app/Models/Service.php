@@ -121,5 +121,9 @@ public function getCustomerPrice()
     return $this->belongsToMany(Coupon::class, 'coupon_services');
    }
 
+   Public function reviews(){
+    return $this->morphMany(Review::class, 'reviewable');
+   }
+   
    
 }

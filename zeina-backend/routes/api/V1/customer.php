@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\V1\Customer\LegalDocumentController;
 use App\Http\Controllers\Api\V1\Customer\LocationController;
 use App\Http\Controllers\Api\V1\Customer\PointsController;
 use App\Http\Controllers\Api\V1\Customer\ProfileController;
+use App\Http\Controllers\Api\V1\Customer\ReviewController;
 use App\Http\Controllers\Api\V1\Customer\SearchController;
 use App\Http\Controllers\Api\V1\Customer\ServiceController;
 use App\Http\Controllers\Api\V1\Customer\TestController;
@@ -47,6 +48,7 @@ Route::prefix('customer')->group(function () {
     Route::get('/services/{service}/available-workers', [ServiceController::class, 'getAvailableWorkers']);
     Route::get('/services', [ServiceController::class, 'index']); // 1  // لجلب كل الخدمات مع Paginate
     Route::get('/categories/{category}/services', [ServiceController::class, 'getServicesByCategory']);// 2
+    Route::get('/reviews/{service}', [ReviewController::class, 'index']); // 5
     
     Route::prefix('legal')->group(function(){
         Route::get('terms-conditions', [LegalDocumentController::class, 'getTerms']);
