@@ -67,19 +67,25 @@ class NotificationService
             $report = $this->messaging->sendMulticast($message, $tokens);
 
             // 5. هندسة ذكية وتنظيف تلقائي لقاعدة البيانات (Database Clean-up)
-            if ($report->hasFailures()) {
-                foreach ($report->failures()->asArray() as $failure) {
-                    if ($failure->error()->getMessage() === 'The registration token is not a valid FCM registration token' || 
-                        str_contains($failure->error()->getMessage(), 'not-found')) {
+           if ($report->hasFailures()) {
+    // 🌟 التعديل السحري هنا: الـ failures() كوليكشن بيمشي عليه الـ foreach مباشرة بدون asArray()
+                foreach ($report->failures() as $failure) {
+                    $errorMsg = $failure->error()->getMessage();
+                    
+                    if ($errorMsg === 'The registration token is not a valid FCM registration token' || 
+                        str_contains($errorMsg, 'not-found') || 
+                        str_contains($errorMsg, 'unregistered')) {
                         
-                        Log::info("Found invalid FCM Token for User ID: {$userId}");
+                        Log::info("Found invalid FCM Token for User ID: {$userId} - Reason: {$errorMsg}");
+                        
+                        // جلب قيمة التوكن التالف مباشرة
                         $invalidToken = $failure->target()->value();
                         
                         DB::table('user_devices')->where('fcm_token', $invalidToken)->delete();
                         Log::info("Cleaned up expired FCM Token from database.");
                     }
                 }
-            }
+}
             
             Log::info("Successfully sent Firebase Push Notification to User ID: {$userId}");
             return true;
