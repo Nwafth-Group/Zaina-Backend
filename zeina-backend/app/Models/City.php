@@ -16,15 +16,27 @@ class City extends Model
         'name_en',
         'code',
         'status',
-    ]; 
-    public function govrenrate(){
+    ];
+
+    public function govrenrate()
+    {
         return $this->belongsTo(Govrenrate::class, 'govrenrate_id');
     }
-    public function areas(){
+
+    public function areas()
+    {
         return $this->hasMany(Area::class, 'city_id');
-    } 
+    }
 
-
-
-
+    /**
+     * Resolve the city's country through its governorate.
+     *
+     * Cities have no direct country_id (the chain is city -> govrenrate ->
+     * country), so this accessor lets `$this->country` resolve everywhere
+     * CityResource is rendered. Eager-load `govrenrate.country` to avoid N+1.
+     */
+    public function getCountryAttribute(): ?Country
+    {
+        return $this->govrenrate?->country;
+    }
 }

@@ -12,28 +12,30 @@ use Illuminate\Http\Request;
 class CityController extends Controller
 {
     use ApiResponseTrait;
-   public function index(Request $request)
+
+    public function index(Request $request)
     {
         // جلب المدن مع دولتهم، وإمكانية الفلترة
-        $query = City::with('country');
+        $query = City::with('govrenrate.country');
 
         if ($request->country_name) {
-            $query->whereHas('country', function ($q) use ($request) {
+            $query->whereHas('govrenrate.country', function ($q) use ($request) {
                 $q->where('name_en', 'like', "%{$request->country_name}%");
                 $q->orWhere('name_ar', 'like', "%{$request->country_name}%");
             });
         }
-        
+
         if ($request->status) {
             $query->where('status', $request->status);
         }
-    
+
         return $this->successResponse(CityResource::collection($query->get()), __('messages.cities_retrieved_successfully'));
     }
 
     public function store(StoreCityRequest $request)
-    {     
+    {
         $city = City::create($request->validated());
+
         return $this->successResponse(new CityResource($city), __('messages.city_created_successfully'));
     }
 
@@ -45,6 +47,7 @@ class CityController extends Controller
         }
 
         $city->update($request->validated());
+
         return $this->successResponse(new CityResource($city), __('messages.city_updated_successfully'));
     }
 
@@ -56,6 +59,7 @@ class CityController extends Controller
         }
 
         $city->delete();
+
         return $this->successResponse(null, __('messages.city_deleted_successfully'));
     }
 
@@ -64,6 +68,7 @@ class CityController extends Controller
     {
         $city->status = $city->status === 'active' ? 'inactive' : 'active';
         $city->save();
+
         return $this->successResponse(null, __('messages.city_status_changed'));
     }
 }
