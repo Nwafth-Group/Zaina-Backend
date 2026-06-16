@@ -212,6 +212,11 @@ return [
     'notification_read_success' => 'تم وضع الإشعار ك مقروء .',
     'announcemnt_mark_read' => 'تم عمل الإعلان ك مقروء .',
     'all_announcemnt_mark_read' => 'جميع الإعلانات تم وضع علامة "مقروء" عليها.',
+    'ads_fetch_success'   => 'تم جلب الإعلانات بنجاح.',
+    'ad_create_success'   => 'تم إنشاء الإعلان بنجاح.',
+    'ad_not_exist'        => 'الإعلان غير موجود.',
+    'ad_update_success'   => 'تم تحديث الإعلان بنجاح.',
+    'ad_delete_success'   => 'تم حذف الإعلان بنجاح.',
 
 
 ];

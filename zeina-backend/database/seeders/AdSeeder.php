@@ -2,64 +2,76 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Ad;
-use Carbon\Carbon;
+use App\Service\MediaService; 
+use Illuminate\Database\Seeder;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 
 class AdSeeder extends Seeder
 {
+    protected $mediaService;
+
+    // حقن الميديا سيرفس بداخل السيدر
+    public function __construct(MediaService $mediaService)
+    {
+        $this->mediaService = $mediaService;
+    }
+
+    /**
+     * Run the database seeds.
+     */
     public function run(): void
     {
-        $now = Carbon::now();
+        // 1. تنظيف الجدول
+        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        Ad::truncate();
+        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
 
+        // 2. داتا الـ Ads التجريبية (روابط متنوعة واختيارية)
         $ads = [
-            // 1. إعلان فعال وحالياً في فترة العرض (مثالي للصفحة الرئيسية)
             [
-                'title' => 'خصم 20% على خدمات التنظيف',
-                'description' => 'بمناسبة شهر رمضان، احصل على خصم 20% على جميع خدمات تنظيف المنازل.',
-                'start_date' => $now->copy()->subDays(2)->toDateString(), // بدأ قبل يومين
-                'end_date' => $now->copy()->addDays(10)->toDateString(),  // بينتهي كمان 10 أيام
+                'link' => 'null', // رابط عرض خاص
+              'status' => 'active',
+            ],
+            [
+                'link' => null, // بدون رابط (فقط صورة للعرض والتجميل بالـ UI)
                 'status' => 'active',
             ],
-            // 2. إعلان فعال دائم (بدون تواريخ بداية ونهاية)
             [
-                'title' => 'حمل تطبيق زينة الآن!',
-                'description' => 'أسرع طريقة لحجز خدماتك المنزلية.',
-                'start_date' => null,
-                'end_date' => null,
+                'link' => 'null', // رابط داخلي لقسم التجميل
                 'status' => 'active',
-            ],
-            // 3. إعلان فعال ولكن لسا ما بدأ (Future Ad - المفروض ما يظهر للعميل)
-            [
-                'title' => 'عروض الصيف قريباً',
-                'link' => null,
-                'description' => 'انتظرونا في أضخم عروض الصيف الأسبوع القادم.',
-                'start_date' => $now->copy()->addDays(7)->toDateString(), // بيبدأ كمان أسبوع
-                'end_date' => $now->copy()->addDays(20)->toDateString(),
-                'status' => 'active',
-            ],
-            // 4. إعلان منتهي (Expired Ad - المفروض ما يظهر للعميل)
-            [
-                'title' => 'عرض يوم التأسيس',
-                'link' => null,
-                'description' => 'انتهى العرض، شكراً لثقتكم.',
-                'start_date' => $now->copy()->subDays(10)->toDateString(),
-                'end_date' => $now->copy()->subDays(1)->toDateString(), // انتهى امبارح
-                'status' => 'active',
-            ],
-            // 5. إعلان متوقف من الإدارة (Inactive)
-            [
-                'title' => 'صيانة مؤقتة',
-                'link' => null,
-                'description' => 'نعتذر، هذه الخدمة متوقفة حالياً للتحديث.',
-                'start_date' => $now->copy()->subDays(5)->toDateString(),
-                'end_date' => $now->copy()->addDays(5)->toDateString(),
-                'status' => 'inactive',
-            ],
+            ]
         ];
 
-        foreach ($ads as $ad) {
-            Ad::create($ad);
+        // 3. المسار الثابت والمضمون بداخل مجلد الـ public
+        $sourcePath = public_path('dummy/ad_banner.jpeg');
+
+        foreach ($ads as $data) {
+            $ad = Ad::create($data);
+
+            if (file_exists($sourcePath)) {
+                // 🌟 الحل السحري المأمن: عمل نسخة كاش مؤقتة لكل إعلان عشان الداتا تطلع 100% شغالة وما تطلع null
+                $tempPath = sys_get_temp_dir() . '/temp_ad_' . uniqid() . '.jpg';
+                copy($sourcePath, $tempPath);
+
+                $uploadedFile = new UploadedFile(
+                    $tempPath,
+                    'ad_banner.jpeg',
+                    'image/jpeg',
+                    null,
+                    true // وضع التست للنسخ المباشر
+                );
+
+                // رفع الميديا وربطها بـ الـ Polymorphic Table (جدول الـ media الخاص بك)
+                // غيرنا الـ collection_name ليكون 'ad/image' ليطابق السيناريو تبعه
+                $this->mediaService->upload($uploadedFile, $ad,'ads/image', 'public');
+                
+                // حذف الملف المؤقت فوراً بعد النجاح
+                if (file_exists($tempPath)) {
+                    @unlink($tempPath);
+                }
+            }
         }
     }
 }

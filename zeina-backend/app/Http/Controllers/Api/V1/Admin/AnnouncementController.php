@@ -62,10 +62,6 @@ class AnnouncementController extends Controller
 
         return $this->successResponse(new AnnouncementResource($announcement),__('messages.announ_fetch_success'));
 
-        return response()->json([
-            'success' => true,
-            'data'    => $announcement
-        ], 200);
     }
 
     /**
@@ -119,9 +115,6 @@ class AnnouncementController extends Controller
 
         return $this->successResponse(null,__('messages.announ_delete_success'));
 
-        return response()->json([
-            'success' => true,
-            'message' => 'تم حذف الإعلان وصورته من السيرفر بنجاح.'
-        ], 200);
+    
     }
 }

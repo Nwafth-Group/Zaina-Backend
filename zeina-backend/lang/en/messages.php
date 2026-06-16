@@ -218,6 +218,11 @@ return [
     'notification_read_success' => 'Notification marked as read.',
     'announcemnt_mark_read' => 'Announcement marked as read',
     'all_announcemnt_mark_read' => 'All Anouncemtnt marked as read.',
+    'ads_fetch_success' => 'Ads fetch successfully.',
+    'ad_create_success' => 'Ads created successfully.',
+    'ad_not_exist' => 'Not found Ads.',
+    'ad_update_success' => 'Ad updated successfully.',
+    'ad_delete_success' => 'Ad deleted successfully.',
    
 
 

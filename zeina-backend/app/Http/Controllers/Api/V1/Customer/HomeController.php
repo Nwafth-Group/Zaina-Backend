@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1\Customer;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\Api\V1\Ad\AdResource;
 use App\Http\Resources\Api\V1\Category\CategoryResourse;
 use App\Http\Resources\Api\V1\Media\MediaResource;
 use App\Http\Resources\Api\V1\Service\ServiceResource;
@@ -25,13 +26,6 @@ class HomeController extends Controller
         // 1. الإعلانات (Banners)
         $now = now()->toDateString();
         $banners = Ad::where('status', 'active')
-            ->where(function ($query) use ($now) {
-                $query->whereNull('start_date')
-                      ->orWhere(function ($q) use ($now) {
-                          $q->where('start_date', '<=', $now)
-                            ->where('end_date', '>=', $now);
-                      });
-            })
             ->with(['media'])
             ->get();
 
@@ -101,7 +95,7 @@ class HomeController extends Controller
 
         // 5. تجميع البيانات وإرجاعها
         return $this->successResponse([
-            'banners' => $banners,
+            'banners' => AdResource::collection($banners),
             'categories' => CategoryResourse::collection($categories),
             'upcoming_appointment' =>  $upcomingBooking ?? null,
             'popular_services' => ServiceResource::collection($popularServices),

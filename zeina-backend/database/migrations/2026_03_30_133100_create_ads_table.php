@@ -13,11 +13,7 @@ return new class extends Migration
     {
         Schema::create('ads', function (Blueprint $table) {
             $table->id();
-            $table->string('title');
             $table->string('link')->nullable();
-            $table->text('description')->nullable();
-            $table->date('start_date')->nullable();
-            $table->date('end_date')->nullable();
             $table->enum('status',['active','inactive'])->default('active');
             $table->softDeletes();
             $table->timestamps();

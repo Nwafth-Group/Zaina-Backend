@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\Admin\AdsController;
 use App\Http\Controllers\Api\V1\Admin\AnnouncementController;
 use App\Http\Controllers\Api\V1\Admin\AreaController;
 use App\Http\Controllers\Api\V1\Admin\AuthController;
@@ -104,6 +105,8 @@ Route::prefix('admin')->group(function () {
 
 
 Route::apiResource('announcements',AnnouncementController::class);
+
+Route::apiResource('ads',AdsController::class);
 
 
 
