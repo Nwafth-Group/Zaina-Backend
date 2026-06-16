@@ -11,16 +11,16 @@ class ServiceDuration extends Model
     use HasFactory;
 
     protected $fillable = [
-        'service_id', 'service_period_hours', 
-        'min_duration_hours', 'min_contract_months'
+        'service_id', 'service_period_hours',
+        'allowed_contract_durations', 'min_contract_months',
     ];
 
     protected $casts = [
-        'allowed_durations' => 'array',
         'allowed_contract_durations' => 'array',
     ];
 
-    public function service(){
-        return $this->belongsTo(Service::class,'service_id');
+    public function service()
+    {
+        return $this->belongsTo(Service::class, 'service_id');
     }
 }

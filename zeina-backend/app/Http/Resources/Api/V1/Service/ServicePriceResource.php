@@ -18,11 +18,11 @@ class ServicePriceResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'pricing_scope' => $this->pricing_scope,
-            'city' =>new CityResource($this->whenLoaded('city')),
-            'area' => new AreaResource($this->whenLoaded('area')),
-            'base_price' => $this->base_price,
-            'price_per_hour' => $this->price_per_hour,
+            'city_id' => $this->city_id,
+            'area_id' => $this->area_id, // null => city-wide price (scope is implicit)
+            'city' => new CityResource($this->whenLoaded('city')),
+            'area' => $this->whenLoaded('area', fn () => $this->area ? new AreaResource($this->area) : null),
+            'price_per_service_period' => $this->price_per_service_period,
             'currency' => $this->currency,
             'effective_start' => $this->effective_start ? $this->effective_start->toDateString() : null,
             'effective_end' => $this->effective_end ? $this->effective_end->toDateString() : null,

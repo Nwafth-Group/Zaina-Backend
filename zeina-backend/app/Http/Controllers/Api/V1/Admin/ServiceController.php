@@ -2,195 +2,114 @@
 
 namespace App\Http\Controllers\Api\V1\Admin;
 
+use App\Filters\Service\CategoryFilter;
+use App\Filters\Service\MinRatingFilter;
+use App\Filters\Service\SearchFilter;
+use App\Filters\Service\StatusFilter;
+use App\Filters\Service\TypeFilter;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Admin\StoreServiceRequest;
 use App\Http\Requests\Api\V1\Admin\UpdateServiceRequest;
+use App\Http\Resources\Api\V1\Booking\AdminBookingResource;
+use App\Http\Resources\Api\V1\Review\ReviewResource;
 use App\Http\Resources\Api\V1\Service\ServiceResource;
 use App\Models\Service;
-use App\Service\MediaService;
+use App\Service\ServiceWriter;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Pipeline\Pipeline;
 
 class ServiceController extends Controller
 {
     use ApiResponseTrait;
-    /**
-     * Display a listing of the resource.
-     */
 
-    public function __construct(public MediaService $mediaService)
+    public function __construct(private ServiceWriter $serviceWriter) {}
+
+    public function index(Request $request)
     {
-    }
+        // Filter the listing through the Pipeline (one class per filter).
+        $query = app(Pipeline::class)
+            ->send(Service::query()->with(['category', 'duration', 'rules', 'coverages', 'coverages.city', 'coverages.area', 'workers']))
+            ->through([
+                SearchFilter::class,
+                StatusFilter::class,
+                TypeFilter::class,
+                CategoryFilter::class,
+                MinRatingFilter::class,
+            ])
+            ->thenReturn();
 
+        // Safe dynamic sorting (allow-list).
+        $allowedSorts = ['name_ar', 'name_en', 'avg_rating', 'created_at', 'id'];
+        $sortBy = in_array($request->input('sort_by'), $allowedSorts, true) ? $request->input('sort_by') : 'created_at';
+        $sortDir = strtolower($request->input('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
+        $query->orderBy($sortBy, $sortDir);
 
-   public function index()
-    {
-        $services = Service::with(['category', 'duration', 'rules', 'coverages', 'coverages.city', 'coverages.area'])->get();
-        return $this->successResponse(ServiceResource::collection($services),__('messages.services_retrieved_successfully'));
-     
+        return $this->successResponse(ServiceResource::collection($query->get()), __('messages.services_retrieved_successfully'));
     }
 
     public function show($id)
     {
-        $service = Service::with(['category', 'duration', 'rules', 'coverages', 'coverages.city', 'coverages.area' , 'priceRules' ,'workers'])->findOrFail($id);
-        return $this->successResponse(new ServiceResource($service),__('messages.service_retrieved_successfully'));
-    
+        $service = Service::with(['category', 'duration', 'rules', 'coverages', 'coverages.city', 'coverages.area', 'priceRules', 'priceRules.city', 'priceRules.area', 'workers', 'schedules'])->findOrFail($id);
+
+        return $this->successResponse(new ServiceResource($service), __('messages.service_retrieved_successfully'));
+    }
+
+    /**
+     * Rich profile for the service details modal: the service, headline stats,
+     * its latest bookings, and its ratings/reviews.
+     */
+    public function details(Service $service)
+    {
+        $service->load(['category', 'workers']);
+
+        $latestBookings = $service->bookings()
+            ->with(['customer', 'service'])
+            ->orderByDesc('created_at')
+            ->limit(10)
+            ->get();
+
+        $reviews = $service->reviews()
+            ->with(['customer', 'booking'])
+            ->latest()
+            ->limit(10)
+            ->get();
+
+        $stats = [
+            'total_bookings' => $service->bookings()->count(),
+            'completed_bookings' => $service->bookings()->where('status', 'completed')->count(),
+            'reviews_count' => $service->reviews()->count(),
+            'avg_rating' => round((float) $service->reviews()->avg('rating'), 2),
+        ];
+
+        return $this->successResponse([
+            'service' => new ServiceResource($service),
+            'stats' => $stats,
+            'latest_bookings' => AdminBookingResource::collection($latestBookings),
+            'reviews' => ReviewResource::collection($reviews),
+        ], __('messages.service_retrieved_successfully'));
     }
 
     public function store(StoreServiceRequest $request)
-    {  
-        DB::beginTransaction();
-        try {
-            // 1. حفظ البيانات الأساسية للخدمة
-            $service = Service::create([
-                'category_id'    => $request->category_id,
-                'type'           => $request->type,
-                'name_ar'        => $request->name_ar,
-                'name_en'        => $request->name_en,
-                'description_ar' => $request->description_ar,
-                'description_en' => $request->description_en,
-                'status'         => $request->status,
-                'features'       => $request->features, // Laravel سيقوم بتحويلها لـ JSON تلقائياً لوجود الـ Cast
-            ]);
+    {
+        $service = $this->serviceWriter->create($request->validated(), $request->file('image'));
 
-            // 2. حفظ المدد الزمنية (Durations)
-            if ($request->has('durations')) {
-                $service->duration()->create($request->durations);
-            }
-
-            if ($request->has('workers')) {
-                $service->workers()->sync($request->workers);
-            }
-
-            // 3. حفظ قواعد الخدمة (Rules)
-            if ($request->has('rules')) {
-                $service->rules()->create($request->rules);
-            }
-
-            // 4. حفظ التغطية الجغرافية (Coverages)
-            if ($request->has('coverages')) {
-                $service->coverages()->createMany($request->coverages);
-            }
-
-            // 5. حفظ التسعيرات (Prices)
-           if ($request->has('prices')) {
-            $pricesData = [];
-            
-            foreach ($request->prices as $price) {
-                if ($price['pricing_scope'] === 'area' && isset($price['area_id'])) {
-                    // بنجيب المدينة تلقائياً من المنطقة عشان نمنع أي تلاعب
-                    $area = \App\Models\Area::find($price['area_id']);
-                    $price['city_id'] = $area ? $area->city_id : null; 
-                }
-                $pricesData[] = $price;
-             }
-
-            $service->priceRules()->createMany($pricesData);
-             }
-
-            // 6. رفع الصور باستخدام MediaService الخاص بك
-            if ($request->hasFile('image')) {
-                $this->mediaService->upload($request->file('image'), $service, 'service/icon', 'public');
-            }
-
-            // if ($request->hasFile('cover')) {
-            //     $this->mediaService->upload($request->file('cover'), $service, 'service/cover', 'public');
-            // }
-
-            DB::commit();
-             
-            return $this->successResponse(new ServiceResource($service->load(['duration', 'rules', 'coverages', 'priceRules', 'media'])),__('messages.service_created_successfully'),201);
-            // return response()->json([
-            //     'success' => true,
-            //     'message' => __('messages.service_created_successfully'),
-            //     'data'    => $service->load(['duration', 'rules', 'coverages', 'priceRules', 'media'])
-            // ], 201);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => __('messages.error_occurred'),
-                'error'   => $e->getMessage() // يمكن إخفاؤها في بيئة الإنتاج
-            ], 500);
-        }
+        return $this->successResponse(new ServiceResource($service), __('messages.service_created_successfully'), 201);
     }
 
-    public function update(UpdateServiceRequest $request, $id)
-    { 
-        $service = Service::findOrFail($id);
-        DB::beginTransaction();
-        try {
-            // 1. تحديث البيانات الأساسية
-            $service->update($request->only([
-                'category_id', 'type', 'name_ar', 'name_en', 
-                'description_ar', 'description_en', 'status', 'features'
-            ]));
+    public function update(UpdateServiceRequest $request, Service $service)
+    {
+        $service = $this->serviceWriter->update($service, $request->validated(), $request->file('image'));
 
-            // 2. تحديث المدد الزمنية (updateOrCreate عشان لو ما كانت موجودة قبل هيك تتكَرْت)
-            if ($request->has('durations')) {
-                $service->duration()->updateOrCreate(
-                    ['service_id' => $service->id],
-                    $request->durations
-                );
-            }
-
-            // 3. تحديث قواعد الخدمة
-            if ($request->has('rules')) {
-                $service->rules()->updateOrCreate(
-                    ['service_id' => $service->id],
-                    $request->rules
-                );
-            }
-
-            // 4. تحديث التغطية الجغرافية (الأسلوب الأفضل هو مسح القديم وإدخال الجديد)
-            if ($request->has('coverages')) {
-                $service->coverages()->delete();
-                $service->coverages()->createMany($request->coverages);
-            }
-
-            // 5. تحديث التسعيرات
-            if ($request->has('prices')) {
-                $service->priceRules()->delete();
-                $service->priceRules()->createMany($request->prices);
-            }
-
-             // تحديث العمال المرتبطين بالخدمة
-             if ($request->has('workers')) {
-                $service->workers()->sync($request->workers);
-            }
-            // 6. تحديث الصور (أيقونة وغلاف)
-            if ($request->hasFile('image')) {
-                // البحث عن الأيقونة القديمة وحذفها
-                $oldIcon = $service->media()->where('collection', 'service/icon')->first();
-                if ($oldIcon) {
-                    $this->mediaService->delete($oldIcon);
-                }
-                // رفع الجديدة
-                $this->mediaService->upload($request->file('image'), $service, 'service/icon', 'public');
-            }
-            DB::commit();
-            return $this->successResponse(new ServiceResource($service->fresh(['duration', 'rules', 'coverages', 'priceRules', 'media'])),__('messages.service_updated_successfully'));
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => __('messages.error_occurred'),
-                'error'   => $e->getMessage()
-            ], 500);
-        }
+        return $this->successResponse(new ServiceResource($service), __('messages.service_updated_successfully'));
     }
 
     // دالة لتغيير حالة الخدمة (Deactivate safely)
-    public function toggleStatus(Service $service, Request $request)
+    public function toggleStatus(Service $service)
     {
-        // Scenario 5: Deactivate service safely
         $service->status = $service->status === 'active' ? 'inactive' : 'active';
         $service->save();
 
-        return $this->successResponse(null,__('messages.service_toggled_successfully', ['status' => $service->status]));
+        return $this->successResponse(null, __('messages.service_toggled_successfully', ['status' => $service->status]));
     }
 }
