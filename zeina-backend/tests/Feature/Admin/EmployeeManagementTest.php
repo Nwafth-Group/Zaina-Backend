@@ -6,6 +6,8 @@ use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\PermissionRegistrar;
 use Tests\Concerns\ActsAsAdmin;
 use Tests\TestCase;
 
@@ -26,6 +28,9 @@ class EmployeeManagementTest extends TestCase
 
     private const ENDPOINT = '/api/v1/admin/employees';
 
+    /** Employee management permissions, held only by the Super Admin role. */
+    private const EMPLOYEE_PERMISSIONS = ['employees.view', 'employees.create', 'employees.edit'];
+
     private function makeRole(string $name): Role
     {
         return Role::create([
@@ -33,6 +38,26 @@ class EmployeeManagementTest extends TestCase
             'code' => strtolower(str_replace(' ', '_', $name)),
             'guard_name' => 'sanctum',
         ]);
+    }
+
+    /**
+     * Authenticate as a super_admin holding the employee-management permissions.
+     *
+     * @param  array<string, mixed>  $overrides
+     */
+    private function actingAsEmployeeManager(array $overrides = []): User
+    {
+        foreach (self::EMPLOYEE_PERMISSIONS as $name) {
+            Permission::findOrCreate($name, 'sanctum');
+        }
+
+        $admin = User::factory()->superAdmin()->create($overrides);
+        $admin->givePermissionTo(self::EMPLOYEE_PERMISSIONS);
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $this->actingAs($admin, 'sanctum');
+
+        return $admin;
     }
 
     /**
@@ -71,9 +96,42 @@ class EmployeeManagementTest extends TestCase
         $this->getJson(self::ENDPOINT)->assertStatus(403);
     }
 
-    public function test_admin_can_list_employees_paginated(): void
+    public function test_admin_without_employees_view_permission_cannot_list(): void
+    {
+        // Passes IsAdmin (super_admin type) but lacks the employees.view permission.
+        $this->actingAsAdmin();
+
+        $this->getJson(self::ENDPOINT)->assertStatus(403);
+    }
+
+    public function test_admin_without_employees_create_permission_cannot_create(): void
     {
         $this->actingAsAdmin();
+        $this->makeRole('Support');
+
+        $this->postJson(self::ENDPOINT, $this->validPayload())->assertStatus(403);
+    }
+
+    public function test_operations_manager_cannot_list_or_manage_employees(): void
+    {
+        // An operations employee carries only its own permissions (users/bookings),
+        // never the employees.* set — so the whole employees area is closed to it.
+        Permission::findOrCreate('users.view', 'sanctum');
+        $opsRole = $this->makeRole('Operations Manager');
+        $opsRole->givePermissionTo('users.view');
+
+        $ops = User::factory()->operation()->create();
+        $ops->assignRole($opsRole);
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        $this->actingAs($ops, 'sanctum');
+
+        $this->getJson(self::ENDPOINT)->assertStatus(403);
+        $this->postJson(self::ENDPOINT, $this->validPayload())->assertStatus(403);
+    }
+
+    public function test_admin_can_list_employees_paginated(): void
+    {
+        $this->actingAsEmployeeManager();
         User::factory()->operation()->count(3)->create();
 
         // The acting super_admin is itself an employee type, so it appears in
@@ -94,7 +152,7 @@ class EmployeeManagementTest extends TestCase
 
     public function test_admin_can_filter_employees_by_role(): void
     {
-        $this->actingAsAdmin();
+        $this->actingAsEmployeeManager();
         $this->makeRole('Operations Manager');
         $this->makeRole('Support');
 
@@ -117,7 +175,7 @@ class EmployeeManagementTest extends TestCase
 
     public function test_admin_can_create_employee_and_fields_persist(): void
     {
-        $this->actingAsAdmin();
+        $this->actingAsEmployeeManager();
         $this->makeRole('Support');
 
         $response = $this->postJson(self::ENDPOINT, $this->validPayload());
@@ -141,7 +199,7 @@ class EmployeeManagementTest extends TestCase
 
     public function test_create_requires_core_fields(): void
     {
-        $this->actingAsAdmin();
+        $this->actingAsEmployeeManager();
 
         $this->postJson(self::ENDPOINT, [])
             ->assertStatus(422)
@@ -152,7 +210,7 @@ class EmployeeManagementTest extends TestCase
 
     public function test_create_rejects_duplicate_email(): void
     {
-        $this->actingAsAdmin();
+        $this->actingAsEmployeeManager();
         $this->makeRole('Support');
         User::factory()->operation()->create(['email' => 'dupe@zaina.test']);
 
@@ -163,7 +221,7 @@ class EmployeeManagementTest extends TestCase
 
     public function test_create_rejects_duplicate_phone(): void
     {
-        $this->actingAsAdmin();
+        $this->actingAsEmployeeManager();
         $this->makeRole('Support');
         User::factory()->operation()->create(['phone_number' => '0591111119']);
 
@@ -174,7 +232,7 @@ class EmployeeManagementTest extends TestCase
 
     public function test_create_rejects_customer_type(): void
     {
-        $this->actingAsAdmin();
+        $this->actingAsEmployeeManager();
         $this->makeRole('Support');
 
         // `customer` is explicitly excluded; only operation/super_admin/driver allowed.
@@ -185,7 +243,7 @@ class EmployeeManagementTest extends TestCase
 
     public function test_create_rejects_invalid_status(): void
     {
-        $this->actingAsAdmin();
+        $this->actingAsEmployeeManager();
         $this->makeRole('Support');
 
         $this->postJson(self::ENDPOINT, $this->validPayload(['status' => 'on_leave']))
@@ -195,7 +253,7 @@ class EmployeeManagementTest extends TestCase
 
     public function test_create_rejects_unknown_role(): void
     {
-        $this->actingAsAdmin();
+        $this->actingAsEmployeeManager();
 
         // No role created -> 'Ghost' fails the exists:roles,name rule.
         $this->postJson(self::ENDPOINT, $this->validPayload(['roles' => ['Ghost']]))
@@ -209,7 +267,7 @@ class EmployeeManagementTest extends TestCase
 
     public function test_admin_can_show_employee_with_roles(): void
     {
-        $this->actingAsAdmin();
+        $this->actingAsEmployeeManager();
         $role = $this->makeRole('Support');
         $employee = User::factory()->operation()->create();
         $employee->assignRole($role);
@@ -226,7 +284,7 @@ class EmployeeManagementTest extends TestCase
 
     public function test_admin_can_update_employee_and_resync_roles(): void
     {
-        $this->actingAsAdmin();
+        $this->actingAsEmployeeManager();
         $this->makeRole('Support');
         $this->makeRole('Manager');
         $employee = User::factory()->operation()->create(['first_name' => 'Old']);
@@ -256,7 +314,7 @@ class EmployeeManagementTest extends TestCase
 
     public function test_update_without_password_keeps_existing_password(): void
     {
-        $this->actingAsAdmin();
+        $this->actingAsEmployeeManager();
         $this->makeRole('Support');
         $employee = User::factory()->operation()->create(['password' => Hash::make('original-pass')]);
         $employee->assignRole('Support');
@@ -283,7 +341,7 @@ class EmployeeManagementTest extends TestCase
 
     public function test_admin_can_toggle_employee_status(): void
     {
-        $this->actingAsAdmin();
+        $this->actingAsEmployeeManager();
         $employee = User::factory()->operation()->create(['status' => 'active']);
 
         $this->patchJson(self::ENDPOINT.'/'.$employee->id.'/toggle-status')->assertStatus(200);
@@ -295,7 +353,7 @@ class EmployeeManagementTest extends TestCase
 
     public function test_cannot_deactivate_last_active_super_admin(): void
     {
-        $this->actingAsAdmin();
+        $this->actingAsEmployeeManager();
         $role = $this->makeRole('Super Admin');
         $onlySuper = User::factory()->create(['type' => 'super_admin', 'status' => 'active']);
         $onlySuper->assignRole($role);
@@ -309,7 +367,7 @@ class EmployeeManagementTest extends TestCase
 
     public function test_can_deactivate_super_admin_when_another_exists(): void
     {
-        $this->actingAsAdmin();
+        $this->actingAsEmployeeManager();
         $role = $this->makeRole('Super Admin');
         $first = User::factory()->create(['type' => 'super_admin', 'status' => 'active']);
         $second = User::factory()->create(['type' => 'super_admin', 'status' => 'active']);
@@ -328,7 +386,7 @@ class EmployeeManagementTest extends TestCase
 
     public function test_delete_employee_is_not_supported(): void
     {
-        $this->actingAsAdmin();
+        $this->actingAsEmployeeManager();
         $employee = User::factory()->operation()->create();
 
         // Deletion is not a concept for employees; the destroy route is

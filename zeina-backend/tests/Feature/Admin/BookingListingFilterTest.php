@@ -2,7 +2,11 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Models\Area;
 use App\Models\Booking;
+use App\Models\Category;
+use App\Models\City;
+use App\Models\CustomerAddress;
 use App\Models\Service;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -106,6 +110,62 @@ class BookingListingFilterTest extends TestCase
         $this->getJson(self::ENDPOINT.'?date_from=2026-03-01&date_to=2026-03-31')
             ->assertOk()
             ->assertJsonCount(1, 'data.items');
+    }
+
+    public function test_filter_by_categories_matches_any_selected(): void
+    {
+        $this->actingAsAdmin();
+        $catA = Category::factory()->create();
+        $catB = Category::factory()->create();
+        $catC = Category::factory()->create();
+
+        Booking::factory()->create(['service_id' => Service::factory()->create(['category_id' => $catA->id])]);
+        Booking::factory()->create(['service_id' => Service::factory()->create(['category_id' => $catB->id])]);
+        Booking::factory()->create(['service_id' => Service::factory()->create(['category_id' => $catC->id])]);
+
+        // Multi-select: bookings whose service belongs to A or B (not C).
+        $this->getJson(self::ENDPOINT.'?category_ids='.$catA->id.','.$catB->id)
+            ->assertOk()
+            ->assertJsonCount(2, 'data.items');
+    }
+
+    public function test_filter_by_price_range(): void
+    {
+        $this->actingAsAdmin();
+        Booking::factory()->create(['total_amount' => 50]);
+        Booking::factory()->create(['total_amount' => 200]);
+        Booking::factory()->create(['total_amount' => 500]);
+
+        $this->getJson(self::ENDPOINT.'?min_amount=100&max_amount=300')
+            ->assertOk()
+            ->assertJsonCount(1, 'data.items')
+            ->assertJsonPath('data.items.0.total_amount', 200);
+    }
+
+    public function test_filter_by_city_and_area(): void
+    {
+        $this->actingAsAdmin();
+
+        $cityA = City::factory()->create();
+        $areaA1 = Area::factory()->create(['city_id' => $cityA->id]);
+        $areaA2 = Area::factory()->create(['city_id' => $cityA->id]);
+        $cityB = City::factory()->create();
+        $areaB1 = Area::factory()->create(['city_id' => $cityB->id]);
+
+        $bookingInA1 = Booking::factory()->create(['address_id' => CustomerAddress::factory()->create(['area_id' => $areaA1->id])]);
+        Booking::factory()->create(['address_id' => CustomerAddress::factory()->create(['area_id' => $areaA2->id])]);
+        Booking::factory()->create(['address_id' => CustomerAddress::factory()->create(['area_id' => $areaB1->id])]);
+
+        // City A has two bookings (across its two areas).
+        $this->getJson(self::ENDPOINT.'?city_id='.$cityA->id)
+            ->assertOk()
+            ->assertJsonCount(2, 'data.items');
+
+        // Narrowing to a single area returns just that one.
+        $this->getJson(self::ENDPOINT.'?area_id='.$areaA1->id)
+            ->assertOk()
+            ->assertJsonCount(1, 'data.items')
+            ->assertJsonPath('data.items.0.id', $bookingInA1->id);
     }
 
     // ---------------------------------------------------------------------

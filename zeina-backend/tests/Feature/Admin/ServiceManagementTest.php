@@ -3,8 +3,10 @@
 namespace Tests\Feature\Admin;
 
 use App\Models\Area;
+use App\Models\Booking;
 use App\Models\Category;
 use App\Models\City;
+use App\Models\Review;
 use App\Models\Service;
 use App\Models\Worker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -468,5 +470,63 @@ class ServiceManagementTest extends TestCase
         $summer = $service->priceRules()->where('price_per_service_period', 100)->firstOrFail();
         $this->assertSame('2026-01-01', $summer->effective_start->toDateString());
         $this->assertSame('2026-06-30', $summer->effective_end->toDateString());
+    }
+
+    // ---------------------------------------------------------------------
+    // Details modal — service profile + latest bookings + reviews
+    // ---------------------------------------------------------------------
+
+    public function test_guest_cannot_view_service_details(): void
+    {
+        $service = Service::factory()->create();
+
+        $this->getJson(self::ENDPOINT.'/'.$service->id.'/details')->assertStatus(401);
+    }
+
+    public function test_service_details_returns_profile_stats_bookings_and_reviews(): void
+    {
+        $this->actingAsAdmin();
+        $service = Service::factory()->create(['name_en' => 'Profile Service']);
+
+        Booking::factory()->create(['service_id' => $service->id, 'status' => 'completed']);
+        Booking::factory()->create(['service_id' => $service->id, 'status' => 'Upcoming']);
+        // A booking for a different service must not leak into the counts.
+        Booking::factory()->create(['status' => 'completed']);
+
+        Review::factory()->create(['reviewable_type' => Service::class, 'reviewable_id' => $service->id, 'rating' => 5]);
+        Review::factory()->create(['reviewable_type' => Service::class, 'reviewable_id' => $service->id, 'rating' => 3]);
+
+        $this->getJson(self::ENDPOINT.'/'.$service->id.'/details')
+            ->assertStatus(200)
+            ->assertJsonPath('data.service.id', $service->id)
+            ->assertJsonPath('data.service.name_en', 'Profile Service')
+            ->assertJsonPath('data.stats.total_bookings', 2)
+            ->assertJsonPath('data.stats.completed_bookings', 1)
+            ->assertJsonPath('data.stats.reviews_count', 2)
+            ->assertJsonPath('data.stats.avg_rating', 4)
+            ->assertJsonCount(2, 'data.latest_bookings')
+            ->assertJsonCount(2, 'data.reviews')
+            ->assertJsonStructure([
+                'data' => [
+                    'service' => ['id', 'name_ar', 'name_en', 'avg_rating', 'status'],
+                    'stats' => ['total_bookings', 'completed_bookings', 'reviews_count', 'avg_rating'],
+                    'latest_bookings' => [['id', 'booking_ref', 'customer_name', 'service_name', 'status']],
+                    'reviews' => [['id', 'rating', 'comment', 'customer_name', 'created_at']],
+                ],
+            ]);
+    }
+
+    public function test_service_details_for_service_without_history_is_empty(): void
+    {
+        $this->actingAsAdmin();
+        $service = Service::factory()->create();
+
+        $this->getJson(self::ENDPOINT.'/'.$service->id.'/details')
+            ->assertStatus(200)
+            ->assertJsonPath('data.stats.total_bookings', 0)
+            ->assertJsonPath('data.stats.reviews_count', 0)
+            ->assertJsonPath('data.stats.avg_rating', 0)
+            ->assertJsonCount(0, 'data.latest_bookings')
+            ->assertJsonCount(0, 'data.reviews');
     }
 }
