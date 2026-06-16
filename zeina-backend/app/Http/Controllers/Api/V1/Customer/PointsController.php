@@ -117,7 +117,7 @@ public function history(Request $request)
         return [
             'id' => $tx->id,
             'type' => $tx->type, // 'earn' عشان يعطيه سهم أخضر لفوق، 'redeem' سهم أحمر لتحت
-            'type_tranlate' => __("messages.{$tx->type}"),
+            'type_translate' => __("messages.{$tx->type}"),
             'title' => $lang == 'en' ? $tx->title_en : $tx->title_ar, 
             'amount' => $tx->formatted_amount,
             'date' => $tx->created_at->format('d M. Y') 
