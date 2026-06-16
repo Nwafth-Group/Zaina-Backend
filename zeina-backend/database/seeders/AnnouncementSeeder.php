@@ -17,9 +17,6 @@ class AnnouncementSeeder extends Seeder
         $this->mediaService = $mediaService;
     }
 
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
         // 1. تنظيف الجدول
@@ -54,26 +51,33 @@ class AnnouncementSeeder extends Seeder
             ]
         ];
 
-        // 🌟 2. تحديث المسار بناءً على هيكل مشروعك الفعلي بالصورة:
-        // انسخ اسم الصورة الطويل كامل من الـ VS Code وضعه مكان النقاط (...)
-        $fileName = '1dJozWoEMxx5Yvbyk4myXq7eLHeCzLqHDQ5uLdpA.jpg'; // 👈 تأكد من الأحرف كاملة هنا
-        $sourcePath = storage_path('app/public/announcement/image/' . $fileName);
+        // 🌟 2. المسار الثابت والمضمون من مجلد الـ public الأساسي للـ Dummy
+        $sourcePath = public_path('dummy/banner.jpg');
 
         foreach ($announcements as $data) {
             $announcement = Announcement::create($data);
 
-            // 3. تحويل الملف وتمريره للـ MediaService
             if (file_exists($sourcePath)) {
+                // 🌟 الحل السحري: بنعمل كاش للمحتوى وبننشئ كائن UploadedFile حركي لكل لفة بـ الـ Loop
+                // عشان الـ MediaService ما تحذفش الملف المصدر أثناء الرفع وتخليه متاح للجميع
+                $tempPath = sys_get_temp_dir() . '/temp_banner_' . uniqid() . '.jpg';
+                copy($sourcePath, $tempPath);
+
                 $uploadedFile = new UploadedFile(
-                    $sourcePath,
-                    $fileName,
+                    $tempPath,
+                    'banner.jpg',
                     'image/jpeg',
                     null,
-                    true // وضع التست للسماح بالنسخ المباشر بالخلفية
+                    true // Test mode ليتخطى فحص الـ HTTP POST
                 );
 
-                // استدعاء الميديا سيرفس لتربط السجلات بجدول الـ media الفعلي بالسيستم
+                // استدعاء الميديا سيرفس لتخزين السجل في جدول الـ media
                 $this->mediaService->upload($uploadedFile, $announcement, 'announcement/image', 'public');
+                
+                // تنظيف الملف المؤقت بعد الرفع
+                if (file_exists($tempPath)) {
+                    @unlink($tempPath);
+                }
             }
         }
     }
