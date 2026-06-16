@@ -92,6 +92,25 @@ class EmployeeManagementTest extends TestCase
             ]);
     }
 
+    public function test_admin_can_filter_employees_by_role(): void
+    {
+        $this->actingAsAdmin();
+        $this->makeRole('Operations Manager');
+        $this->makeRole('Support');
+
+        $ops = User::factory()->operation()->create(['first_name' => 'Omar']);
+        $ops->assignRole('Operations Manager');
+
+        $other = User::factory()->operation()->create(['first_name' => 'Sara']);
+        $other->assignRole('Support');
+
+        $response = $this->getJson(self::ENDPOINT.'?role=Operations Manager')->assertStatus(200);
+
+        $names = collect($response->json('data.items'))->pluck('first_name')->all();
+        $this->assertContains('Omar', $names);
+        $this->assertNotContains('Sara', $names);
+    }
+
     // ---------------------------------------------------------------------
     // Store
     // ---------------------------------------------------------------------

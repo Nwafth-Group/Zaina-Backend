@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Models\Booking;
+use App\Models\Review;
 use App\Models\Service;
 use App\Models\Worker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -210,6 +212,132 @@ class WorkerManagementTest extends TestCase
             'worker_id' => $worker->id,
             'service_id' => $serviceA->id,
         ]);
+    }
+
+    public function test_show_returns_the_workers_linked_services(): void
+    {
+        // Regression: the edit form reads data.services to pre-select checkboxes.
+        // WorkerResource exposes services via whenLoaded, so show() must eager-load
+        // the relationship or the linked services come back empty (looks "not saved").
+        $this->actingAsAdmin();
+        $worker = Worker::factory()->create();
+        $services = Service::factory()->count(2)->create();
+        $worker->services()->sync($services->pluck('id')->toArray());
+
+        $response = $this->getJson(self::ENDPOINT.'/'.$worker->id)
+            ->assertStatus(200)
+            ->assertJsonCount(2, 'data.services');
+
+        $returnedIds = collect($response->json('data.services'))->pluck('id')->sort()->values()->all();
+        $this->assertEquals($services->pluck('id')->sort()->values()->all(), $returnedIds);
+    }
+
+    public function test_update_response_includes_the_resynced_services(): void
+    {
+        $this->actingAsAdmin();
+        $worker = Worker::factory()->create();
+        $service = Service::factory()->create();
+
+        $this->putJson(self::ENDPOINT.'/'.$worker->id, [
+            'services' => [$service->id],
+        ])
+            ->assertStatus(200)
+            ->assertJsonCount(1, 'data.services')
+            ->assertJsonPath('data.services.0.id', $service->id);
+    }
+
+    public function test_service_id_none_filters_workers_with_no_services(): void
+    {
+        $this->actingAsAdmin();
+        $service = Service::factory()->create();
+
+        $linked = Worker::factory()->create(['name' => 'Has Service']);
+        $linked->services()->sync([$service->id]);
+        Worker::factory()->create(['name' => 'No Service']);
+
+        $response = $this->getJson(self::ENDPOINT.'?service_id=none')
+            ->assertStatus(200)
+            ->assertJsonCount(1, 'data.items');
+
+        $names = collect($response->json('data.items'))->pluck('name')->all();
+        $this->assertContains('No Service', $names);
+        $this->assertNotContains('Has Service', $names);
+    }
+
+    // ---------------------------------------------------------------------
+    // Details modal — worker profile + latest bookings + reviews
+    // ---------------------------------------------------------------------
+
+    public function test_guest_cannot_view_worker_details(): void
+    {
+        $worker = Worker::factory()->create();
+
+        $this->getJson(self::ENDPOINT.'/'.$worker->id.'/details')->assertStatus(401);
+    }
+
+    public function test_worker_details_returns_profile_stats_bookings_and_reviews(): void
+    {
+        $this->actingAsAdmin();
+        $worker = Worker::factory()->create(['name' => 'Profile Worker']);
+
+        // Two active assignments (one completed, one upcoming).
+        $completed = Booking::factory()->create(['status' => 'completed']);
+        $upcoming = Booking::factory()->create(['status' => 'Upcoming']);
+        $worker->bookings()->attach($completed->id, ['status' => 'active']);
+        $worker->bookings()->attach($upcoming->id, ['status' => 'active']);
+
+        Review::factory()->forWorker($worker)->create(['rating' => 5, 'comment' => 'Excellent']);
+        Review::factory()->forWorker($worker)->create(['rating' => 3, 'comment' => 'Okay']);
+
+        $this->getJson(self::ENDPOINT.'/'.$worker->id.'/details')
+            ->assertStatus(200)
+            ->assertJsonPath('data.worker.id', $worker->id)
+            ->assertJsonPath('data.worker.name', 'Profile Worker')
+            ->assertJsonPath('data.stats.total_bookings', 2)
+            ->assertJsonPath('data.stats.completed_bookings', 1)
+            ->assertJsonPath('data.stats.reviews_count', 2)
+            ->assertJsonPath('data.stats.avg_rating', 4)
+            ->assertJsonCount(2, 'data.latest_bookings')
+            ->assertJsonCount(2, 'data.reviews')
+            ->assertJsonStructure([
+                'data' => [
+                    'worker' => ['id', 'name', 'nationality', 'rating', 'status'],
+                    'stats' => ['total_bookings', 'completed_bookings', 'reviews_count', 'avg_rating'],
+                    'latest_bookings' => [['id', 'booking_ref', 'customer_name', 'service_name', 'status']],
+                    'reviews' => [['id', 'rating', 'comment', 'customer_name', 'created_at']],
+                ],
+            ]);
+    }
+
+    public function test_worker_details_only_counts_active_assignments(): void
+    {
+        $this->actingAsAdmin();
+        $worker = Worker::factory()->create();
+
+        $active = Booking::factory()->create();
+        $removed = Booking::factory()->create();
+        $worker->bookings()->attach($active->id, ['status' => 'active']);
+        // A reassigned worker keeps a 'replaced' pivot row that must not count.
+        $worker->assignments()->create(['booking_id' => $removed->id, 'status' => 'replaced']);
+
+        $this->getJson(self::ENDPOINT.'/'.$worker->id.'/details')
+            ->assertStatus(200)
+            ->assertJsonPath('data.stats.total_bookings', 1)
+            ->assertJsonCount(1, 'data.latest_bookings');
+    }
+
+    public function test_worker_details_for_worker_without_history_is_empty(): void
+    {
+        $this->actingAsAdmin();
+        $worker = Worker::factory()->create();
+
+        $this->getJson(self::ENDPOINT.'/'.$worker->id.'/details')
+            ->assertStatus(200)
+            ->assertJsonPath('data.stats.total_bookings', 0)
+            ->assertJsonPath('data.stats.reviews_count', 0)
+            ->assertJsonPath('data.stats.avg_rating', 0)
+            ->assertJsonCount(0, 'data.latest_bookings')
+            ->assertJsonCount(0, 'data.reviews');
     }
 
     // ---------------------------------------------------------------------

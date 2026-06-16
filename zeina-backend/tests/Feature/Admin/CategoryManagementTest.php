@@ -346,4 +346,49 @@ class CategoryManagementTest extends TestCase
 
         $this->assertNotEquals(999, (int) Category::where('name_en', 'Ordering')->value('sort_order'));
     }
+
+    public function test_guest_cannot_toggle_category_status(): void
+    {
+        $category = Category::factory()->create(['status' => 'active']);
+
+        $this->postJson(self::ENDPOINT.'/'.$category->id.'/toggle-status')->assertStatus(401);
+    }
+
+    public function test_customer_cannot_toggle_category_status(): void
+    {
+        $this->actingAsCustomer();
+        $category = Category::factory()->create(['status' => 'active']);
+
+        $this->postJson(self::ENDPOINT.'/'.$category->id.'/toggle-status')->assertStatus(403);
+    }
+
+    public function test_admin_can_deactivate_an_active_category(): void
+    {
+        $this->actingAsAdmin();
+        $category = Category::factory()->create(['status' => 'active']);
+
+        $this->postJson(self::ENDPOINT.'/'.$category->id.'/toggle-status')
+            ->assertStatus(200)
+            ->assertJsonPath('data.status', 'inactive');
+
+        $this->assertDatabaseHas('categories', [
+            'id' => $category->id,
+            'status' => 'inactive',
+        ]);
+    }
+
+    public function test_admin_can_reactivate_an_inactive_category(): void
+    {
+        $this->actingAsAdmin();
+        $category = Category::factory()->create(['status' => 'inactive']);
+
+        $this->postJson(self::ENDPOINT.'/'.$category->id.'/toggle-status')
+            ->assertStatus(200)
+            ->assertJsonPath('data.status', 'active');
+
+        $this->assertDatabaseHas('categories', [
+            'id' => $category->id,
+            'status' => 'active',
+        ]);
+    }
 }

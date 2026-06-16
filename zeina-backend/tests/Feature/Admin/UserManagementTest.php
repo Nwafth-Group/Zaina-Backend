@@ -122,6 +122,24 @@ class UserManagementTest extends TestCase
             ->assertJsonPath('data.items.0.first_name', 'Inacto');
     }
 
+    public function test_admin_can_filter_users_by_multiple_types(): void
+    {
+        $this->actingAsAdminWith(['users.view']);
+        User::factory()->customer()->create(['first_name' => 'Custo']);
+        User::factory()->operation()->create(['first_name' => 'Opero']);
+
+        $response = $this->getJson(self::ENDPOINT.'?types=operation,super_admin')
+            ->assertStatus(200);
+
+        $names = collect($response->json('data.items'))->pluck('first_name')->all();
+        $types = collect($response->json('data.items'))->pluck('type')->unique()->all();
+
+        // The "All" admin tab lists only admin account types — customers are excluded.
+        $this->assertContains('Opero', $names);
+        $this->assertNotContains('Custo', $names);
+        $this->assertNotContains('customer', $types);
+    }
+
     public function test_admin_can_search_users_by_email(): void
     {
         $this->actingAsAdminWith(['users.view']);

@@ -87,6 +87,19 @@ class ServiceManagementTest extends TestCase
             ->assertJsonStructure(['status', 'message', 'data' => ['items']]);
     }
 
+    public function test_service_listing_includes_assigned_workers(): void
+    {
+        $this->actingAsAdmin();
+        $service = Service::factory()->create();
+        $workers = Worker::factory()->count(2)->create();
+        $service->workers()->sync($workers->pluck('id')->toArray());
+
+        $this->getJson(self::ENDPOINT)
+            ->assertStatus(200)
+            ->assertJsonCount(2, 'data.items.0.workers')
+            ->assertJsonPath('data.items.0.workers.0.id', $workers[0]->id);
+    }
+
     // ---------------------------------------------------------------------
     // Create — every related table must persist
     // ---------------------------------------------------------------------
@@ -138,6 +151,98 @@ class ServiceManagementTest extends TestCase
                 'worker_id' => $worker->id,
             ]);
         }
+    }
+
+    public function test_admin_can_create_a_service_with_a_weekly_schedule(): void
+    {
+        $this->actingAsAdmin();
+        $area = Area::factory()->create();
+        $city = $area->city;
+        $worker = Worker::factory()->create();
+
+        $payload = $this->hourlyPayload($city->id, [$worker->id], [
+            'schedules' => [
+                ['day' => 'saturday', 'start_time' => '09:00', 'end_time' => '17:00', 'is_active' => 1],
+                ['day' => 'sunday', 'start_time' => '10:00', 'end_time' => '14:00', 'is_active' => 0],
+            ],
+        ]);
+
+        $this->postJson(self::ENDPOINT, $payload)->assertStatus(201);
+        $service = Service::where('name_en', 'Home Cleaning')->firstOrFail();
+
+        // Note: the TIME column's stored format is driver-dependent (sqlite keeps
+        // "09:00", MySQL normalizes to "09:00:00"), so assert day + flag, not format.
+        $this->assertDatabaseHas('service_schedules', [
+            'service_id' => $service->id,
+            'day' => 'saturday',
+            'is_active' => 1,
+        ]);
+        $this->assertDatabaseHas('service_schedules', [
+            'service_id' => $service->id,
+            'day' => 'sunday',
+            'is_active' => 0,
+        ]);
+        $this->assertStringStartsWith('09:00', (string) $service->schedules()->where('day', 'saturday')->value('start_time'));
+
+        // show() must return the schedule so the edit form can pre-fill it.
+        $this->getJson(self::ENDPOINT.'/'.$service->id)
+            ->assertStatus(200)
+            ->assertJsonCount(2, 'data.schedules')
+            ->assertJsonPath('data.schedules.0.day', 'saturday');
+    }
+
+    public function test_admin_can_save_multiple_shifts_for_the_same_day(): void
+    {
+        $this->actingAsAdmin();
+        $area = Area::factory()->create();
+        $city = $area->city;
+        $worker = Worker::factory()->create();
+
+        $payload = $this->hourlyPayload($city->id, [$worker->id], [
+            'schedules' => [
+                ['day' => 'monday', 'start_time' => '09:00', 'end_time' => '12:00', 'is_active' => 1],
+                ['day' => 'monday', 'start_time' => '14:00', 'end_time' => '18:00', 'is_active' => 1],
+            ],
+        ]);
+
+        $this->postJson(self::ENDPOINT, $payload)->assertStatus(201);
+        $service = Service::where('name_en', 'Home Cleaning')->firstOrFail();
+
+        $this->assertSame(2, $service->schedules()->where('day', 'monday')->count());
+    }
+
+    public function test_admin_can_resync_the_weekly_schedule_on_update(): void
+    {
+        $this->actingAsAdmin();
+        $service = Service::factory()->create();
+        $service->schedules()->create(['day' => 'monday', 'start_time' => '08:00', 'end_time' => '12:00', 'is_active' => true]);
+
+        $this->putJson(self::ENDPOINT.'/'.$service->id, [
+            'schedules' => [
+                ['day' => 'friday', 'start_time' => '13:00', 'end_time' => '18:00', 'is_active' => 1],
+            ],
+        ])->assertStatus(200);
+
+        $this->assertDatabaseHas('service_schedules', [
+            'service_id' => $service->id,
+            'day' => 'friday',
+        ]);
+        $this->assertDatabaseMissing('service_schedules', [
+            'service_id' => $service->id,
+            'day' => 'monday',
+        ]);
+    }
+
+    public function test_schedule_rejects_an_invalid_day(): void
+    {
+        $this->actingAsAdmin();
+        $service = Service::factory()->create();
+
+        $this->putJson(self::ENDPOINT.'/'.$service->id, [
+            'schedules' => [
+                ['day' => 'someday', 'start_time' => '09:00', 'end_time' => '17:00', 'is_active' => 1],
+            ],
+        ])->assertStatus(422)->assertJsonStructure(['params' => ['schedules.0.day']]);
     }
 
     public function test_admin_can_create_a_moqema_service_persisting_contract_durations(): void
