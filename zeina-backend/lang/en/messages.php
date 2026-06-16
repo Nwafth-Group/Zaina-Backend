@@ -223,6 +223,8 @@ return [
     'ad_not_exist' => 'Not found Ads.',
     'ad_update_success' => 'Ad updated successfully.',
     'ad_delete_success' => 'Ad deleted successfully.',
+    'earn' => 'Earned Points',
+    'redeem' => 'Redeemed Points',
    
 
 
