@@ -22,7 +22,17 @@ class WorkerFactory extends Factory
             'name' => fake()->name(), // اسم عشوائي
             'nationality' => fake()->randomElement($nationalities), // جنسية عشوائية من المصفوفة
             'avg_rating' => fake()->randomFloat(1, 3.5, 5.0), // تقييم عشوائي من 3.5 إلى 5.0 (رقم عشري واحد)
-            // 'status' => fake()->, // 85% من العمال راح يكونوا متاحين (true) والباقي غير متاحين
+            'status' => 'active',
         ];
+    }
+
+    /**
+     * Indicate that the worker is inactive.
+     */
+    public function inactive(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'status' => 'inactive',
+        ]);
     }
 }

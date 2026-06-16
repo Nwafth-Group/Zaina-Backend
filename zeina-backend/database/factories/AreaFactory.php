@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\City;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -17,7 +18,11 @@ class AreaFactory extends Factory
     public function definition(): array
     {
         return [
-            //
+            'city_id' => City::factory(),
+            'name_ar' => fake()->city(),
+            'name_en' => fake()->city(),
+            'code' => strtoupper(fake()->unique()->lexify('????')),
+            'status' => 'active',
         ];
     }
 }

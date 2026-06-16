@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Govrenrate;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -17,7 +18,11 @@ class CityFactory extends Factory
     public function definition(): array
     {
         return [
-            //
+            'govrenrate_id' => Govrenrate::factory(),
+            'name_ar' => fake()->city(),
+            'name_en' => fake()->city(),
+            'code' => strtoupper(fake()->unique()->lexify('????')),
+            'status' => 'active',
         ];
     }
 }
