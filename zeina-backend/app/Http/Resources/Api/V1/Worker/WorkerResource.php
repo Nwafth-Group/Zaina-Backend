@@ -15,16 +15,17 @@ class WorkerResource extends JsonResource
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array
-    {   
+    {
         $media = $this->media->where('collection', 'worker/image')->first();
+
         return [
             'id' => $this->id,
             'name' => $this->name,
             'nationality' => $this->nationality,
-            'rating' => $this->rating,
+            'rating' => $this->avg_rating,
             'status' => $this->status,
             'services' => ServiceResource::collection($this->whenLoaded('services')),
-            'image' => $media ?(new MediaResource($media))->getFileUrl() : null,
+            'image' => $media ? (new MediaResource($media))->getFileUrl() : null,
         ];
     }
 }
