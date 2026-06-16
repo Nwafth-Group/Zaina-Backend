@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 return [
     'unauthenticated' => 'غير مصرح لك بالدخول. يرجى تسجيل الدخول للمتابعة.',
@@ -11,7 +11,7 @@ return [
     'register_success' => 'تم التسجيل بنجاح',
     'login_success' => 'تم تسجيل الدخول بنجاح',
     'logout_success' => 'تم تسجيل الخروج بنجاح',
-    
+
     // Profile Deletion
     'delete_warning' => 'هل أنت متأكد من أنك تريد حذف ملفك الشخصي؟ حذف الملف الشخصي نهائي، وسيتم مسح جميع البيانات المرتبطة به. إذا اخترت تسجيل مرة أخرى، فسوف تحتاج إلى إنشاء ملف شخصي جديد، حيث لا يمكن استرداد البيانات المحذوفة سابقًا.',
     'account_deleted' => 'تم حذف الحساب بنجاح',
@@ -41,6 +41,9 @@ return [
     'cannot_toggle_own_status' => 'لا يمكنك تغيير حالة حسابك الشخصي.',
     'user_status_toggled' => 'تم تغيير حالة المستخدم إلى :status بنجاح.',
     'password_reset_success' => 'تم إعادة تعيين كلمة المرور بنجاح.',
+    'profile_updated' => 'تم تحديث ملفك الشخصي بنجاح.',
+    'password_changed' => 'تم تغيير كلمة المرور بنجاح.',
+    'current_password_incorrect' => 'كلمة المرور الحالية غير صحيحة.',
     'cities_retrieved_successfully' => 'تم جلب المدن بنجاح.',
     'city_created_successfully' => 'تم إنشاء المدينة بنجاح.',
     'city_updated_successfully' => 'تم تحديث المدينة بنجاح.',
@@ -73,11 +76,11 @@ return [
     'failed_to_create_service' => 'فشل في إنشاء الخدمة. يرجى المحاولة مرة أخرى. خطأ: :error',
     'service_prices_retrieved_successfully' => 'تم جلب أسعار الخدمة بنجاح.',
     'service_toggled_successfully' => 'تم تغيير حالة الخدمة إلى :status بنجاح.',
-    'cannot_setprice' => "لا يمكن تحديد سعر لموقع غير مشمول بهذه الخدمة.",
+    'cannot_setprice' => 'لا يمكن تحديد سعر لموقع غير مشمول بهذه الخدمة.',
     'service_price_save' => 'تم حفظ السعر بنجاح.',
     'pricing_not_availble' => 'السعر غير متاح لهذه المنطقة.',
     'pricingestimated_retrive_success' => 'تم استلام تقديرات الأسعار بنجاح.',
-    'providers_fetch_success' => "تم جلب مقدمين الخدمات بنجاح.",
+    'providers_fetch_success' => 'تم جلب مقدمين الخدمات بنجاح.',
     'provider_saved_suuccess' => 'تم حفظ مقدم الخدمة بنجاح.',
     'provider_update_suuccess' => 'تم تعديل مطور الخدمة بنجاح.',
     'provider_deactivated' => 'تم إلفاء تنشيط مقدك الخدمة بنجاح.',
@@ -91,17 +94,17 @@ return [
     'booking_status_updated' => 'تم تحديث حالة الحجز بنجاح.',
     'dashboard_retrieved' => 'تم جلب إحصائيات لوحة التحكم بنجاح.',
     'employee_fetched_success' => 'تم جلب الموظفين بنجاح.',
-    'employee_created_successfully' => "تم إنشاء الموظف بنجاح.",
-    'employee_show_success' => "تم عرض بيانات المظف بنجاح.",
-    "employee_updated_successfully" => "تم تعديل بيانات الموظف بنجاح.",
-    "employee_deactivated" => "تم تعطيل الموظف بنجاح.",
-    "employee_activated" => "تم تفعيل الموظف بنجاح.",
-    "home_date_retrieve" => 'تم إسترجاع بيانات الداتا الرئيسية بنجاح.',
-   
+    'employee_created_successfully' => 'تم إنشاء الموظف بنجاح.',
+    'employee_show_success' => 'تم عرض بيانات المظف بنجاح.',
+    'employee_updated_successfully' => 'تم تعديل بيانات الموظف بنجاح.',
+    'employee_deactivated' => 'تم تعطيل الموظف بنجاح.',
+    'employee_activated' => 'تم تفعيل الموظف بنجاح.',
+    'home_date_retrieve' => 'تم إسترجاع بيانات الداتا الرئيسية بنجاح.',
+
     'subcategories_retrieved' => 'تم جلب الأقسام الفرعية بنجاح نجاح.',
     'service_retrieved' => 'تم جلب الخدمة بنجاح.',
     'services_retrieved' => 'تم جلب الخدمات بنجاح.',
-    
+
     'workers_retrieved_successfully' => 'تم جلب العمال بنجاح.',
     'worker_retrieved_successfully' => 'تم جلب العامل بنجاح.',
     'worker_created_successfully' => 'تم إنشاء العامل بنجاح.',
@@ -114,12 +117,12 @@ return [
     'service_not_available' => 'هذه الخدمة غير متاحة حالياً في موقعك.',
 
     'shifts_retrieved' => 'تم جلب الشفتات بنجاح.',
- 
+
     'available_workers_retrieved' => 'تم جلب العمال المتاحين بنجاح.',
     'bookings_fetched_successfully' => 'تم جلب الحجوزات بنجاح.',
     'booking_details_fetched_successfully' => 'تم جلب تفاصيل الحجز بنجاح.',
     'worker_busy' => 'عذراً، هذا العامل تم حجزه للتو. يرجى اختيار وقت أو عامل آخر.',
-   
+
     'booking_created_successfully' => 'تم إنشاء الحجز بنجاح.',
     'service_not_available_in_this_day' => 'عذراً، هذه الخدمة غير متوفرة في اليوم المحدد.',
     'service_not_scheduals' => 'عذراً، هذه الخدمة غير مجدولة لليوم المحدد.',
@@ -133,7 +136,7 @@ return [
     'reschedule_lead_time_max' => 'لا يمكن الحجز لموعد يتجاوز :lead_time_max أيام من الآن.',
     'booking_rescheduled_successfully' => 'تم إعادة جدولة الحجز بنجاح.',
     'booking_cancelled_successfully' => 'تم إلغاء الحجز بنجاح.',
-   
+
     'late_cancel_blocked' => 'عذراً، لقد تجاوزت الوقت المسموح للإلغاء المجاني (:cutoffHours ساعات). يرجى التواصل مع خدمة العملاء.',
     'late_cancel_fee_applied' => 'تم تطبيق غرامة إلغاء متأخر بقيمة :fee.',
     'booking_reported_successfully' => 'تم الإبلاغ عن الحجز بنجاح.',
@@ -207,7 +210,5 @@ return [
     'otp_invalid' => 'رمز التحقق غير صالح. يرجى التحقق والمحاولة مرة أخرى.',
     'my_reports_retrieved_successfully' => 'تم جلب تقاريرك بنجاح.',
     'report_details_retrieved_successfully' => 'تم جلب تفاصيل التقرير بنجاح.',
-    
-
 
 ];

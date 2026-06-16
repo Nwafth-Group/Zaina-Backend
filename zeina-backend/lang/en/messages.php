@@ -1,4 +1,5 @@
 <?php
+
 return [
     'unauthenticated' => 'You are not authenticated. Please log in to continue.',
     'forbidden' => 'You do not have permission to access this resource.',
@@ -10,7 +11,7 @@ return [
     'register_success' => 'Register successful.',
     'login_success' => 'Login successful.',
     'logout_success' => 'Logged out successfully.',
-    
+
     // Profile Deletion
     'delete_warning' => 'Are you sure you want to delete your profile? Profile deletion is permanent, and all associated data will be erased. If you choose to register again, you will need to create a new profile, as previously deleted data cannot be recovered.',
     'account_deleted' => 'Account deleted successfully.',
@@ -41,6 +42,9 @@ return [
     'cannot_toggle_own_status' => 'You cannot toggle your own status.',
     'user_status_toggled' => 'User status changed to :status successfully.',
     'password_reset_success' => 'Password reset successfully.',
+    'profile_updated' => 'Your profile has been updated successfully.',
+    'password_changed' => 'Your password has been changed successfully.',
+    'current_password_incorrect' => 'The current password is incorrect.',
     'cities_retrieved_successfully' => 'Cities retrieved successfully.',
     'city_created_successfully' => 'City created successfully.',
     'city_updated_successfully' => 'City updated successfully.',
@@ -73,11 +77,11 @@ return [
     'failed_to_create_service' => 'Failed to create service. Please try again. Error: :error',
     'service_prices_retrieved_successfully' => 'Service prices retrieved successfully.',
     'service_toggled_successfully' => 'Service status changed to :status successfully.',
-    'cannot_setprice' => "Cannot set price for a location not covered by this service.",
+    'cannot_setprice' => 'Cannot set price for a location not covered by this service.',
     'service_price_save' => 'Pricing service saved successfully.',
     'pricing_not_availble' => 'Pricing not available for this location.',
     'pricingestimated_retrive_success' => 'Pricing Estimated retreive successfully.',
-    'providers_fetch_success' => "Providers fetch successfully.",
+    'providers_fetch_success' => 'Providers fetch successfully.',
     'provider_saved_suuccess' => 'Provider saved successfully.',
     'provider_update_suuccess' => 'Provider saved successfully.',
     'provider_deactivated' => 'Provider deactive successfully.',
@@ -91,12 +95,12 @@ return [
     'booking_status_updated' => 'Booking status updated successfully.',
     'dashboard_retrieved' => 'Dashboard statistics retrieved successfully.',
     'employee_fetched_success' => 'Employee fetch successfully.',
-    'employee_created_successfully' => "Employee created successfully.",
-    'employee_show_success' => "Employee show success.",
-    "employee_updated_successfully" => "Employee updated successfully.",
-    "employee_deactivated" => "Employee deactvie successfully.",
-    "employee_activated" => "Employee active successfully.",
-    "home_date_retrieve" => 'Home data retrieve successfully.',
+    'employee_created_successfully' => 'Employee created successfully.',
+    'employee_show_success' => 'Employee show success.',
+    'employee_updated_successfully' => 'Employee updated successfully.',
+    'employee_deactivated' => 'Employee deactvie successfully.',
+    'employee_activated' => 'Employee active successfully.',
+    'home_date_retrieve' => 'Home data retrieve successfully.',
     'subcategories_retrieved' => 'Subcategories retrieved successfully.',
     'service_retrieved' => 'Service retrieved successfully.',
     'services_retrieved' => 'Services retrieved successfully.',
@@ -112,17 +116,17 @@ return [
     'service_not_available' => 'This service is currently not available in your location.',
 
     'shifts_retrieved' => 'Shifts retrieved successfully.',
-   
+
     'available_workers_retrieved' => 'Available workers retrieved successfully.',
     'bookings_fetched_successfully' => 'Bookings retrieved successfully.',
     'booking_details_fetched_successfully' => 'Booking details retrieved successfully.',
     'worker_busy' => 'Sorry, this worker has just been booked. Please choose a different time or worker.',
-   
+
     'booking_created_successfully' => 'Booking created successfully.',
     'service_not_available_in_this_day' => 'Sorry, this service is not available on the selected day.',
     'service_not_scheduals' => 'Sorry, this service is not scheduled for the selected day.',
     'worker_not_provide_service' => 'Sorry, the selected worker does not provide this service.',
-   
+
     'unauthorized' => 'Unauthorized access.',
     // 'booking_not_upcoming' => 'Cannot reschedule this booking in its current status.',
     'reschedule_duration_mismatch' => 'In rescheduling, you cannot change the service duration. Please choose an end time that matches the original hours of the booking.',
@@ -132,7 +136,7 @@ return [
     'reschedule_lead_time_max' => 'Cannot book an appointment that exceeds :lead_time_max_days days from now.',
     'booking_rescheduled_successfully' => 'Booking rescheduled successfully.',
     'booking_cancelled_successfully' => 'Booking cancelled successfully.',
-   
+
     'booking_not_upcoming' => 'Cannot reschedule this booking in :status status.',
     'late_cancel_blocked' => 'Sorry, you have exceeded the free cancellation time (:cutoffHours hours). Please contact customer support.',
     'late_cancel_fee_applied' => 'A late cancellation fee of :fee has been applied.',
@@ -161,20 +165,20 @@ return [
     'cannot_remove_default' => 'Cannot unset default status without setting another address as default.',
     'address_updated_successfully' => 'Address updated successfully.',
     'cannot_delete_default_address' => 'Cannot delete the default address. Please set another address as default before deleting this one.',
-     'address_set_as_default' => 'Address set as default successfully.',
-     'service_updated_successfully' => 'Service updated successfully.',
-     'error_occurred' => 'An unexpected error occurred. Please try again later.',
-     'service_retrieved_successfully' => 'Service retrieved successfully.',
+    'address_set_as_default' => 'Address set as default successfully.',
+    'service_updated_successfully' => 'Service updated successfully.',
+    'error_occurred' => 'An unexpected error occurred. Please try again later.',
+    'service_retrieved_successfully' => 'Service retrieved successfully.',
     'points_summary_retrieved' => 'Points summary retrieved successfully.',
 
     'points' => [
         'complete_services_title' => 'Complete :count Services',
         'steps_remaining' => ':count steps remaining to earn your reward points.',
-         'history_retrieved' => 'Points transaction history retrieved successfully.',
-         'summary_retrieved' => 'Points summary retrieved successfully.',
-         'task_already_completed' => 'This task has already been completed.',
-         'task_completed_and_points_earned' => 'Congratulations! +:points points have been added to your account.',
-            'earn_points_retrieved' => 'Earn points tasks retrieved successfully.',
+        'history_retrieved' => 'Points transaction history retrieved successfully.',
+        'summary_retrieved' => 'Points summary retrieved successfully.',
+        'task_already_completed' => 'This task has already been completed.',
+        'task_completed_and_points_earned' => 'Congratulations! +:points points have been added to your account.',
+        'earn_points_retrieved' => 'Earn points tasks retrieved successfully.',
     ],
     'kyc_not_verified' => 'Your account must be verified first to access this service.',
     'kyc_already_submitted' => 'You have already submitted a KYC request. Please wait for it to be processed.',
@@ -198,7 +202,7 @@ return [
     'coupons_retrieved' => 'Available coupons retrieved successfully.',
     'invalid_coupon' => 'Invalid coupon code. Please check and try again.',
     'invalid_or_expired_coupon' => 'Invalid or expired coupon. Please check the code and try again.',
-    'coupon_not_for_you'=> 'Sorry, this coupon is not valid for your account.',
+    'coupon_not_for_you' => 'Sorry, this coupon is not valid for your account.',
     'coupon_usage_limit_reached' => 'Sorry, this coupon has reached its maximum usage limit.',
     'user_coupon_usage_limit_reached' => 'Sorry, you have already used this coupon the maximum number of times allowed.',
     'coupon_fully_consumed' => 'Sorry, this coupon has been fully consumed and is no longer available.',
@@ -213,9 +217,5 @@ return [
     'otp_invalid' => 'Invalid OTP. Please check and try again.',
     'my_reports_retrieved_successfully' => 'Your reports have been retrieved successfully.',
     'report_details_retrieved_successfully' => 'Report details retrieved successfully.',
-    
-   
 
-
-    
 ];
