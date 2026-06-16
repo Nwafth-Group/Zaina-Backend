@@ -141,8 +141,22 @@ class User extends Authenticatable implements Auditable
     public function devices(){
       return $this->hasMany(UserDevice::class,'user_id');
     }
+    
+   
+    public function readAnnouncements()
+{
+    return $this->belongsToMany(Announcement::class, 'announcement_user', 'user_id', 'announcement_id')
+                ->withPivot('read_at')
+                ->withTimestamps();
+}
 
 
+//    public function readAnnouncements()
+// {
+//     return $this->belongsToMany(Announcement::class, 'announcement_user', 'announcement_id', 'user_id')
+//                 ->withPivot('read_at')
+//                 ->withTimestamps();
+// }
 
 
 }

@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\V1\Customer\HomeController;
 use App\Http\Controllers\Api\V1\Customer\KycController;
 use App\Http\Controllers\Api\V1\Customer\LegalDocumentController;
 use App\Http\Controllers\Api\V1\Customer\LocationController;
+use App\Http\Controllers\Api\V1\Customer\NotificationandAnnouncementController;
 use App\Http\Controllers\Api\V1\Customer\PointsController;
 use App\Http\Controllers\Api\V1\Customer\ProfileController;
 use App\Http\Controllers\Api\V1\Customer\ReviewController;
@@ -53,8 +54,9 @@ Route::prefix('customer')->group(function () {
     Route::prefix('legal')->group(function(){
         Route::get('terms-conditions', [LegalDocumentController::class, 'getTerms']);
         Route::get('privacy', [LegalDocumentController::class, 'getPrivacy']);
-
     });
+
+
 
     //fetch counttries and govrenrates and citites and areas .. 
     Route::get('locations/countries', [LocationController::class, 'countries']);
@@ -111,6 +113,12 @@ Route::prefix('customer')->group(function () {
        });
 
        Route::apiResource('coupons', CouponController::class)->only(['index', 'show']);
+
+       Route::prefix('notifications')->group(function () {
+        Route::get('/', [NotificationandAnnouncementController::class, 'index']);            // جلب القائمة حسب الـ Tab
+        Route::post('/{id}/read', [NotificationandAnnouncementController::class, 'markAsRead']); // قراءة عنصر (إشعار أو إعلان)
+        Route::post('/read-all', [NotificationandAnnouncementController::class, 'markAllAsRead']); // قراءة الكل
+    });
 
     });
 

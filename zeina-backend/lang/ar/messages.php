@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 return [
     'unauthenticated' => 'غير مصرح لك بالدخول. يرجى تسجيل الدخول للمتابعة.',
@@ -11,7 +11,7 @@ return [
     'register_success' => 'تم التسجيل بنجاح',
     'login_success' => 'تم تسجيل الدخول بنجاح',
     'logout_success' => 'تم تسجيل الخروج بنجاح',
-    
+
     // Profile Deletion
     'delete_warning' => 'هل أنت متأكد من أنك تريد حذف ملفك الشخصي؟ حذف الملف الشخصي نهائي، وسيتم مسح جميع البيانات المرتبطة به. إذا اخترت تسجيل مرة أخرى، فسوف تحتاج إلى إنشاء ملف شخصي جديد، حيث لا يمكن استرداد البيانات المحذوفة سابقًا.',
     'account_deleted' => 'تم حذف الحساب بنجاح',
@@ -92,11 +92,11 @@ return [
     "employee_deactivated" => "تم تعطيل الموظف بنجاح.",
     "employee_activated" => "تم تفعيل الموظف بنجاح.",
     "home_date_retrieve" => 'تم إسترجاع بيانات الداتا الرئيسية بنجاح.',
-   
+
     'subcategories_retrieved' => 'تم جلب الأقسام الفرعية بنجاح نجاح.',
     'service_retrieved' => 'تم جلب الخدمة بنجاح.',
     'services_retrieved' => 'تم جلب الخدمات بنجاح.',
-    
+
     'workers_retrieved_successfully' => 'تم جلب العمال بنجاح.',
     'worker_retrieved_successfully' => 'تم جلب العامل بنجاح.',
     'worker_created_successfully' => 'تم إنشاء العامل بنجاح.',
@@ -109,12 +109,12 @@ return [
     'service_not_available' => 'هذه الخدمة غير متاحة حالياً في موقعك.',
 
     'shifts_retrieved' => 'تم جلب الشفتات بنجاح.',
- 
+
     'available_workers_retrieved' => 'تم جلب العمال المتاحين بنجاح.',
     'bookings_fetched_successfully' => 'تم جلب الحجوزات بنجاح.',
     'booking_details_fetched_successfully' => 'تم جلب تفاصيل الحجز بنجاح.',
     'worker_busy' => 'عذراً، هذا العامل تم حجزه للتو. يرجى اختيار وقت أو عامل آخر.',
-   
+
     'booking_created_successfully' => 'تم إنشاء الحجز بنجاح.',
     'service_not_available_in_this_day' => 'عذراً، هذه الخدمة غير متوفرة في اليوم المحدد.',
     'service_not_scheduals' => 'عذراً، هذه الخدمة غير مجدولة لليوم المحدد.',
@@ -128,7 +128,7 @@ return [
     'reschedule_lead_time_max' => 'لا يمكن الحجز لموعد يتجاوز :lead_time_max أيام من الآن.',
     'booking_rescheduled_successfully' => 'تم إعادة جدولة الحجز بنجاح.',
     'booking_cancelled_successfully' => 'تم إلغاء الحجز بنجاح.',
-   
+
     'late_cancel_blocked' => 'عذراً، لقد تجاوزت الوقت المسموح للإلغاء المجاني (:cutoffHours ساعات). يرجى التواصل مع خدمة العملاء.',
     'late_cancel_fee_applied' => 'تم تطبيق غرامة إلغاء متأخر بقيمة :fee.',
     'booking_reported_successfully' => 'تم الإبلاغ عن الحجز بنجاح.',
@@ -202,7 +202,16 @@ return [
     'otp_invalid' => 'رمز التحقق غير صالح. يرجى التحقق والمحاولة مرة أخرى.',
     'my_reports_retrieved_successfully' => 'تم جلب تقاريرك بنجاح.',
     'report_details_retrieved_successfully' => 'تم جلب تفاصيل التقرير بنجاح.',
-    
+    'notification_fetch_success' => 'تم جلب الإشعارات بنجاح.',
+    'announcement_create_success' => 'تم إنشاء الإعلان بنجاح.',
+    'annouun_not_exist' => 'الإعلان غير موجود.',
+    'announ_fetch_success' => 'تم جلب الإعلان بنجاح.',
+    'announcement_update_success' => 'تم تحديث الإعلان بنجاح.',
+    'announ_delete_success' => 'تم حذف الإعلان بنجاح.',
+    'notification_not_found' => 'الإشعار غير موجود.',
+    'notification_read_success' => 'تم وضع الإشعار ك مقروء .',
+    'announcemnt_mark_read' => 'تم عمل الإعلان ك مقروء .',
+    'all_announcemnt_mark_read' => 'جميع الإعلانات تم وضع علامة "مقروء" عليها.',
 
 
 ];
