@@ -23,9 +23,9 @@ class NotificationService
      */
     public function sendPushNotification(int $userId, string $title, string $body, array $extraData = [])
     {
-        Log::info("Attempting to send Firebase Push Notification in Notification Service to User ID: {$userId} with Title: '{$title}'"); 
+        Log::info("Attempting to send Firebase Push Notification in Notification Service to User ID: {$userId} with Title: '{$title}'");
         Log::info("Fetching FCM Tokens for User ID: {$userId} from database...");
-        
+
         $tokens = DB::table('user_devices')
             ->where('user_id', $userId)
             ->pluck('fcm_token')
@@ -33,11 +33,13 @@ class NotificationService
 
         if (empty($tokens)) {
             Log::info("Notification skipped for User ID: {$userId}. No registered device tokens found.");
+
             return false;
         }
 
-        if (!$this->messaging) {
+        if (! $this->messaging) {
             Log::warning("Firebase Messaging is not configured. Notification Logged: [Title: {$title} | Body: {$body}] for User ID: {$userId}");
+
             return true;
         }
 
@@ -54,44 +56,46 @@ class NotificationService
             }
 
             Log::info("Preparing Firebase Cloud Message for User ID: {$userId}...");
-            
+
             // دمج المصفوفة النظيفة مع بارامترات النظام الإلزامية ونوعها نصي أيضاً
             $message = CloudMessage::new()
                 ->withNotification($notification)
                 ->withData(array_merge($cleanExtraData, [
                     'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
-                    'sent_at'      => now()->toIso8601String()
+                    'sent_at' => now()->toIso8601String(),
                 ]));
 
             Log::info("Sending Firebase Push Notification to User ID: {$userId}...");
             $report = $this->messaging->sendMulticast($message, $tokens);
 
             // 5. هندسة ذكية وتنظيف تلقائي لقاعدة البيانات (Database Clean-up)
-           if ($report->hasFailures()) {
-    // 🌟 التعديل السحري هنا: الـ failures() كوليكشن بيمشي عليه الـ foreach مباشرة بدون asArray()
+            if ($report->hasFailures()) {
+                // 🌟 التعديل السحري هنا: الـ failures() كوليكشن بيمشي عليه الـ foreach مباشرة بدون asArray()
                 foreach ($report->failures() as $failure) {
                     $errorMsg = $failure->error()->getMessage();
-                    
-                    if ($errorMsg === 'The registration token is not a valid FCM registration token' || 
-                        str_contains($errorMsg, 'not-found') || 
+
+                    if ($errorMsg === 'The registration token is not a valid FCM registration token' ||
+                        str_contains($errorMsg, 'not-found') ||
                         str_contains($errorMsg, 'unregistered')) {
-                        
+
                         Log::info("Found invalid FCM Token for User ID: {$userId} - Reason: {$errorMsg}");
-                        
+
                         // جلب قيمة التوكن التالف مباشرة
                         $invalidToken = $failure->target()->value();
-                        
+
                         DB::table('user_devices')->where('fcm_token', $invalidToken)->delete();
-                        Log::info("Cleaned up expired FCM Token from database.");
+                        Log::info('Cleaned up expired FCM Token from database.');
                     }
                 }
-}
-            
+            }
+
             Log::info("Successfully sent Firebase Push Notification to User ID: {$userId}");
+
             return true;
 
         } catch (\Exception $e) {
-            Log::error("Failed to send Firebase Push Notification to User ID {$userId}: " . $e->getMessage());
+            Log::error("Failed to send Firebase Push Notification to User ID {$userId}: ".$e->getMessage());
+
             return false;
         }
     }

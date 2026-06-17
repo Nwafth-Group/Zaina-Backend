@@ -3,7 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Ad;
-use App\Service\MediaService; 
+use App\Service\MediaService;
 use Illuminate\Database\Seeder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -32,7 +32,7 @@ class AdSeeder extends Seeder
         $ads = [
             [
                 'link' => 'null', // رابط عرض خاص
-              'status' => 'active',
+                'status' => 'active',
             ],
             [
                 'link' => null, // بدون رابط (فقط صورة للعرض والتجميل بالـ UI)
@@ -41,7 +41,7 @@ class AdSeeder extends Seeder
             [
                 'link' => 'null', // رابط داخلي لقسم التجميل
                 'status' => 'active',
-            ]
+            ],
         ];
 
         // 3. المسار الثابت والمضمون بداخل مجلد الـ public
@@ -52,7 +52,7 @@ class AdSeeder extends Seeder
 
             if (file_exists($sourcePath)) {
                 // 🌟 الحل السحري المأمن: عمل نسخة كاش مؤقتة لكل إعلان عشان الداتا تطلع 100% شغالة وما تطلع null
-                $tempPath = sys_get_temp_dir() . '/temp_ad_' . uniqid() . '.jpg';
+                $tempPath = sys_get_temp_dir().'/temp_ad_'.uniqid().'.jpg';
                 copy($sourcePath, $tempPath);
 
                 $uploadedFile = new UploadedFile(
@@ -65,8 +65,8 @@ class AdSeeder extends Seeder
 
                 // رفع الميديا وربطها بـ الـ Polymorphic Table (جدول الـ media الخاص بك)
                 // غيرنا الـ collection_name ليكون 'ad/image' ليطابق السيناريو تبعه
-                $this->mediaService->upload($uploadedFile, $ad,'ads/image', 'public');
-                
+                $this->mediaService->upload($uploadedFile, $ad, 'ads/image', 'public');
+
                 // حذف الملف المؤقت فوراً بعد النجاح
                 if (file_exists($tempPath)) {
                     @unlink($tempPath);

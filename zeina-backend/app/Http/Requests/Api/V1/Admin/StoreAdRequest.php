@@ -24,7 +24,7 @@ class StoreAdRequest extends FormRequest
     {
         return [
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048', // حد أقصى 2 ميجا بايت
-            'link' => ['nullable','string'],
+            'link' => ['nullable', 'string'],
         ];
     }
 }

@@ -23,9 +23,8 @@ class UpdateAdRequest extends FormRequest
     public function rules(): array
     {
         return [
-           'image' => ['reqiured,image,mimes:jpeg,png,jpg,webp,max:2048'],
-            'link' => ['nullable','string'],
+            'image' => ['reqiured,image,mimes:jpeg,png,jpg,webp,max:2048'],
+            'link' => ['nullable', 'string'],
         ];
     }
 }
- 

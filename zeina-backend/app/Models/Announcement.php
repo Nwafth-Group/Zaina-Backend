@@ -11,14 +11,15 @@ class Announcement extends Model
         'body',
     ];
 
-
-    public function media(){
-        return $this->morphMany(Media::class,'model');
+    public function media()
+    {
+        return $this->morphMany(Media::class, 'model');
     }
 
-    public function readers(){
-        return $this->belongsToMany(User::class,'announcement_user','announcement_id','user_id')
-        ->withPivot('read_at')
-        ->withTimestamps();
+    public function readers()
+    {
+        return $this->belongsToMany(User::class, 'announcement_user', 'announcement_id', 'user_id')
+            ->withPivot('read_at')
+            ->withTimestamps();
     }
 }

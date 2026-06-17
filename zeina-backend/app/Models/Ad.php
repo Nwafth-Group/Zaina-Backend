@@ -16,7 +16,8 @@ class Ad extends Model
         'status',
     ];
 
-    public function media(){
-        return $this->morphMany(Media::class,'model');
+    public function media()
+    {
+        return $this->morphMany(Media::class, 'model');
     }
 }

@@ -24,7 +24,7 @@ class StoreAnnouncementRequest extends FormRequest
     {
         return [
             'title' => 'required|string|max:255',
-            'body'  => 'required|string',
+            'body' => 'required|string',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048', // حد أقصى 2 ميجا بايت
         ];
     }

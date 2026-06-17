@@ -21,7 +21,7 @@ return new class extends Migration
             $table->text('description_en')->nullable();
             $table->json('features')->nullable();
             $table->decimal('avg_rating', 3, 2)->default(0.00);
-            $table->enum('status', ['active','inactive'])->default('active');
+            $table->enum('status', ['active', 'inactive'])->default('active');
             $table->timestamps();
         });
     }

@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use App\Models\Review;
 use App\Models\Service;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class ReviewServcieAndWorkerSeeder extends Seeder
@@ -14,18 +13,18 @@ class ReviewServcieAndWorkerSeeder extends Seeder
      */
     public function run(): void
     {
-            // يمكنك هنا إنشاء مراجعات وهمية للخدمات والعاملين باستخدام Factories أو بشكل يدوي
-            // مثال:
-         // Review::factory()->count(50)->create(); // إذا كان لديك Factory معد للمراجعات
+        // يمكنك هنا إنشاء مراجعات وهمية للخدمات والعاملين باستخدام Factories أو بشكل يدوي
+        // مثال:
+        // Review::factory()->count(50)->create(); // إذا كان لديك Factory معد للمراجعات
 
-         Review::create([
+        Review::create([
             'booking_id' => 1, // تأكد من وجود حجز بهذا المعرف
             'customer_id' => 1, // تأكد من وجود مستخدم بهذا المعرف
             'reviewable_type' => Service::class, // أو Worker::class حسب ما تريد مراجعته
             'reviewable_id' => 1, // معرف الخدمة أو العامل الذي تريد مراجعته
             'rating' => 5,
             'comment' => 'خدمة ممتازة!',
-        ]); 
+        ]);
 
         Review::create([
             'booking_id' => 2, // تأكد من وجود حجز بهذا المعرف
@@ -36,7 +35,7 @@ class ReviewServcieAndWorkerSeeder extends Seeder
             'comment' => 'خدمة جيدة ولكن يمكن تحسينها.',
         ]);
 
-         Review::create([
+        Review::create([
             'booking_id' => 3, // تأكد من وجود حجز بهذا المعرف
             'customer_id' => 2, // تأكد من وجود مستخدم بهذا المعرف
             'reviewable_type' => Service::class, // أو Worker::class حسب ما تريد مراجعته
@@ -45,7 +44,7 @@ class ReviewServcieAndWorkerSeeder extends Seeder
             'comment' => 'الخدمة كانت متوسطة.',
         ]);
 
-         Review::create([
+        Review::create([
             'booking_id' => 4, // تأكد من وجود حجز بهذا المعرف
             'customer_id' => 2, // تأكد من وجود مستخدم بهذا المعرف
             'reviewable_type' => Service::class, // أو Worker::class حسب ما تريد مراجعته

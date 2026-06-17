@@ -13,20 +13,19 @@ class AnnouncementCustomerResource extends JsonResource
      *
      * @return array<string, mixed>
      */
-      public function toArray(Request $request): array
-    { 
-        $media = $this->media()->where('collection','announcement/image')->first();
+    public function toArray(Request $request): array
+    {
+        $media = $this->media()->where('collection', 'announcement/image')->first();
         $user = auth('sanctum')->user();
         $readIds = $user->readAnnouncements()->pluck('announcement_id')->toArray();
 
-        
         return [
-            'id'=>$this->id,
+            'id' => $this->id,
             'title' => $this->title,
             'body' => $this->body,
-            'image' => $media?  (new MediaResource($media))->getFileUrl() : null,
-            'is_read'     => in_array($this->id, $readIds),
-            'created_at'  => $this->created_at->diffForHumans(),
+            'image' => $media ? (new MediaResource($media))->getFileUrl() : null,
+            'is_read' => in_array($this->id, $readIds),
+            'created_at' => $this->created_at->diffForHumans(),
         ];
     }
 }

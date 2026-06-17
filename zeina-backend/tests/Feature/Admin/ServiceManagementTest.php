@@ -511,7 +511,7 @@ class ServiceManagementTest extends TestCase
                     'service' => ['id', 'name_ar', 'name_en', 'avg_rating', 'status'],
                     'stats' => ['total_bookings', 'completed_bookings', 'reviews_count', 'avg_rating'],
                     'latest_bookings' => [['id', 'booking_ref', 'customer_name', 'service_name', 'status']],
-                    'reviews' => [['id', 'rating', 'comment', 'customer_name', 'created_at']],
+                    'reviews' => [['id', 'rating', 'comment', 'customer' => ['id', 'first_name', 'last_name'], 'created_since']],
                 ],
             ]);
     }

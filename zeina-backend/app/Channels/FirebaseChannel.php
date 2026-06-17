@@ -20,10 +20,10 @@ class FirebaseChannel
      * إرسال الإشعار اللحظي عبر الفايربيز
      */
     public function send($notifiable, Notification $notification)
-    {    
-        Log::info("--- [Firebase Channel] Starting Custom Send Process ---");
+    {
+        Log::info('--- [Firebase Channel] Starting Custom Send Process ---');
         // نتحقق إذا كان ملف الـ Notification يحتوي على دالة toFirebase
-        if (!method_exists($notification, 'toFirebase')) {
+        if (! method_exists($notification, 'toFirebase')) {
             return;
         }
 
