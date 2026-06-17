@@ -12,11 +12,7 @@ class Ad extends Model
     use HasFactory ,SoftDeletes;
 
     protected $fillable = [
-        'title',
         'link',
-        'description',
-        'start_date',
-        'end_date',
         'status',
     ];
 

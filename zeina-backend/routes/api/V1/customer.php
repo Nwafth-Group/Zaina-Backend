@@ -10,13 +10,16 @@ use App\Http\Controllers\Api\V1\Customer\HomeController;
 use App\Http\Controllers\Api\V1\Customer\KycController;
 use App\Http\Controllers\Api\V1\Customer\LegalDocumentController;
 use App\Http\Controllers\Api\V1\Customer\LocationController;
+use App\Http\Controllers\Api\V1\Customer\NotificationandAnnouncementController;
 use App\Http\Controllers\Api\V1\Customer\PointsController;
 use App\Http\Controllers\Api\V1\Customer\ProfileController;
+use App\Http\Controllers\Api\V1\Customer\ReviewController;
 use App\Http\Controllers\Api\V1\Customer\SearchController;
 use App\Http\Controllers\Api\V1\Customer\ServiceController;
 use App\Http\Controllers\Api\V1\Customer\TestController;
 use App\Http\Controllers\Api\V1\Customer\UserCardController;
 use App\Http\Controllers\Api\V1\Customer\WalletController;
+use App\Http\Controllers\Api\V1\Notification\DeviceTokenController;
 use App\Http\Middleware\IsCustomer;
 use Illuminate\Support\Facades\Route;
 
@@ -46,12 +49,14 @@ Route::prefix('customer')->group(function () {
     Route::get('/services/{service}/available-workers', [ServiceController::class, 'getAvailableWorkers']);
     Route::get('/services', [ServiceController::class, 'index']); // 1  // لجلب كل الخدمات مع Paginate
     Route::get('/categories/{category}/services', [ServiceController::class, 'getServicesByCategory']);// 2
+    Route::get('/reviews/{service}', [ReviewController::class, 'index']); // 5
     
     Route::prefix('legal')->group(function(){
         Route::get('terms-conditions', [LegalDocumentController::class, 'getTerms']);
         Route::get('privacy', [LegalDocumentController::class, 'getPrivacy']);
-
     });
+
+
 
     //fetch counttries and govrenrates and citites and areas .. 
     Route::get('locations/countries', [LocationController::class, 'countries']);
@@ -63,8 +68,10 @@ Route::prefix('customer')->group(function () {
         // Auth
         Route::post('auth/logout', [AuthController::class, 'logout']);
 
-        Route::post('auth/send-change-phone-otp', [AuthController::class, 'sendUpdatePhoneOtp']);
-        Route::post('auth/verify-change-phone', [AuthController::class, 'verifyAndUpdatePhone']);
+        // Route::post('auth/send-change-phone-otp', [AuthController::class, 'sendUpdatePhoneOtp']);
+        // Route::post('auth/verify-change-phone', [AuthController::class, 'verifyAndUpdatePhone']);
+
+        Route::post('notification/update-device-token', [DeviceTokenController::class,'updateToken']);
         
         // Profile
         Route::prefix('profile')->group(function () {
@@ -106,6 +113,12 @@ Route::prefix('customer')->group(function () {
        });
 
        Route::apiResource('coupons', CouponController::class)->only(['index', 'show']);
+
+       Route::prefix('notifications')->group(function () {
+        Route::get('/', [NotificationandAnnouncementController::class, 'index']);            // جلب القائمة حسب الـ Tab
+        Route::post('/{id}/read', [NotificationandAnnouncementController::class, 'markAsRead']); // قراءة عنصر (إشعار أو إعلان)
+        Route::post('/read-all', [NotificationandAnnouncementController::class, 'markAllAsRead']); // قراءة الكل
+    });
 
     });
 

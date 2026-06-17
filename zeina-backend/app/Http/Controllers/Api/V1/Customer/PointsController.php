@@ -113,10 +113,12 @@ public function history(Request $request)
 
     // تجهيز الداتا للـ Resource
     $formattedHistory = $history->getCollection()->map(function($tx) {
+        $lang = app()->getLocale();
         return [
             'id' => $tx->id,
             'type' => $tx->type, // 'earn' عشان يعطيه سهم أخضر لفوق، 'redeem' سهم أحمر لتحت
-            'title' => $tx->title_en, 
+            'type_translate' => __("messages.{$tx->type}"),
+            'title' => $lang == 'en' ? $tx->title_en : $tx->title_ar, 
             'amount' => $tx->formatted_amount,
             'date' => $tx->created_at->format('d M. Y') 
         ];

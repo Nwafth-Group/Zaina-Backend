@@ -26,7 +26,6 @@ return new class extends Migration
             // سياسات عدم الحضور والتعديلات
             $table->enum('no_show_policy', ['compensate', 'consumed'])->default('consumed');
             $table->integer('max_changes_per_booking')->default(0);
-            
             $table->timestamps();
         });
     }

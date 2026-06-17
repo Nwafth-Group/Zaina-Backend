@@ -21,11 +21,13 @@ class ReviewResource extends JsonResource
             'id' => $this->id,
             'rating' => (int) $this->rating,
             'comment' => $this->comment,
-            'customer_name' => $this->customer
-                ? trim(($this->customer->first_name ?? '').' '.($this->customer->last_name ?? ''))
-                : null,
+            'customer' => [
+                'id' => $this->customer->id,
+                'first_name' => $this->customer->first_name,
+                'last_name' => $this->customer->last_name,
+            ],
             'booking_ref' => $this->booking?->booking_ref,
-            'created_at' => $this->created_at?->format('d M, Y'),
+            'created_since' => $this->created_at?->format('d M, Y'),
         ];
     }
 }

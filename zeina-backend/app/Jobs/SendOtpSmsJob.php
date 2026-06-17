@@ -28,24 +28,29 @@ class SendOtpSmsJob implements ShouldQueue
      * Execute the job.
      */
     public function handle(SmsService $smsService): void
-    {      
-        try {
-            $cleanMobile = preg_replace('/[^0-9]/', '', $this->mobile);
-            $smsSent = $smsService->send($cleanMobile, $this->message);
+{      
+    try {
+        $cleanMobile = preg_replace('/[^0-9]/', '', $this->mobile);
+        $smsSent = $smsService->send($cleanMobile, $this->message);
 
-            if (!$smsSent) {
-                // هان بنرمي الـ Exception المخصص لو الـ API رجع كود غير الـ 0
-                throw new \Exception("Failed to send SMS via Community Ads API.");
-            }
-        } catch (\Exception $e) {
-            // 🔥 تعديل ذهبي: بنطبع الـ Exception نفسه مع الـ Stack Trace بالـ log الأساسي
-            Log::error("Queue SMS Handle Exception: " . $e->getMessage(), [
-                'file' => $e->getFile(),
-                'line' => $e->getLine()
-            ]);
-            throw $e; 
+        if (!$smsSent) {
+            // نكتفي بكتابة تحذير بالـ Log عشان نعرف إن البوابة رفضت الرقم، بدون ما نموت الجوب
+            Log::warning("SMS Gateway returned failure response for number: {$this->mobile}");
+        } else {
+            Log::info("SMS Sent successfully to: {$this->mobile}");
         }
+        
+    } catch (\Exception $e) {
+        // طباعة الاستثناء لحصر أخطاء السيرفر (مثل انقطاع الاتصال بالـ API)
+        Log::error("Queue SMS Handle Exception safely caught: " . $e->getMessage(), [
+            'file' => $e->getFile(),
+            'line' => $e->getLine()
+        ]);
+        
+        // 🌟 السر هنا: حذفنا سطر throw $e; 🌟
+        // كذا الجوب بتخلص شغلها بسلام كـ Success، وبتمرر الدور فوراً لـ جوب الفايربيز اللي بعدها في الطابور!
     }
+}
 
     /**
      * دالة الفشل النهائي بعد استنفاد الـ 3 محاولات

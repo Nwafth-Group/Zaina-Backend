@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Api\V1\Admin\AdsController;
+use App\Http\Controllers\Api\V1\Admin\AnnouncementController;
 use App\Http\Controllers\Api\V1\Admin\AreaController;
 use App\Http\Controllers\Api\V1\Admin\AuthController;
 use App\Http\Controllers\Api\V1\Admin\BookingController;
@@ -128,5 +130,15 @@ Route::prefix('admin')->group(function () {
     // coupon routes
 
     Route::apiResource('coupons', CouponController::class);
+
+    // coupon routes
+
+    Route::prefix('admin')->group(function () {
+        Route::apiResource('coupons', CouponController::class);
+    });
+
+    Route::apiResource('announcements', AnnouncementController::class);
+
+    Route::apiResource('ads', AdsController::class);
 
 });

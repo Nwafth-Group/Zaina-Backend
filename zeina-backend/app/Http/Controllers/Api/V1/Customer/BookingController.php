@@ -85,47 +85,63 @@ class BookingController extends Controller
      */
 
     public function store(StoreBookingRequest $request) 
-    {
-        $user = auth()->user();
-        // 1. قفل البوابة الذري (Atomic Lock) لمنع النقرات المتزامنة
-        $lockKey = 'booking_lock_user_' . $user->id . '_service_' . $request->service_id;
-        $lock = Cache::lock($lockKey, 10);
+{
+    $user = auth()->user();
+    
+    // 1. قفل البوابة الذري (Atomic Lock) لمنع النقرات المتزامنة
+    $lockKey = 'booking_lock_user_' . $user->id . '_service_' . $request->service_id;
+    $lock = Cache::lock($lockKey, 10);
 
-        if (!$lock->get()) {
-            return $this->errorResponse(__('messages.booking_in_progress') ?? 'جاري معالجة طلب حجزك الحالي بالفعل، الرجاء الانتظار.', 429);
-        }
-
-        try {
-            $booking = $this->bookingService->createBooking($user, $request->validated());
-            $lock->release();
-            try {
-                $smsMessage = __('sms.booking_created_sms', [
-                    'ref'           => $booking->booking_ref,
-                    'date'          => $booking->booking_date,
-                    'status'        => $booking->status,
-                    'workers_count' => count($request->worker_ids)
-                ]);
-                dispatch(new \App\Jobs\SendBookingNotificationSmsJob($user->phone_number, $smsMessage));
-            } catch (\Exception $smsEx) {
-                Log::error("Failed to queue booking SMS: " . $smsEx->getMessage());
-            }
-            return $this->successResponse(
-                new BookingResource($booking->load(['service', 'coupon', 'address', 'workers'])),
-                __('messages.booking_created_successfully'),
-                201
-            );
-
-        } catch (\Exception $e) {
-            $lock->release();
-            // معرفة نوع الكود الراجع (إن وجد) أو إرجاع 422 أو 500 حسب طبيعة الخطأ
-            $statusCode = in_array($e->getCode(), [400, 402, 422, 429]) ? $e->getCode() : 500;
-            return response()->json([
-                'success' => false,
-                'message' => $statusCode === 500 ? 'حدث خطأ غير متوقع أثناء معالجة الحجز.' : $e->getMessage(),
-                'error'   => app()->environment('local') ? $e->getMessage() : null
-            ], $statusCode);
-        }
+    if (!$lock->get()) {
+        return $this->errorResponse(__('messages.booking_in_progress') ?? 'جاري معالجة طلب حجزك الحالي بالفعل، الرجاء الانتظار.', 429);
     }
+
+    try {
+        // 2. استدعاء المعالجة المالية وحجز العمال من الـ Service
+        $booking = $this->bookingService->createBooking($user, $request->validated());
+        
+        // تحرير القفل فور النجاح والاستقرار
+        $lock->release();
+
+        // 🌟 3. السحر الجديد: إطلاق نظام الإشعارات الشامل لـ لارافيل 🌟
+        // بما أن الـ Notification مدمج بـ `ShouldQueue` سينطلق فورا بالخلفية دون تأخير الـ API
+        try {
+            $user->notify(new \App\Notifications\BookingNotification(
+                __('sms.booking_confirmed',[]), // عنوان الإشعار على الهاتف وفي الـ Inbox
+                __('sms.booking_confirmed_message', [
+                    'ref' => $booking->booking_ref
+                ]), 
+                $booking->id, // الـ ID للتوجه لشاشة التفاصيل
+                [
+                    'booking_ref'   => $booking->booking_ref,
+                    'booking_date'  => $booking->booking_date,
+                    'workers_count' => count($request->worker_ids)
+                ]
+            ));
+        } catch (\Exception $notifEx) {
+            // كاش داخلي حماية؛ لو تعطل الفايربيز لا نخرب على المستخدم نجاح الحجز
+            Log::error("Failed to trigger system booking notification: " . $notifEx->getMessage());
+        }
+
+        // 4. إرجاع الـ Response النهائي المستقر
+        return $this->successResponse(
+            new BookingResource($booking->load(['service', 'coupon', 'address', 'workers'])),
+            __('messages.booking_created_successfully'),
+            201
+        );
+
+    } catch (\Exception $e) {
+        // تحرير القفل فوراً عند حدوث خطأ
+        $lock->release();
+
+        $statusCode = in_array($e->getCode(), [400, 402, 422, 429]) ? $e->getCode() : 500;
+        return response()->json([
+            'success' => false,
+            'message' => $statusCode === 500 ? 'حدث خطأ غير متوقع أثناء معالجة الحجز.' : $e->getMessage(),
+            'error'   => app()->environment('local') ? $e->getMessage() : null
+        ], $statusCode);
+    }
+}
 
     public function getRescheduleShifts(Request $request, $id)
     {
@@ -244,28 +260,40 @@ class BookingController extends Controller
 
 
    public function reschedule(RescheduleBookingRequest $request, $id)
-{
+
+   {
+
     try {
         $userId = auth()->id();
+        $user = auth()->user();
         
         // 1. استدعاء اللوجيك بالكامل من الـ Service في سطر واحد ونظيف 🌟
         $booking = $this->bookingService->rescheduleBooking($id, $userId, $request->validated());
 
-        // 2. دفع مهمة الـ SMS للطابور بالخلفية
+        // 🌟 2. السحر الموحد: إطلاق نظام الإشعارات الشامل لإعادة الجدولة 🌟
+        // السطر هاد هس يعت فايربيز (Push)، ويخزن بالداتابيز (Inbox)، ويبعت الـ SMS تلقائياً بالخلفية
         try {
-            $user = auth()->user();
             $newStart = \Carbon\Carbon::parse($request->new_start_time);
             
-            $smsMessage = __('sms.booking_rescheduled_sms', [
-                'ref'  => $booking->booking_ref,
-                'date' => $request->new_date,
-                'time' => $newStart->format('h:i A'),
-            ]);
+            $user->notify(new \App\Notifications\BookingNotification(
+                __('sms.booking_rescheduled_title'), // عنوان الإشعار (مثلاً: تم تعديل موعد الحجز 🔄)
+                __('sms.booking_rescheduled_message', [
+                    'ref' => $booking->booking_ref,
+                    'date'        => $request->new_date,
+                    'time'        => $newStart->format('h:i A'),
+                ]), 
+                $booking->id, // الـ ID للتوجه لشاشة التفاصيل بالموبايل
+                [
+                    'booking_ref'   => $booking->booking_ref,
+                    'booking_date'  => $request->new_date,
+                    'booking_time'  => $newStart->format('h:i A'),
+                    'workers_count' => $booking->workers()->count()
+                ]
+            ));
 
-            dispatch(new \App\Jobs\SendBookingNotificationSmsJob($user->phone_number, $smsMessage));
-
-        } catch (\Exception $smsEx) {
-            \Illuminate\Support\Facades\Log::error("Failed to queue reschedule booking SMS: " . $smsEx->getMessage());
+        } catch (\Exception $notifEx) {
+            // حماية للـ Flow؛ لو تعطل الفايربيز أو الـ SMS لا نخرب على العميل نجاح العملية
+            \Illuminate\Support\Facades\Log::error("Failed to trigger system reschedule notification: " . $notifEx->getMessage());
         }
 
         // 3. إرجاع الاستجابة المستقرة والـ Resource الموحد
@@ -286,28 +314,38 @@ class BookingController extends Controller
     }
 }
    
-  public function cancel(Request $request, $id)
+public function cancel(Request $request, $id)
 {
     try {
         $userId = auth()->id();
+        $user = auth()->user();
 
-        // 1. استدعاء اللوجيك بالكامل من الـ Service في سطر واحد 🌟
+        // 1. استدعاء اللوجيك بالكامل من الـ Service في سطر واحد ونظيف 🌟
         $booking = $this->bookingService->cancelBooking($id, $userId);
 
-        // 2. دفع مهمة الـ SMS للطابور بالخلفية
+        // 🌟 2. السحر الموحد: إطلاق نظام الإشعارات الشامل لإلغاء الحجز 🌟
+        // السطر هاد هس يعت فايربيز (Push)، ويخزن بالداتابيز (Inbox)، ويبعت الـ SMS تلقائياً بالخلفية
         try {
-            $user = auth()->user();
-            $smsMessage = __('sms.booking_cancelled_sms', [
-                'ref' => $booking->booking_ref,
-            ]);
+            $user->notify(new \App\Notifications\BookingNotification(
+                __('sms.booking_cancelled_title'), // عنوان الإشعار (مثلاً: تم إلغاء الحجز ❌)
+                __('sms.booking_cancelled_message', [
+                    'ref' => $booking->booking_ref,
+                ]), 
+                $booking->id, // الـ ID للتوجه لشاشة تفاصيل الحجز الملغي في الموبايل
+                [
+                    'booking_ref'    => $booking->booking_ref,
+                    'booking_date'   => $booking->booking_date,
+                    'cancelled_at'   => now()->toIso8601String(),
+                    'current_status' => 'Cancelled'
+                ]
+            ));
 
-            dispatch(new \App\Jobs\SendBookingNotificationSmsJob($user->phone_number, $smsMessage));
-
-        } catch (\Exception $smsEx) {
-            \Illuminate\Support\Facades\Log::error("Failed to queue cancellation booking SMS: " . $smsEx->getMessage());
+        } catch (\Exception $notifEx) {
+            // حماية للـ Flow؛ لو تعطل الفايربيز أو الـ SMS لا نخرب على العميل نجاح عملية الإلغاء ورجوع الأموال
+            \Illuminate\Support\Facades\Log::error("Failed to trigger system cancellation notification: " . $notifEx->getMessage());
         }
 
-        // 3. إرجاع الاستجابة المستقرة
+        // 3. إرجاع الاستجابة المستقرة والـ Resource الموحد
         return $this->successResponse(
             new BookingResource($booking->load(['service', 'coupon', 'address', 'workers'])),
             __('messages.booking_cancelled_successfully')
