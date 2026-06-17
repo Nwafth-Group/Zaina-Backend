@@ -13,30 +13,38 @@ use Illuminate\Http\Request;
 class AreaController extends Controller
 {
     use ApiResponseTrait;
+
     /**
      * Display a listing of the resource.
      */
-  public function index(Request $request)
+    public function index(Request $request)
     {
-        $query = Area::with('city.country');
+        $query = Area::with('city.govrenrate.country');
 
         if ($request->city_id) {
+            // A city-scoped request is a dropdown lookup: return that city's full
+            // area set rather than a truncated page, so every area is selectable.
             $query->where('city_id', $request->city_id);
+
+            return $this->successResponse(AreaResource::collection($query->get()), __('messages.areas_fetch_success'));
         }
 
-        return $this->successResponse(AreaResource::collection($query->paginate(15)),__('messages.areas_fetch_success'));
+        return $this->successResponse(AreaResource::collection($query->paginate(15)), __('messages.areas_fetch_success'));
     }
 
     public function store(StoreAreaRequest $request)
-    {   
-       
+    {
+
         $area = Area::create($request->validated());
+
         return $this->successResponse(AreaResource::make($area), __('messages.area_created_successfully'));
     }
 
-    public function update(UpdateAreaRequest $request , Area $area){
+    public function update(UpdateAreaRequest $request, Area $area)
+    {
         $area = $area->update($request->validated());
-        return $this->successResponse(null,__('messages.area_update_success'));
+
+        return $this->successResponse(null, __('messages.area_update_success'));
     }
 
     public function destroy(Area $area)
@@ -45,7 +53,8 @@ class AreaController extends Controller
         // if ($area->addresses()->count() > 0) { ... }
 
         $area->delete();
-        return $this->successResponse(null, __('messages.area_deleted_successfully') );
+
+        return $this->successResponse(null, __('messages.area_deleted_successfully'));
     }
 
     public function toggleStatus(Area $area)

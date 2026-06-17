@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('ads', function (Blueprint $table) {
             $table->id();
             $table->string('link')->nullable();
-            $table->enum('status',['active','inactive'])->default('active');
+            $table->enum('status', ['active', 'inactive'])->default('active');
             $table->softDeletes();
             $table->timestamps();
         });

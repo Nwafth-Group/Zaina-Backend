@@ -5,29 +5,29 @@ namespace App\Http\Resources\Api\V1\Review;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/**
+ * A single rating/review left for a reviewable (worker or service) — used by the
+ * worker/service details modals. Expects `customer` and `booking` to be
+ * eager-loaded by the controller.
+ */
 class ReviewResource extends JsonResource
 {
     /**
-     * Transform the resource into an array.
-     *
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array
-{  
-    $this->load(['customer.media']); // تحميل الوسائط الخاصة بالعميل لتجنب مشكلة N+1
-
-    // حساب عدد الأشهر التي مرت من تاريخ الإنشاء وحتى الوقت الحالي
-    return [
-        'id' => $this->id, 
-        'rating' => $this->rating, 
-        'comment' => $this->comment,
-        'customer' => [
-            'id' => $this->customer->id,
-            'first_name' => $this->customer->first_name,
-            'last_name' => $this->customer->last_name,
-        ],
-        // استبدال التاريخ بصيغة الأشهر
-       'created_since' => $this->created_at->diffForHumans(),
-    ];
-}
+    {
+        return [
+            'id' => $this->id,
+            'rating' => (int) $this->rating,
+            'comment' => $this->comment,
+            'customer' => [
+                'id' => $this->customer->id,
+                'first_name' => $this->customer->first_name,
+                'last_name' => $this->customer->last_name,
+            ],
+            'booking_ref' => $this->booking?->booking_ref,
+            'created_since' => $this->created_at?->format('d M, Y'),
+        ];
+    }
 }

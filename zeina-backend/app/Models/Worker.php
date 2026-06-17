@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class Worker extends Model
 {
     /** @use HasFactory<\Database\Factories\WorkerFactory> */
-    use HasFactory; 
+    use HasFactory;
 
     protected $fillable = [
         'name',
@@ -17,26 +17,41 @@ class Worker extends Model
         'status',
     ];
 
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'avg_rating' => 'float',
+        ];
+    }
+
     public function services()
     {
-        return $this->belongsToMany(Service::class,'service_workers');
-    } 
+        return $this->belongsToMany(Service::class, 'service_workers');
+    }
 
     public function assignments()
-{
-    // العامل لديه العديد من التخصيصات في الجدول الوسيط
-    return $this->hasMany(BookingAssignment::class, 'worker_id');
-}
+    {
+        // العامل لديه العديد من التخصيصات في الجدول الوسيط
+        return $this->hasMany(BookingAssignment::class, 'worker_id');
+    }
 
-   public function bookings()
+    public function bookings()
     {
         return $this->belongsToMany(Booking::class, 'booking_assignments', 'worker_id', 'booking_id')
-                    ->wherePivot('status', 'active') // فقط الحجزات النشطة
-                    ->withTimestamps();
-    }
-    public function media()
-    {
-        return $this->morphMany(Media::class,'model');
+            ->wherePivot('status', 'active') // فقط الحجزات النشطة
+            ->withTimestamps();
     }
 
+    public function media()
+    {
+        return $this->morphMany(Media::class, 'model');
+    }
+
+    public function reviews()
+    {
+        return $this->morphMany(Review::class, 'reviewable');
+    }
 }

@@ -14,13 +14,14 @@ class AnnouncementResource extends JsonResource
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array
-    { 
-        $media = $this->media()->where('collection','announcement/image')->first();
+    {
+        $media = $this->media()->where('collection', 'announcement/image')->first();
+
         return [
-            'id'=>$this->id,
+            'id' => $this->id,
             'title' => $this->title,
             'body' => $this->body,
-            'image' => $media?  (new MediaResource($media))->getFileUrl() : null
+            'image' => $media ? (new MediaResource($media))->getFileUrl() : null,
         ];
     }
 }

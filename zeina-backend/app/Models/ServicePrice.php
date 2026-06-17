@@ -11,9 +11,9 @@ class ServicePrice extends Model
     use HasFactory;
 
     protected $fillable = [
-        'service_id', 'pricing_scope', 'city_id', 'area_id', 
-        'price_per_service_period', 'currency', 
-        'effective_start', 'effective_end'
+        'service_id', 'city_id', 'area_id',
+        'price_per_service_period', 'currency',
+        'effective_start', 'effective_end',
     ];
 
     protected $casts = [

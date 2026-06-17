@@ -17,12 +17,13 @@ use Illuminate\Http\Request;
 
 class HomeController extends Controller
 {
-    use ApiResponseTrait; 
+    use ApiResponseTrait;
+
     /**
      * Display a listing of the resource.
      */
-   public function index(Request $request)
-    { 
+    public function index(Request $request)
+    {
         // 1. الإعلانات (Banners)
         $now = now()->toDateString();
         $banners = Ad::where('status', 'active')
@@ -37,55 +38,53 @@ class HomeController extends Controller
             ->limit(4)
             ->get();
 
-            $currentDate = now()->toDateString();
-            $currentTime = now()->toTimeString();
-            // 3. الموعد القادم (Upcoming Appointment)
-            $upcomingBooking = null;
+        $currentDate = now()->toDateString();
+        $currentTime = now()->toTimeString();
+        // 3. الموعد القادم (Upcoming Appointment)
+        $upcomingBooking = null;
 
-            if(auth('sanctum')->check()) {
+        if (auth('sanctum')->check()) {
             $user = auth('sanctum')->user();
             $booking = Booking::with(['service.media'])
-            ->where('customer_id', $user->id)
+                ->where('customer_id', $user->id)
             // 🌟 تحديث حالات الحجز بناءً على الـ Enum الجديد 🌟
-            ->whereIn('status', ['Upcoming', 'inService']) 
+                ->whereIn('status', ['Upcoming', 'inService'])
             // 🌟 الفلترة باستخدام التاريخ والوقت الجديد 🌟
-            ->where(function ($query) use ($currentDate, $currentTime) {
-                $query->where('booking_date', '>', $currentDate) // الأيام القادمة
-                      ->orWhere(function ($q) use ($currentDate, $currentTime) {
-                          $q->where('booking_date', '=', $currentDate) // أو اليوم
-                            ->where('start_time', '>=', $currentTime); // بس الوقت لسا ما إجا
-                      });
-            })
-            ->orderBy('booking_date', 'asc') // الترتيب حسب التاريخ الأقرب
-            ->orderBy('start_time', 'asc')   // ثم الوقت الأقرب
-            ->first();
-            
-        
-            if ($booking) {
-            // حساب المدة
-            $hours = floor($booking->duration_minutes / 60);
-            $durationText = $hours > 0 ? "{$hours} Hours" : "{$booking->duration_minutes} Mins";
-            $mediaService = $booking->service->media()->where('collection', 'service/icon')->first();
-            
-            $upcomingBooking = [
-                'id' => $booking->id,
-                'booking_ref' => $booking->booking_ref,
-                'service_name_ar' => $booking->service->name_ar,
-                'service_name_en' => $booking->service->name_en,
-                'image' => $mediaService ? (new MediaResource($mediaService))->getFileUrl() : null ,
-                'price' => $booking->total_amount,
-                'currency' => 'EGP',
-                'status' => $booking->status,
-                'duration_text' => $durationText,
-                
-                // 🌟 تعديل قراءة التاريخ والوقت بناءً على الحقول الجديدة 🌟
-                'date_day' => Carbon::parse($booking->booking_date)->format('d'), // من حقل التاريخ
-                'date_month' => Carbon::parse($booking->booking_date)->format('M'), // من حقل التاريخ
-                'time' => Carbon::parse($booking->start_time)->format('h:i A'), // من حقل الوقت
-            ];
-        }
-            }
+                ->where(function ($query) use ($currentDate, $currentTime) {
+                    $query->where('booking_date', '>', $currentDate) // الأيام القادمة
+                        ->orWhere(function ($q) use ($currentDate, $currentTime) {
+                            $q->where('booking_date', '=', $currentDate) // أو اليوم
+                                ->where('start_time', '>=', $currentTime); // بس الوقت لسا ما إجا
+                        });
+                })
+                ->orderBy('booking_date', 'asc') // الترتيب حسب التاريخ الأقرب
+                ->orderBy('start_time', 'asc')   // ثم الوقت الأقرب
+                ->first();
 
+            if ($booking) {
+                // حساب المدة
+                $hours = floor($booking->duration_minutes / 60);
+                $durationText = $hours > 0 ? "{$hours} Hours" : "{$booking->duration_minutes} Mins";
+                $mediaService = $booking->service->media()->where('collection', 'service/icon')->first();
+
+                $upcomingBooking = [
+                    'id' => $booking->id,
+                    'booking_ref' => $booking->booking_ref,
+                    'service_name_ar' => $booking->service->name_ar,
+                    'service_name_en' => $booking->service->name_en,
+                    'image' => $mediaService ? (new MediaResource($mediaService))->getFileUrl() : null,
+                    'price' => $booking->total_amount,
+                    'currency' => 'EGP',
+                    'status' => $booking->status,
+                    'duration_text' => $durationText,
+
+                    // 🌟 تعديل قراءة التاريخ والوقت بناءً على الحقول الجديدة 🌟
+                    'date_day' => Carbon::parse($booking->booking_date)->format('d'), // من حقل التاريخ
+                    'date_month' => Carbon::parse($booking->booking_date)->format('M'), // من حقل التاريخ
+                    'time' => Carbon::parse($booking->start_time)->format('h:i A'), // من حقل الوقت
+                ];
+            }
+        }
 
         $popularServices = Service::with(['category:id,name_ar,name_en', 'startingPrice', 'media'])
             ->where('status', 'active')
@@ -97,11 +96,10 @@ class HomeController extends Controller
         return $this->successResponse([
             'banners' => AdResource::collection($banners),
             'categories' => CategoryResourse::collection($categories),
-            'upcoming_appointment' =>  $upcomingBooking ?? null,
+            'upcoming_appointment' => $upcomingBooking ?? null,
             'popular_services' => ServiceResource::collection($popularServices),
         ], 'Home page data fetched successfully.');
     }
-
 
     /**
      * Store a newly created resource in storage.

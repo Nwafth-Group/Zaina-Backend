@@ -2,16 +2,16 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
 use App\Models\Booking;
 use App\Notifications\BookingNotification;
 use Carbon\Carbon;
+use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
 class SendBookingRemindersCommand extends Command
 {
-   
     protected $signature = 'bookings:send-reminders';
+
     protected $description = 'إرسال تذكيرات تلقائية للعملاء قبل ساعة وقبل 15 دقيقة من موعد الحجز';
 
     public function handle()
@@ -26,7 +26,7 @@ class SendBookingRemindersCommand extends Command
         // ----------------------------------------------------
         // نبحث عن الحجوزات النشطة (Upcoming/Confirmed) التي ستبدأ بعد ساعة واحدة من الآن تماماً
         $oneHourTarget = $now->copy()->addHour();
-        
+
         $oneHourBookings = Booking::whereIn('status', ['Upcoming'])
             ->where('booking_date', $oneHourTarget->toDateString())
             ->whereRaw("TIME_FORMAT(start_time, '%H:%i') = ?", [$oneHourTarget->format('H:i')])
@@ -38,24 +38,24 @@ class SendBookingRemindersCommand extends Command
                 $user = $booking->user;
                 if ($user) {
                     $startTimeFormatted = Carbon::parse($booking->start_time)->format('h:i A');
-                    
+
                     $user->notify(new BookingNotification(
                         __('sms.reminder_1hour_title') ?? 'تذكير بموعد خدمتك ⏰',
                         __('sms.reminder_1hour_message', [
                             'date' => $booking->booking_date,
-                            'time' => $startTimeFormatted
+                            'time' => $startTimeFormatted,
                         ]),
                         $booking->id,
                         [
-                            'booking_ref'  => $booking->booking_ref,
+                            'booking_ref' => $booking->booking_ref,
                             'booking_date' => $booking->booking_date,
                             'booking_time' => $startTimeFormatted,
-                            'reminder_type'=> '1_hour_before'
+                            'reminder_type' => '1_hour_before',
                         ]
                     ));
                 }
             } catch (\Exception $e) {
-                Log::error("Failed to send 1-hour reminder for Booking ID {$booking->id}: " . $e->getMessage());
+                Log::error("Failed to send 1-hour reminder for Booking ID {$booking->id}: ".$e->getMessage());
             }
         }
 
@@ -80,18 +80,19 @@ class SendBookingRemindersCommand extends Command
                         __('sms.reminder_15min_message') ?? 'مقدم الخدمة في طريقه إليك وسيصل قريبًا.',
                         $booking->id,
                         [
-                            'booking_ref'  => $booking->booking_ref,
-                            'current_status'=> 'ProviderOnTheWay',
-                            'reminder_type'=> '15_mins_before'
+                            'booking_ref' => $booking->booking_ref,
+                            'current_status' => 'ProviderOnTheWay',
+                            'reminder_type' => '15_mins_before',
                         ]
                     ));
                 }
             } catch (\Exception $e) {
-                Log::error("Failed to send 15-minute reminder for Booking ID {$booking->id}: " . $e->getMessage());
+                Log::error("Failed to send 15-minute reminder for Booking ID {$booking->id}: ".$e->getMessage());
             }
         }
 
         Log::info('Booking Reminders Command finished successfully.');
+
         return Command::SUCCESS;
     }
 }

@@ -2,13 +2,12 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
-use App\Models\User;
 use App\Models\Role;
-use Spatie\Permission\Models\Permission;
+use App\Models\User;
+use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Testing\Fluent\Concerns\Has;
-use Spatie\Permission\PermissionRegistrar;                                                       
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\PermissionRegistrar;
 
 class RolesAndUsersSeeder extends Seeder
 {
@@ -21,9 +20,10 @@ class RolesAndUsersSeeder extends Seeder
         $permissions = [
             'users.view', 'users.create', 'users.edit', 'users.delete',
             'users.verify', 'users.reset-password',
+            'employees.view', 'employees.create', 'employees.edit',
             'roles.view', 'roles.create', 'roles.edit', 'roles.delete',
             'bookings.view', 'bookings.edit', 'bookings.delete', 'location.edit',
-            'providers.view','providers.create','providers.edit','providers.deactivate' ,'provider_eligibility.edit'
+            'providers.view', 'providers.create', 'providers.edit', 'providers.deactivate', 'provider_eligibility.edit',
         ];
 
         foreach ($permissions as $permission) {
@@ -46,7 +46,7 @@ class RolesAndUsersSeeder extends Seeder
             ['code' => 'CUSTOMER', 'description' => 'عميل', 'status' => 'active', 'guard_name' => 'sanctum']
         );
 
-         $driverRole = Role::firstOrCreate(
+        $driverRole = Role::firstOrCreate(
             ['name' => 'Driver'],
             ['code' => 'Driver', 'description' => 'سائق', 'status' => 'active', 'guard_name' => 'sanctum']
         );
@@ -79,7 +79,7 @@ class RolesAndUsersSeeder extends Seeder
             'type' => 'operation',
             'job_title' => 'Operations Officer',
         ]);
-        
+
         // إسناد الدور لكل موظف عمليات
         foreach ($operations as $op) {
             $op->assignRole($operationRole);
@@ -105,7 +105,7 @@ class RolesAndUsersSeeder extends Seeder
                 'first_name' => 'Sara',
                 'last_name' => 'Customer',
                 'email' => 'sara@example.com',
-                'password' => Hash::make('password'), 
+                'password' => Hash::make('password'),
                 'type' => 'customer',
                 'verification_status' => 'approved',
                 'status' => 'active',

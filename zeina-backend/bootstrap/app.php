@@ -2,7 +2,6 @@
 
 use App\Http\Middleware\LanguageMiddleware;
 use App\Traits\ApiResponseTrait;
-use Dotenv\Exception\ValidationException;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -10,6 +9,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -23,19 +23,29 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
 
-      $middleware->alias([
+        $middleware->alias([
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
-      ]);
-        
-    $middleware->append(LanguageMiddleware::class);
+        ]);
+
+        $middleware->append(LanguageMiddleware::class);
     })
-     ->withExceptions(function (Exceptions $exceptions) {
+    ->withExceptions(function (Exceptions $exceptions) {
         $exceptions->renderable(function (ValidationException $e, Request $request) {
             if ($request->is('api/*')) {
-                // 3. Call the method STATICALLY
-                return ApiResponseTrait::handlingErrorResponse($e->getMessage() ?: __('app.validation_failed'), 422, $e->errors());
+                // Mirror the envelope produced by CustomFormRequest so that every
+                // validation path (FormRequests + inline $request->validate()) is
+                // consistent: 422 with a `params` map of field => first message.
+                $params = collect($e->errors())->map(fn (array $messages) => $messages[0]);
+
+                return response()->json([
+                    'status' => 422,
+                    'success' => false,
+                    'message' => __('auth.validation_failed'),
+                    'data' => null,
+                    'params' => $params,
+                ], 422);
             }
         });
 
@@ -88,14 +98,14 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
 
-         $exceptions->renderable(function (HttpException $e, Request $request) {
+        $exceptions->renderable(function (HttpException $e, Request $request) {
             if ($request->is('api/*')) {
                 return ApiResponseTrait::handlingErrorResponse(
                     $e->getMessage() ?: __('app.unexpected_error'),
                     $e->getStatusCode()
                 );
             }
-});
+        });
 
         $exceptions->renderable(function (Throwable $e, Request $request) {
             if ($request->is('api/*')) {

@@ -4,12 +4,15 @@ use App\Http\Controllers\Api\V1\Admin\AdsController;
 use App\Http\Controllers\Api\V1\Admin\AnnouncementController;
 use App\Http\Controllers\Api\V1\Admin\AreaController;
 use App\Http\Controllers\Api\V1\Admin\AuthController;
+use App\Http\Controllers\Api\V1\Admin\BookingController;
 use App\Http\Controllers\Api\V1\Admin\CategoryController;
 use App\Http\Controllers\Api\V1\Admin\CityController;
 use App\Http\Controllers\Api\V1\Admin\CountryController;
 use App\Http\Controllers\Api\V1\Admin\CouponController;
+use App\Http\Controllers\Api\V1\Admin\DashboardController;
 use App\Http\Controllers\Api\V1\Admin\EmployeeController;
 use App\Http\Controllers\Api\V1\Admin\KysController;
+use App\Http\Controllers\Api\V1\Admin\ProfileController;
 use App\Http\Controllers\Api\V1\Admin\ProviderController;
 use App\Http\Controllers\Api\V1\Admin\RoleController;
 use App\Http\Controllers\Api\V1\Admin\ServiceController;
@@ -17,99 +20,125 @@ use App\Http\Controllers\Api\V1\Admin\ServicePriceController;
 use App\Http\Controllers\Api\V1\Admin\UserController;
 use App\Http\Controllers\Api\V1\Admin\WorkerController;
 use App\Http\Middleware\IsAdmin;
-use App\Models\Role;
 use Illuminate\Support\Facades\Route;
 
-Route::prefix('admin')->group(function (){
-
-Route::prefix('auth')->group(function(){
-    Route::post('login',[AuthController::class,'login']);
-    });
-    
-    Route::post('auth/logout',[AuthController::class,'logout'])->middleware('auth:sanctum');
-
-
-     Route::get('kyc/download/{media}', [UserController::class, 'downloadKycDoc'])
-            ->name('admin.kyc.download')
-            ->middleware('signed');
-   
-
-Route::middleware(['auth:sanctum' , IsAdmin::class ])->group(function(){
-
-Route::prefix('users')->group(function (){
-    Route::post('{user}/verify', [UserController::class, 'verifyUser']);
-    Route::get("/", [UserController::class, "index"])->middleware('permission:users.view');
-    Route::get('/{user}', [UserController::class, 'show'])->middleware('permission:users.view');
-    Route::put('/{user}', [UserController::class, 'update'])->middleware('permission:users.edit');
-    Route::patch('{user}/toggle-status', [UserController::class, 'toggleStatus'])->middleware('permission:users.edit');
-    Route::post('/{user}/reset-password', [UserController::class, 'resetPassword'])->middleware('permission:users.edit');
-    Route::put('/{user}/verify', [UserController::class, 'verifyUser']);
-});
-
-Route::apiResource('employees',EmployeeController::class);
-Route::patch('employees/{employee}/toggle-status',[EmployeeController::class,'toggleStatus']);
-
-
-Route::apiResource('roles',RoleController::class);
-Route::post('roles/{role}/duplicate',[RoleController::class, 'duplicate']); 
-
- Route::middleware('permission:location.edit')->group( function (){
-  Route::apiResource('cities', CityController::class);
-  Route::post('cities/{city}/toggle-status', [CityController::class, 'toggleStatus']);
-
- Route::apiResource('countries', CountryController::class);
- Route::post('countries/{country}/toggle-status', [CountryController::class, 'toggleStatus']);
-
-  Route::apiResource('areas', AreaController::class);
-  Route::post('areas/{area}/toggle-status', [AreaController::class, 'toggleStatus']);
-});
-
-// kyc routes  
-    //  Route::prefix('kyc')->group(function (){
-
-    // Route::get('/pending', [KysController::class, 'index']);
-    // Route::get('/{user}', [KysController::class, 'show']);
-    // Route::post('/{user}/approve', [KysController::class, 'approve']);
-    // Route::post('/{user}/reject', [KysController::class, 'reject']);
-    // Route::get('/media/{mediaId}', [KysController::class, 'viewPrivateMedia']);
-    //  });
-
-   
-
- Route::apiResource('categories', CategoryController::class);
- Route::apiResource('services',ServiceController::class);
- Route::post('services/{service}/toggle-status', [ServiceController::class, 'toggleStatus']);
- Route::apiResource('servicesprices',ServicePriceController::class);
- Route::post('servicesprices/estimated',[ServicePriceController::class,'getEstimatedPrice']);
- Route::apiResource('workers',WorkerController::class);
- Route::post('workers/{worker}/toggle-status', [WorkerController::class, 'changeStatus']);
-
-
-//  Route::middleware('permission:providers.view')->prefix('providers')->group(function () {
-//         Route::get('/', [ProviderController::class, 'index']);
-//         Route::post('/', [ProviderController::class, 'store'])->middleware('permission:providers.create');
-//         Route::put('/{provider}', [ProviderController::class, 'update'])->middleware('permission:providers.edit');
-//         Route::patch('/{provider}/toggle-status', [ProviderController::class,'toggleStatus'])->middleware('permission:providers.deactivate');
-//         // US-02: Mapping Route
-//         Route::post('/{provider}/map', [ProviderController::class, 'mapProvider'])->middleware('permission:provider_eligibility.edit');
-//     });
-  
-});
-
-
-//coupon routes 
-
 Route::prefix('admin')->group(function () {
+
+    Route::prefix('auth')->group(function () {
+        Route::post('login', [AuthController::class, 'login']);
+    });
+
+    Route::post('auth/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
+
+    Route::get('kyc/download/{media}', [UserController::class, 'downloadKycDoc'])
+        ->name('admin.kyc.download')
+        ->middleware('signed');
+
+    Route::middleware(['auth:sanctum', IsAdmin::class])->group(function () {
+
+        Route::get('dashboard/stats', [DashboardController::class, 'stats']);
+
+        // Current admin's own profile (self-service).
+        Route::get('profile', [ProfileController::class, 'show']);
+        Route::put('profile', [ProfileController::class, 'update']);
+        Route::put('profile/password', [ProfileController::class, 'updatePassword']);
+
+        Route::prefix('users')->group(function () {
+            Route::post('{user}/verify', [UserController::class, 'verifyUser']);
+            Route::get('/', [UserController::class, 'index'])->middleware('permission:users.view');
+            Route::get('/{user}', [UserController::class, 'show'])->middleware('permission:users.view');
+            Route::put('/{user}', [UserController::class, 'update'])->middleware('permission:users.edit');
+            Route::patch('{user}/toggle-status', [UserController::class, 'toggleStatus'])->middleware('permission:users.edit');
+            Route::post('/{user}/reset-password', [UserController::class, 'resetPassword'])->middleware('permission:users.edit');
+            Route::put('/{user}/verify', [UserController::class, 'verifyUser']);
+        });
+
+        // Employee management is restricted to Super Admins (operations staff
+        // cannot list, add or manage employees). Gated per-action via the
+        // `employees.*` permissions, which only the Super Admin role holds.
+        // Employees have no hard delete: their lifecycle is managed via the
+        // activity status (toggle-status), so the destroy verb is unregistered.
+        Route::prefix('employees')->group(function () {
+            Route::get('/', [EmployeeController::class, 'index'])->middleware('permission:employees.view');
+            Route::post('/', [EmployeeController::class, 'store'])->middleware('permission:employees.create');
+            Route::get('{employee}', [EmployeeController::class, 'show'])->middleware('permission:employees.view');
+            Route::match(['put', 'patch'], '{employee}', [EmployeeController::class, 'update'])->middleware('permission:employees.edit');
+            Route::patch('{employee}/toggle-status', [EmployeeController::class, 'toggleStatus'])->middleware('permission:employees.edit');
+        });
+
+        Route::apiResource('roles', RoleController::class);
+        Route::post('roles/{role}/duplicate', [RoleController::class, 'duplicate']);
+
+        // Read-only location lookups feed admin form dropdowns (service coverage &
+        // pricing, worker assignment). Available to any admin: reading reference
+        // data must not require the location.edit *write* permission, which the
+        // services/workers management area itself does not require either.
+        Route::get('cities', [CityController::class, 'index']);
+        Route::get('areas', [AreaController::class, 'index']);
+
+        // Location management (writes) stays gated behind the location.edit permission.
+        Route::middleware('permission:location.edit')->group(function () {
+            Route::apiResource('cities', CityController::class)->except('index');
+            Route::post('cities/{city}/toggle-status', [CityController::class, 'toggleStatus']);
+
+            Route::apiResource('countries', CountryController::class);
+            Route::post('countries/{country}/toggle-status', [CountryController::class, 'toggleStatus']);
+
+            Route::apiResource('areas', AreaController::class)->except('index');
+            Route::post('areas/{area}/toggle-status', [AreaController::class, 'toggleStatus']);
+        });
+
+        // kyc routes
+        //  Route::prefix('kyc')->group(function (){
+
+        // Route::get('/pending', [KysController::class, 'index']);
+        // Route::get('/{user}', [KysController::class, 'show']);
+        // Route::post('/{user}/approve', [KysController::class, 'approve']);
+        // Route::post('/{user}/reject', [KysController::class, 'reject']);
+        // Route::get('/media/{mediaId}', [KysController::class, 'viewPrivateMedia']);
+        //  });
+
+        Route::apiResource('categories', CategoryController::class);
+        Route::post('categories/{category}/toggle-status', [CategoryController::class, 'toggleStatus']);
+        Route::get('services/{service}/details', [ServiceController::class, 'details']);
+        Route::apiResource('services', ServiceController::class);
+        Route::post('services/{service}/toggle-status', [ServiceController::class, 'toggleStatus']);
+        Route::apiResource('servicesprices', ServicePriceController::class);
+        Route::post('servicesprices/estimated', [ServicePriceController::class, 'getEstimatedPrice']);
+        Route::get('workers/nationalities', [WorkerController::class, 'nationalities']);
+        Route::get('workers/{worker}/details', [WorkerController::class, 'details']);
+        Route::apiResource('workers', WorkerController::class);
+        Route::post('workers/{worker}/toggle-status', [WorkerController::class, 'changeStatus']);
+
+        // Bookings are created by customers; the admin area lists, views and
+        // changes their status (logged to booking_histories).
+        Route::get('bookings', [BookingController::class, 'index']);
+        Route::get('bookings/{booking}', [BookingController::class, 'show']);
+        Route::patch('bookings/{booking}/status', [BookingController::class, 'updateStatus']);
+
+        //  Route::middleware('permission:providers.view')->prefix('providers')->group(function () {
+        //         Route::get('/', [ProviderController::class, 'index']);
+        //         Route::post('/', [ProviderController::class, 'store'])->middleware('permission:providers.create');
+        //         Route::put('/{provider}', [ProviderController::class, 'update'])->middleware('permission:providers.edit');
+        //         Route::patch('/{provider}/toggle-status', [ProviderController::class,'toggleStatus'])->middleware('permission:providers.deactivate');
+        //         // US-02: Mapping Route
+        //         Route::post('/{provider}/map', [ProviderController::class, 'mapProvider'])->middleware('permission:provider_eligibility.edit');
+        //     });
+
+    });
+
+    // coupon routes
+
     Route::apiResource('coupons', CouponController::class);
-});
 
+    // coupon routes
 
-Route::apiResource('announcements',AnnouncementController::class);
+    Route::prefix('admin')->group(function () {
+        Route::apiResource('coupons', CouponController::class);
+    });
 
-Route::apiResource('ads',AdsController::class);
+    Route::apiResource('announcements', AnnouncementController::class);
 
-
-
- 
+    Route::apiResource('ads', AdsController::class);
 
 });

@@ -3,7 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Announcement;
-use App\Service\MediaService; 
+use App\Service\MediaService;
 use Illuminate\Database\Seeder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -48,7 +48,7 @@ class AnnouncementSeeder extends Seeder
                 'body' => 'Stay cozy while we handle the work. Special packages for winter home preparation, including deep kitchen sanitization and carpet vacuuming are now live at unmatched hourly prices.',
                 'created_at' => now()->subYears(1),
                 'updated_at' => now()->subYears(1),
-            ]
+            ],
         ];
 
         // 🌟 2. المسار الثابت والمضمون من مجلد الـ public الأساسي للـ Dummy
@@ -60,7 +60,7 @@ class AnnouncementSeeder extends Seeder
             if (file_exists($sourcePath)) {
                 // 🌟 الحل السحري: بنعمل كاش للمحتوى وبننشئ كائن UploadedFile حركي لكل لفة بـ الـ Loop
                 // عشان الـ MediaService ما تحذفش الملف المصدر أثناء الرفع وتخليه متاح للجميع
-                $tempPath = sys_get_temp_dir() . '/temp_banner_' . uniqid() . '.jpg';
+                $tempPath = sys_get_temp_dir().'/temp_banner_'.uniqid().'.jpg';
                 copy($sourcePath, $tempPath);
 
                 $uploadedFile = new UploadedFile(
@@ -73,7 +73,7 @@ class AnnouncementSeeder extends Seeder
 
                 // استدعاء الميديا سيرفس لتخزين السجل في جدول الـ media
                 $this->mediaService->upload($uploadedFile, $announcement, 'announcement/image', 'public');
-                
+
                 // تنظيف الملف المؤقت بعد الرفع
                 if (file_exists($tempPath)) {
                     @unlink($tempPath);

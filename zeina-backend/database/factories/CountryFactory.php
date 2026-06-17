@@ -17,7 +17,12 @@ class CountryFactory extends Factory
     public function definition(): array
     {
         return [
-            //
+            'name_ar' => fake()->country(),
+            'name_en' => fake()->country(),
+            'code' => strtoupper(fake()->unique()->lexify('???')),
+            'currency_code' => 'EGP',
+            'phone_code' => '+20',
+            'status' => 'active',
         ];
     }
 }

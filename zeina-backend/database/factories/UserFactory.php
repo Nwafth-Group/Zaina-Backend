@@ -24,16 +24,16 @@ class UserFactory extends Factory
     public function definition(): array
     {
         return [
-           'first_name' => fake()->firstName(),
+            'first_name' => fake()->firstName(),
             'last_name' => fake()->lastName(),
             // توليد رقم موبايل سعودي/فلسطيني وهمي فريد من 10 خانات
-            'phone_number' => fake()->unique()->numerify('05########'), 
+            'phone_number' => fake()->unique()->numerify('05########'),
             'email' => fake()->unique()->safeEmail(),
             'password' => Hash::make('password'),
             'verification_status' => fake()->randomElement(['pending', 'approved', 'rejected']),
             'status' => fake()->randomElement(['active', 'active', 'inactive']), // نسبة الـ active أعلى
             'preferred_language' => fake()->randomElement(['ar', 'en']),
-            'remember_token' => Str::random(10), 
+            'remember_token' => Str::random(10),
         ];
     }
 
@@ -44,6 +44,39 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
+        ]);
+    }
+
+    /**
+     * A super admin employee (passes the IsAdmin middleware).
+     */
+    public function superAdmin(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'type' => 'super_admin',
+            'status' => 'active',
+        ]);
+    }
+
+    /**
+     * An operations employee (passes the IsAdmin middleware).
+     */
+    public function operation(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'type' => 'operation',
+            'status' => 'active',
+        ]);
+    }
+
+    /**
+     * A customer (does NOT pass the IsAdmin middleware).
+     */
+    public function customer(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'type' => 'customer',
+            'status' => 'active',
         ]);
     }
 }

@@ -16,88 +16,93 @@ use Illuminate\Support\Facades\Storage;
 class UserController extends Controller
 {
     use ApiResponseTrait;
-    
+
     public function index(Request $request)
-  {   
-      // التحقق من الصلاحيات إذا كانت مفعلة عندك
-      // abort_if(!auth()->user()->can('users.view'), 403, 'Unauthorized');
-      $verification_status = $request->input('verification_status');
-  
-      if (in_array($verification_status, ['pending', 'rejected'])) {
-          $query = User::with(['roles', 'media']);
-      } else {
-          $query = User::with('roles');
-      }
-  
-      // 1. الفلترة بحالة التوثيق (الـ New Workflow)
-      if ($verification_status) {
-          $query->where('verification_status', $verification_status);
-      }
-  
-      // 2. الفلترة بحالة الحساب العامة (active, inactive)
-      if ($request->has('status')) {
-          $query->where('status', $request->input('status'));
-      }
-  
-      // 3. الفلترة بنوع المستخدم (customer, worker, admin)
-      if ($request->has('type')) {
-          $query->where('type', $request->input('type'));
-      }
-  
-      // 4. الفلترة بالـ Role (الصلاحيات الإدارية)
-      if ($request->has('role')) {
-          $role = $request->input('role');
-          $query->whereHas('roles', function ($r) use ($role) {
-              $r->where('name', $role);
-          });
-      }
-  
-      // 5. الفلترة بالفترة الزمنية (تاريخ التسجيل)
-      if ($request->input('date_from')) {
-          $query->whereDate('created_at', '>=', $request->input('date_from'));
-      }
-  
-      if ($request->input('date_to')) {
-          $query->whereDate('created_at', '<=', $request->input('date_to'));
-      }
-  
-      // 6. تفعيل الـ Search المتقدم للنصوص
-      if ($request->filled('search')) {
-          $this->applySearchFilter($query, $request->input('search'));
-      }
-  
-      // 7. الترتيب الديناميكي الآمن (Sorting)
-      $sortBy = $request->input('sort_by', 'created_at');
-      $sortDir = $request->input('sort_dir', 'desc');
-      $allowedSorts = ['created_at', 'status', 'verification_status', 'type', 'id'];
-  
-      if (in_array($sortBy, $allowedSorts)) {
-          $query->orderBy($sortBy, $sortDir);
-      } else {
-          $query->latest(); // Fallback الافتراضي
-      }
-  
-      // 8. التقسيم (Pagination)
-      $perPage = $request->input('per_page', 15);
-      $users = $query->paginate($perPage);
-  
-      return $this->successResponse(UserResource::collection($users), __('messages.users_retrieved'));
-  }
+    {
+        // التحقق من الصلاحيات إذا كانت مفعلة عندك
+        // abort_if(!auth()->user()->can('users.view'), 403, 'Unauthorized');
+        $verification_status = $request->input('verification_status');
+
+        if (in_array($verification_status, ['pending', 'rejected'])) {
+            $query = User::with(['roles', 'media']);
+        } else {
+            $query = User::with('roles');
+        }
+
+        // 1. الفلترة بحالة التوثيق (الـ New Workflow)
+        if ($verification_status) {
+            $query->where('verification_status', $verification_status);
+        }
+
+        // 2. الفلترة بحالة الحساب العامة (active, inactive)
+        if ($request->has('status')) {
+            $query->where('status', $request->input('status'));
+        }
+
+        // 3. الفلترة بنوع المستخدم — يدعم نوعاً واحداً (type) أو عدة أنواع (types)
+        // لفصل العملاء عن حسابات الإدارة في الواجهة.
+        if ($request->filled('types')) {
+            $types = is_array($request->input('types'))
+                ? $request->input('types')
+                : explode(',', $request->input('types'));
+            $query->whereIn('type', array_filter($types));
+        } elseif ($request->has('type')) {
+            $query->where('type', $request->input('type'));
+        }
+
+        // 4. الفلترة بالـ Role (الصلاحيات الإدارية)
+        if ($request->has('role')) {
+            $role = $request->input('role');
+            $query->whereHas('roles', function ($r) use ($role) {
+                $r->where('name', $role);
+            });
+        }
+
+        // 5. الفلترة بالفترة الزمنية (تاريخ التسجيل)
+        if ($request->input('date_from')) {
+            $query->whereDate('created_at', '>=', $request->input('date_from'));
+        }
+
+        if ($request->input('date_to')) {
+            $query->whereDate('created_at', '<=', $request->input('date_to'));
+        }
+
+        // 6. تفعيل الـ Search المتقدم للنصوص
+        if ($request->filled('search')) {
+            $this->applySearchFilter($query, $request->input('search'));
+        }
+
+        // 7. الترتيب الديناميكي الآمن (Sorting)
+        $sortBy = $request->input('sort_by', 'created_at');
+        $sortDir = $request->input('sort_dir', 'desc');
+        $allowedSorts = ['created_at', 'status', 'verification_status', 'type', 'id', 'first_name'];
+
+        if (in_array($sortBy, $allowedSorts)) {
+            $query->orderBy($sortBy, $sortDir);
+        } else {
+            $query->latest(); // Fallback الافتراضي
+        }
+
+        // 8. التقسيم (Pagination)
+        $perPage = $request->input('per_page', 15);
+        $users = $query->paginate($perPage);
+
+        return $this->successResponse(UserResource::collection($users), __('messages.users_retrieved'));
+    }
+
     public function show(User $user)
-    {  
+    {
         return $this->successResponse(new UserResource($user->load('roles')));
     }
 
-
-  
     public function verifyUser(Request $request, User $user)
-    { 
+    {
         $request->validate([
             'action' => 'required|in:approve,reject',
-            'rejection_reason' => 'required_if:action,reject|string|max:500|nullable'
+            'rejection_reason' => 'required_if:action,reject|string|max:500|nullable',
         ], [
             'action.required' => __('messages.action_required'),
-            'rejection_reason.required_if' => __('messages.rejection_reason_required')
+            'rejection_reason.required_if' => __('messages.rejection_reason_required'),
         ]);
 
         if ($request->action === 'approve') {
@@ -108,7 +113,8 @@ class UserController extends Controller
         }
 
         $user->save();
-        return $this->successResponse(null, 
+
+        return $this->successResponse(null,
             $request->action === 'approve' ? __('messages.user_approved_success') : __('messages.user_rejected_success')
         );
     }
@@ -117,10 +123,10 @@ class UserController extends Controller
     {
         return $query->where(function ($q) use ($search) {
             $q->where('id_number', $search)
-              ->orWhere('first_name', 'like', "%{$search}%")
-              ->orWhere('last_name', 'like', "%{$search}%")
-              ->orWhere('email', 'like', "%{$search}%")
-              ->orWhere('phone_number', 'like', "%{$search}%");
+                ->orWhere('first_name', 'like', "%{$search}%")
+                ->orWhere('last_name', 'like', "%{$search}%")
+                ->orWhere('email', 'like', "%{$search}%")
+                ->orWhere('phone_number', 'like', "%{$search}%");
         });
     }
 
@@ -133,9 +139,10 @@ class UserController extends Controller
 
         // 2. تحديث الأدوار (Assign Roles)
         if ($request->has('roles')) {
-            $user->syncRoles($request->roles); // تمسح القديم وبتضيف جديد 
+            $user->syncRoles($request->roles); // تمسح القديم وبتضيف جديد
         }
         $user->save();
+
         return $this->successResponse(new UserResource($user->load('roles')), __('messages.user_updated'));
     }
 
@@ -151,7 +158,7 @@ class UserController extends Controller
 
         $user->status = ($user->status === 'active') ? 'inactive' : 'active';
         $user->save();
-        
+
         return $this->successResponse(null, __('messages.user_status_toggled', ['status' => $user->status]));
     }
 
@@ -169,22 +176,21 @@ class UserController extends Controller
     }
 
     public function downloadKycDoc(Request $request, $mediaId)
-{
-    // 1. تأمين الإجراء: الأدمن فقط من يستطيع العبور
-    // abort_if(!auth()->user()->tokenCan('admin'), 403);
-    $mediaItem = Media::findOrFail($mediaId);
+    {
+        // 1. تأمين الإجراء: الأدمن فقط من يستطيع العبور
+        // abort_if(!auth()->user()->tokenCan('admin'), 403);
+        $mediaItem = Media::findOrFail($mediaId);
 
-    // 2. التأكد من أن الملف ينتمي لديسك البرايفيت
-    if ($mediaItem->disk !== 'private') {
-        abort(404, 'الملف غير موجود في النطاق المحمي.');
+        // 2. التأكد من أن الملف ينتمي لديسك البرايفيت
+        if ($mediaItem->disk !== 'private') {
+            abort(404, 'الملف غير موجود في النطاق المحمي.');
+        }
+
+        // 3. قراءة الملف وتمريره كـ Stream آمن للمتصفح دون كشف مساره الفيزيائي
+        if (! Storage::disk('private')->exists($mediaItem->path)) {
+            abort(404, 'الملف الفيزيائي غير موجود على السيرفر.');
+        }
+
+        return Storage::disk('private')->response($mediaItem->path, $mediaItem->file_name);
     }
-
-    // 3. قراءة الملف وتمريره كـ Stream آمن للمتصفح دون كشف مساره الفيزيائي
-    if (!Storage::disk('private')->exists($mediaItem->path)) {
-        abort(404, 'الملف الفيزيائي غير موجود على السيرفر.');
-    }
-
-    return Storage::disk('private')->response($mediaItem->path, $mediaItem->file_name);
-}
-
 }

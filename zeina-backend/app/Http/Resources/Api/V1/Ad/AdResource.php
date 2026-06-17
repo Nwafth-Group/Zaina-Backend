@@ -15,11 +15,12 @@ class AdResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-          $image = $this->media()->where('collection','ads/image')->first();
+        $image = $this->media()->where('collection', 'ads/image')->first();
+
         return [
-            'id'=>$this->id,
+            'id' => $this->id,
             'link' => $this->link ?? null,
-            'image' => $image ? (new MediaResource($image))->getFileUrl() : null
+            'image' => $image ? (new MediaResource($image))->getFileUrl() : null,
         ];
     }
 }

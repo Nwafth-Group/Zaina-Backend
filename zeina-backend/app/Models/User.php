@@ -4,7 +4,6 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -14,7 +13,7 @@ use Spatie\Permission\Traits\HasRoles;
 class User extends Authenticatable implements Auditable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable , HasRoles , HasApiTokens  ;
+    use HasApiTokens, HasFactory , HasRoles , Notifiable;
 
     use \OwenIt\Auditing\Auditable;
 
@@ -50,9 +49,9 @@ class User extends Authenticatable implements Auditable
     protected $hidden = [
         'password',
         'remember_token',
-    ]; 
+    ];
 
-    protected $guard_name = 'sanctum'; 
+    protected $guard_name = 'sanctum';
 
     /**
      * Get the attributes that should be cast.
@@ -67,19 +66,23 @@ class User extends Authenticatable implements Auditable
         ];
     }
 
-    public function addresses(){
+    public function addresses()
+    {
         return $this->hasMany(CustomerAddress::class, 'user_id');
     }
 
-    public function country(){
+    public function country()
+    {
         return $this->belongsTo(Country::class, 'country_id');
     }
 
-    public function media(){
-        return $this->morphMany(Media::class,'model');
+    public function media()
+    {
+        return $this->morphMany(Media::class, 'model');
     }
 
-    public function bookings(){
+    public function bookings()
+    {
         return $this->hasMany(Booking::class, 'customer_id');
     }
 
@@ -90,11 +93,12 @@ class User extends Authenticatable implements Auditable
     }
 
     // 🌟 دوال مساعدة للعمليات المالية 🌟
-    
+
     // دالة الإيداع (إضافة رصيد)
     public function deposit($amount, $title, $referenceId = null)
     {
         $this->increment('wallet_balance', $amount);
+
         return $this->walletTransactions()->create([
             'type' => 'credit',
             'amount' => $amount,
@@ -107,6 +111,7 @@ class User extends Authenticatable implements Auditable
     public function withdraw($amount, $title, $referenceId = null)
     {
         $this->decrement('wallet_balance', $amount);
+
         return $this->walletTransactions()->create([
             'type' => 'debit',
             'amount' => $amount,
@@ -129,35 +134,32 @@ class User extends Authenticatable implements Auditable
     {
         $earned = $this->pointTransactions()->where('type', 'earn')->sum('amount');
         $redeemed = $this->pointTransactions()->where('type', 'redeem')->sum('amount');
-        
+
         return $earned - $redeemed;
     }
 
-     public function coupons()
+    public function coupons()
     {
-         return $this->belongsToMany(Coupon::class, 'coupon_users')->withPivot('used_count')->withTimestamps();
+        return $this->belongsToMany(Coupon::class, 'coupon_users')->withPivot('used_count')->withTimestamps();
     }
 
-    public function devices(){
-      return $this->hasMany(UserDevice::class,'user_id');
+    public function devices()
+    {
+        return $this->hasMany(UserDevice::class, 'user_id');
     }
-    
-   
+
     public function readAnnouncements()
-{
-    return $this->belongsToMany(Announcement::class, 'announcement_user', 'user_id', 'announcement_id')
-                ->withPivot('read_at')
-                ->withTimestamps();
-}
+    {
+        return $this->belongsToMany(Announcement::class, 'announcement_user', 'user_id', 'announcement_id')
+            ->withPivot('read_at')
+            ->withTimestamps();
+    }
 
-
-//    public function readAnnouncements()
-// {
-//     return $this->belongsToMany(Announcement::class, 'announcement_user', 'announcement_id', 'user_id')
-//                 ->withPivot('read_at')
-//                 ->withTimestamps();
-// }
-
+    //    public function readAnnouncements()
+    // {
+    //     return $this->belongsToMany(Announcement::class, 'announcement_user', 'announcement_id', 'user_id')
+    //                 ->withPivot('read_at')
+    //                 ->withTimestamps();
+    // }
 
 }
-

@@ -1,8 +1,8 @@
-<?php 
+<?php
+
 namespace App\Channels;
 
 use Illuminate\Notifications\Notification;
-use App\Service\SmsService;
 
 class SmsChannel
 {

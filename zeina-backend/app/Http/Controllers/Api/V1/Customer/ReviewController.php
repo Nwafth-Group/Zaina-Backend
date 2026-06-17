@@ -11,10 +11,12 @@ use Illuminate\Http\Request;
 class ReviewController extends Controller
 {
     use ApiResponseTrait;
+
     public function index(Request $request, Service $service)
-    {   
-      
+    {
+
         $reviews = $service->reviews;
+
         return $this->successResponse(ReviewResource::collection($reviews), 'Reviews retrieved successfully');
     }
 }

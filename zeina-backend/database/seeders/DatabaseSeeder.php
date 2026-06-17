@@ -31,6 +31,7 @@ class DatabaseSeeder extends Seeder
             WorkerSeeder::class,
             CustomerAddressSeeder::class,
             BookingSeeder::class,
+            ReviewSeeder::class,
             WalletSeeder::class,
             PointSystemSeeder::class,
             CouponSeeder::class,

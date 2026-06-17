@@ -2,6 +2,8 @@
 
 namespace Database\Factories;
 
+use App\Models\Area;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -10,14 +12,21 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 class CustomerAddressFactory extends Factory
 {
     /**
-     * Define the model's default state.
-     *
      * @return array<string, mixed>
      */
     public function definition(): array
     {
         return [
-            //
+            'user_id' => User::factory(),
+            'area_id' => Area::factory(),
+            'latitude' => fake()->latitude(),
+            'longitude' => fake()->longitude(),
+            'label' => fake()->randomElement(['Home', 'Office']),
+            'street' => fake()->streetName(),
+            'phone_number' => fake()->numerify('05########'),
+            'serviceable_status' => 'serviceable',
+            'is_default' => true,
+            'is_active' => true,
         ];
     }
 }
