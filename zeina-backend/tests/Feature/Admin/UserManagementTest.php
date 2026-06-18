@@ -292,6 +292,38 @@ class UserManagementTest extends TestCase
         $this->assertTrue(Hash::check('new-password-123', $user->fresh()->password));
     }
 
+    public function test_operations_role_holder_can_manage_customers(): void
+    {
+        // The Operations Manager role carries users.edit (seeder + migration),
+        // so operations staff can change a customer's status and reset their
+        // password; KYC verify is open to any admin.
+        $role = Role::firstOrCreate(
+            ['name' => 'Operations Manager'],
+            ['code' => 'OPS_MGR', 'description' => 'مدير العمليات', 'status' => 'active', 'guard_name' => 'sanctum'],
+        );
+        $role->givePermissionTo(Permission::findOrCreate('users.edit', 'sanctum'));
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $operations = User::factory()->operation()->create();
+        $operations->assignRole($role);
+        $this->actingAs($operations, 'sanctum');
+
+        $customer = User::factory()->customer()->create(['status' => 'active']);
+
+        // Change status.
+        $this->patchJson(self::ENDPOINT.'/'.$customer->id.'/toggle-status')->assertStatus(200);
+        $this->assertSame('inactive', $customer->fresh()->status);
+
+        // Reset password.
+        $this->postJson(self::ENDPOINT.'/'.$customer->id.'/reset-password', [
+            'password' => 'new-password-123',
+            'password_confirmation' => 'new-password-123',
+        ])->assertStatus(200);
+
+        // Accept / reject KYC.
+        $this->postJson(self::ENDPOINT.'/'.$customer->id.'/verify', ['action' => 'approve'])->assertStatus(200);
+    }
+
     public function test_reset_password_requires_confirmation(): void
     {
         $this->actingAsAdminWith(['users.edit']);
