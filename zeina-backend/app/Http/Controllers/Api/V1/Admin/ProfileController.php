@@ -22,6 +22,26 @@ class ProfileController extends Controller
         return $this->successResponse(new UserResource($request->user()->load('roles')));
     }
 
+    /**
+     * The authenticated admin's live identity, roles and permissions — same
+     * shape as the login payload. The frontend re-fetches this on load so the
+     * UI (sidebar links, action buttons) reflects the user's current
+     * permissions instead of a stale login-time snapshot.
+     */
+    public function me(Request $request)
+    {
+        $user = $request->user();
+
+        return $this->successResponse([
+            'id' => $user->id,
+            'name' => $user->full_name,
+            'email' => $user->email,
+            'type' => $user->type,
+            'roles' => $user->getRoleNames(),
+            'permissions' => $user->getAllPermissions()->pluck('name'),
+        ]);
+    }
+
     public function update(UpdateProfileRequest $request)
     {
         $user = $request->user();
