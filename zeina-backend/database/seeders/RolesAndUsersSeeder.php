@@ -52,7 +52,7 @@ class RolesAndUsersSeeder extends Seeder
         );
 
         $superAdminRole->syncPermissions(Permission::all());
-        $operationRole->syncPermissions(['users.view', 'bookings.view', 'bookings.edit']);
+        $operationRole->syncPermissions(['users.view', 'users.edit', 'bookings.view', 'bookings.edit']);
 
         // ------------------------------------------------------------------
         // 4. توليد المستخدمين (Seeding Users)
@@ -65,7 +65,7 @@ class RolesAndUsersSeeder extends Seeder
                 'first_name' => 'Admin',
                 'last_name' => 'ZainahApp',
                 'email' => 'admin@zeina.com',
-                'password' => Hash::make('admin'),
+                'password' => Hash::make('admin@123'),
                 'verification_status' => 'approved',
                 'type' => 'super_admin',
                 'status' => 'active',
@@ -75,7 +75,7 @@ class RolesAndUsersSeeder extends Seeder
 
         // ب. توليد 50 موظف عمليات (Operations)
         // بنستخدم الـ Factory وبنجبر الـ type يكون operation
-        $operations = User::factory()->count(20)->create([
+        $operations = User::factory()->count(3)->create([
             'type' => 'operation',
             'job_title' => 'Operations Officer',
         ]);
@@ -87,7 +87,7 @@ class RolesAndUsersSeeder extends Seeder
 
         // ج. توليد 500 عميل (Customers)
         // العملاء ما عندهم باسورد (بيدخلوا بـ OTP) ولا Job Title
-        $customers = User::factory()->count(50)->create([
+        $customers = User::factory()->count(8)->create([
             'type' => 'customer',
             'password' => Hash::make('password'),
             'job_title' => null,
