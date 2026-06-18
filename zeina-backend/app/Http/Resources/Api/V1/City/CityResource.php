@@ -14,11 +14,17 @@ class CityResource extends JsonResource
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array
-    { 
+    {
 
         return [
             'id' => $this->id,
             'country' => new CountryResource($this->country),
+            'govrenrate_id' => $this->govrenrate_id,
+            'govrenrate' => $this->whenLoaded('govrenrate', fn () => [
+                'id' => $this->govrenrate->id,
+                'name_ar' => $this->govrenrate->name_ar,
+                'name_en' => $this->govrenrate->name_en,
+            ]),
             'name_ar' => $this->name_ar,
             'name_en' => $this->name_en,
             'code' => $this->code,

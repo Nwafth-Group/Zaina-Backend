@@ -8,52 +8,56 @@ use App\Http\Requests\Api\V1\Admin\UpdateCountryRequest;
 use App\Http\Resources\Api\V1\Contry\CountryResource;
 use App\Models\Country;
 use App\Traits\ApiResponseTrait;
-use Illuminate\Http\Request;
 
 class CountryController extends Controller
 {
-     use ApiResponseTrait;
-    
-  public function index()
+    use ApiResponseTrait;
+
+    public function index()
     {
         // عرض كل الدول مع عدد المدن الموجودة في كل دولة
         $countries = Country::withCount('cities')->get();
+
         return $this->successResponse(CountryResource::collection($countries), __('messages.countries_retrieved_successfully'));
-       
+
     }
 
     /**
      * Store a newly created resource in storage.
      */
- public function store(StoreCountryRequest $request)
-    {  
+    public function store(StoreCountryRequest $request)
+    {
         $data = $request->validated();
-       if ($request->hasFile('flag')) {
+        if ($request->hasFile('flag')) {
             $path = $request->file('flag')->store('images/flags', 'public');
-            $data['flag'] = $path; 
-            }
-         
-    
+            $data['flag'] = $path;
+        }
+
         $country = Country::create($data);
+
         return $this->successResponse(new CountryResource($country), __('messages.country_created_successfully'));
     }
 
     public function update(UpdateCountryRequest $request, Country $country)
     {
-        $country->update($request->validated());
-        
-        return $this->successResponse(new CountryResource($country), __('messages.country_updated_successfully'));
+        $data = $request->validated();
+        if ($request->hasFile('flag')) {
+            $data['flag'] = $request->file('flag')->store('images/flags', 'public');
+        }
+
+        $country->update($data);
+
+        return $this->successResponse(new CountryResource($country->loadCount('cities')), __('messages.country_updated_successfully'));
     }
 
     /**
      * Update the specified resource in storage.
      */
-   
 
     /**
      * Remove the specified resource from storage.
      */
-   public function destroy(Country $country)
+    public function destroy(Country $country)
     {
         // منع الحذف إذا كان هناك مدن مرتبطة (BR-03)
         if ($country->cities()->count() > 0) {
@@ -61,6 +65,7 @@ class CountryController extends Controller
         }
 
         $country->delete();
+
         return $this->successResponse(null, __('messages.country_deleted_successfully'));
 
     }

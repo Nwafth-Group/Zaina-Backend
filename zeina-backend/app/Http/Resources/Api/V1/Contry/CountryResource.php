@@ -19,6 +19,8 @@ class CountryResource extends JsonResource
             'name_ar' => $this->name_ar,
             'name_en' => $this->name_en,
             'code' => $this->code,
+            'currency_code' => $this->currency_code,
+            'phone_code' => $this->phone_code,
             'cities_count' => $this->cities_count,
             'status' => $this->status,
             'flag' => $this->flag,

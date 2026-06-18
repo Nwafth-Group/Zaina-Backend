@@ -24,12 +24,21 @@ class Country extends Model
     protected function flag(): Attribute
     {
         return Attribute::make(
-            get: fn ($value) => $value ? asset('storage/' . $value) : null,
+            get: fn ($value) => $value ? asset('storage/'.$value) : null,
         );
     }
 
-    public function govrenrates(){
+    public function govrenrates()
+    {
         return $this->hasMany(Govrenrate::class, 'country_id');
     }
-    
+
+    /**
+     * All cities in the country, reached through its governorates. Backs
+     * `cities_count` and the "block delete when it has cities" rule.
+     */
+    public function cities()
+    {
+        return $this->hasManyThrough(City::class, Govrenrate::class, 'country_id', 'govrenrate_id');
+    }
 }

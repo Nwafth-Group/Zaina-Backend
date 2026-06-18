@@ -29,15 +29,16 @@ class UpdateCountryRequest extends FormRequest
         return [
             'name_ar' => ['required', 'string', 'max:100'],
             'name_en' => ['required', 'string', 'max:100'],
-            'code'    => [
-                'required', 
-                'string', 
-                'max:20', 
-                Rule::unique('countries', 'code')->ignore($countryId)
+            'code' => [
+                'required',
+                'string',
+                'max:20',
+                Rule::unique('countries', 'code')->ignore($countryId),
             ],
-            'status'  => ['nullable', 'in:active,inactive'],
+            'status' => ['nullable', 'in:active,inactive'],
             'currency_code' => ['nullable', 'string', 'max:10'],
             'phone_code' => ['nullable', 'string', 'max:10'],
+            'flag' => ['nullable', 'image', 'mimes:jpeg,png,jpg,svg,webp', 'max:1024'],
         ];
     }
 }

@@ -36,19 +36,19 @@ class CityController extends Controller
     {
         $city = City::create($request->validated());
 
-        return $this->successResponse(new CityResource($city), __('messages.city_created_successfully'));
+        return $this->successResponse(new CityResource($city->load('govrenrate.country')), __('messages.city_created_successfully'));
     }
 
     public function update(StoreCityRequest $request, City $city)
     {
-        // Scenario 3: إذا حاول الإدمن تغيير دولة المدينة وفيها مناطق، نمنعه!
-        if ($city->country_id != $request->country_id && $city->areas()->count() > 0) {
+        // Block moving a city to another governorate while it still has areas.
+        if ($city->govrenrate_id != $request->govrenrate_id && $city->areas()->count() > 0) {
             return $this->errorResponse(__('messages.cannot_move_city_to_another_country'));
         }
 
         $city->update($request->validated());
 
-        return $this->successResponse(new CityResource($city), __('messages.city_updated_successfully'));
+        return $this->successResponse(new CityResource($city->load('govrenrate.country')), __('messages.city_updated_successfully'));
     }
 
     public function destroy(City $city)

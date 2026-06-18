@@ -3,7 +3,6 @@
 namespace App\Http\Requests\Api\V1\Admin;
 
 use App\Http\Requests\Api\V1\CustomFormRequest;
-use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class StoreCityRequest extends CustomFormRequest
@@ -22,29 +21,31 @@ class StoreCityRequest extends CustomFormRequest
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
      */
     public function rules(): array
-    {    
-        $cityId = $this->route('city') ? $this->route('city')->id : null; 
+    {
+        $cityId = $this->route('city') ? $this->route('city')->id : null;
+
         return [
-           'country_id'  =>  ['required', 'exists:countries,id'],
-            'name_ar'    => ['required', 'string', 'max:100'],
-            'name_en'    => ['required', 'string', 'max:100'],
-            // الكود يجب أن يكون فريداً داخل نفس الدولة فقط (لتجنب تعارض أكواد مدن في دول مختلفة)
-            'code'       => [
+            'govrenrate_id' => ['required', 'exists:govrenrates,id'],
+            'name_ar' => ['required', 'string', 'max:100'],
+            'name_en' => ['required', 'string', 'max:100'],
+            // الكود يجب أن يكون فريداً داخل نفس المحافظة فقط
+            'code' => [
                 'required',
                 'string',
                 'max:20',
                 Rule::unique('cities', 'code')->where(function ($query) {
-                    return $query->where('country_id', $this->country_id);
-                })->ignore($cityId)
+                    return $query->where('govrenrate_id', $this->govrenrate_id);
+                })->ignore($cityId),
             ],
-            'status'     => ['sometimes', 'in:active,inactive'],
+            'status' => ['sometimes', 'in:active,inactive'],
         ];
     }
 
-    public function messages(){
+    public function messages()
+    {
         return [
-            'country_id.required' => __('validation.store_citry.country_id_required'),
-            'country_id.exists' => __('validation.store_citry.country_id_exists'),
+            'govrenrate_id.required' => __('validation.store_citry.country_id_required'),
+            'govrenrate_id.exists' => __('validation.store_citry.country_id_exists'),
             'name_ar.required' => __('validation.store_citry.name_ar_required'),
             'name_ar.string' => __('validation.store_citry.name_ar_string'),
             'name_ar.max' => __('validation.store_citry.name_ar_max'),
