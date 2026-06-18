@@ -296,11 +296,12 @@ class ServiceManagementTest extends TestCase
     // Validation
     // ---------------------------------------------------------------------
 
-    public function test_create_service_requires_workers_coverages_and_prices(): void
+    public function test_create_service_requires_coverages_and_prices(): void
     {
         $this->actingAsAdmin();
         $category = Category::factory()->create();
 
+        // Workers are optional; coverages and prices are still required.
         $this->postJson(self::ENDPOINT, [
             'category_id' => $category->id,
             'type' => 'hourly',
@@ -310,7 +311,23 @@ class ServiceManagementTest extends TestCase
             'durations' => ['service_period_hours' => 2],
         ])
             ->assertStatus(422)
-            ->assertJsonStructure(['params' => ['workers', 'coverages', 'prices']]);
+            ->assertJsonStructure(['params' => ['coverages', 'prices']]);
+    }
+
+    public function test_admin_can_create_service_without_workers(): void
+    {
+        $this->actingAsAdmin();
+        $city = City::factory()->create();
+
+        // Same valid payload, just with no workers assigned.
+        $payload = $this->hourlyPayload($city->id, [], ['name_en' => 'No Workers', 'workers' => []]);
+
+        $response = $this->postJson(self::ENDPOINT, $payload);
+        $response->assertStatus(201);
+
+        $service = Service::firstWhere('name_en', 'No Workers');
+        $this->assertNotNull($service);
+        $this->assertCount(0, $service->workers);
     }
 
     public function test_create_service_requires_price_per_service_period(): void
