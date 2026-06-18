@@ -33,7 +33,7 @@ class StoreServiceRequest extends CustomFormRequest
             'features.*.ar' => 'nullable|string|max:255',
             'features.*.en' => 'nullable|string|max:255',
             'status' => 'required|in:draft,active,hidden,inactive',
-            'workers' => 'required|array|min:1',
+            'workers' => 'nullable|array',
             'workers.*' => 'integer|exists:workers,id',
             // المدد الزمنية (Service Durations) - بناءً على نوع الخدمة
             // 'durations.allowed_durations'          => 'required_if:type,hourly,both|array',

@@ -42,7 +42,7 @@ class UpdateServiceRequest extends FormRequest
             'durations.allowed_contract_durations' => 'sometimes|required_if:type,moqema,both|array',
             'durations.min_contract_months' => 'sometimes|required_if:type,moqema,both|integer|min:1',
 
-            'workers' => 'sometimes|required|array|min:1',
+            'workers' => 'sometimes|nullable|array',
             'workers.*' => 'integer|exists:workers,id',
 
             // قواعد الخدمة
