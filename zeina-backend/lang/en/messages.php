@@ -232,6 +232,7 @@ return [
     'ad_not_exist' => 'Not found Ads.',
     'ad_update_success' => 'Ad updated successfully.',
     'ad_delete_success' => 'Ad deleted successfully.',
+    'ad_toggle_success' => 'Banner is now :status.',
     'earn' => 'Earned Points',
     'redeem' => 'Redeemed Points',
 

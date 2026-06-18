@@ -226,6 +226,7 @@ return [
     'ad_not_exist' => 'الإعلان غير موجود.',
     'ad_update_success' => 'تم تحديث الإعلان بنجاح.',
     'ad_delete_success' => 'تم حذف الإعلان بنجاح.',
+    'ad_toggle_success' => 'البانر الآن :status.',
     'earn' => 'نقاط مكتسبة',
     'redeem' => 'نقاط مستبدلة',
 
