@@ -16,15 +16,22 @@ class AnnouncementCustomerResource extends JsonResource
     public function toArray(Request $request): array
     {
         $media = $this->media()->where('collection', 'announcement/image')->first();
-        $user = auth('sanctum')->user();
-        $readIds = $user->readAnnouncements()->pluck('announcement_id')->toArray();
+
+        // When listed via the recipient relationship the pivot carries read state;
+        // fall back to a lookup if this resource is built outside that context.
+        $isRead = $this->pivot
+            ? ! is_null($this->pivot->read_at)
+            : auth('sanctum')->user()?->readAnnouncements()
+                ->wherePivotNotNull('read_at')
+                ->where('announcements.id', $this->id)
+                ->exists();
 
         return [
             'id' => $this->id,
             'title' => $this->title,
             'body' => $this->body,
             'image' => $media ? (new MediaResource($media))->getFileUrl() : null,
-            'is_read' => in_array($this->id, $readIds),
+            'is_read' => (bool) $isRead,
             'created_at' => $this->created_at->diffForHumans(),
         ];
     }

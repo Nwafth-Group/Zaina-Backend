@@ -2,7 +2,6 @@
 
 namespace App\Http\Resources\Api\V1\Announcement;
 
-use App\Http\Resources\Api\V1\Media\MediaResource;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -17,11 +16,21 @@ class AnnouncementResource extends JsonResource
     {
         $media = $this->media()->where('collection', 'announcement/image')->first();
 
-        return [
+        $data = [
             'id' => $this->id,
             'title' => $this->title,
             'body' => $this->body,
             'image' => $media ? (new MediaResource($media))->getFileUrl() : null,
+            'readers_count' => $this->readers_count
+                ?? ($this->relationLoaded('readers') ? $this->readers->count() : 0),
+            'created_at' => $this->created_at?->toDateTimeString(),
         ];
+
+        // The edit form needs the exact readers to pre-select them.
+        if ($this->relationLoaded('readers')) {
+            $data['reader_ids'] = $this->readers->pluck('id');
+        }
+
+        return $data;
     }
 }

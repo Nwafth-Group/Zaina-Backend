@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Announcement;
+use App\Models\User;
 use App\Service\MediaService;
 use Illuminate\Database\Seeder;
 use Illuminate\Http\UploadedFile;
@@ -54,8 +55,12 @@ class AnnouncementSeeder extends Seeder
         // 🌟 2. المسار الثابت والمضمون من مجلد الـ public الأساسي للـ Dummy
         $sourcePath = public_path('dummy/banner.jpg');
 
+        // Deliver every seeded announcement to all customers.
+        $customerIds = User::query()->where('type', 'customer')->pluck('id')->all();
+
         foreach ($announcements as $data) {
             $announcement = Announcement::create($data);
+            $announcement->readers()->sync($customerIds);
 
             if (file_exists($sourcePath)) {
                 // 🌟 الحل السحري: بنعمل كاش للمحتوى وبننشئ كائن UploadedFile حركي لكل لفة بـ الـ Loop
