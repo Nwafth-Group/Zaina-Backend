@@ -23,8 +23,9 @@ class StoreAdRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048', // حد أقصى 2 ميجا بايت
-            'link' => ['nullable', 'string'],
+            'image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'], // حد أقصى 2 ميجا بايت
+            'link' => ['nullable', 'string', 'max:255'],
+            'status' => ['nullable', 'in:active,inactive'],
         ];
     }
 }

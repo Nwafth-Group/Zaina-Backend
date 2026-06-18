@@ -5,10 +5,11 @@ namespace App\Http\Controllers\Api\V1\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Admin\StoreAdRequest;
 use App\Http\Requests\Api\V1\Admin\UpdateAdRequest;
-use App\Http\Resources\Api\V1\Ad\AdResource;
+use App\Http\Resources\Api\V1\Ad\AdminAdResource;
 use App\Models\Ad;
 use App\Service\MediaService;
 use App\Traits\ApiResponseTrait;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class AdsController extends Controller
@@ -20,12 +21,13 @@ class AdsController extends Controller
      */
     public function __construct(protected MediaService $mediaService) {}
 
-    public function index()
+    public function index(Request $request)
     {
-        $ads = Ad::query()->where('status', 'active')->get();
+        // Admin management view: list every banner (active and inactive), newest first.
+        $perPage = $request->integer('per_page', 12);
+        $ads = Ad::query()->with('media')->latest()->paginate($perPage);
 
-        return $this->successResponse(AdResource::collection($ads), __('messages.ads_fetch_success'));
-
+        return $this->successResponse(AdminAdResource::collection($ads), __('messages.ads_fetch_success'));
     }
 
     /**
@@ -38,9 +40,9 @@ class AdsController extends Controller
         if ($request->hasFile('image')) {
             $this->mediaService->upload($request->file('image'), $ad, 'ads/image', 'public');
         }
-        Log::info("Admin created a new announcement ID: {$ad->id}");
+        Log::info("Admin created a new banner ID: {$ad->id}");
 
-        return $this->successResponse(new AdResource($ad), __('messages.ad_create_success'), 201);
+        return $this->successResponse(new AdminAdResource($ad->load('media')), __('messages.ad_create_success'), 201);
     }
 
     /**
@@ -48,7 +50,12 @@ class AdsController extends Controller
      */
     public function show(string $id)
     {
-        //
+        $ad = Ad::with('media')->find($id);
+        if (! $ad) {
+            return $this->errorResponse(__('messages.ad_not_exist'), 404);
+        }
+
+        return $this->successResponse(new AdminAdResource($ad), __('messages.ads_fetch_success'));
     }
 
     /**
@@ -70,9 +77,25 @@ class AdsController extends Controller
             // رفع الجديدة
             $this->mediaService->upload($request->file('image'), $ad, 'ads/image', 'public');
         }
-        Log::info("Admin updated ad ID: {$id}");
+        Log::info("Admin updated banner ID: {$id}");
 
-        return $this->successResponse(new AdResource($ad), __('messages.ad_update_success'));
+        return $this->successResponse(new AdminAdResource($ad->load('media')), __('messages.ad_update_success'));
+    }
+
+    /**
+     * Toggle a banner between active and inactive.
+     */
+    public function toggleStatus(string $id)
+    {
+        $ad = Ad::find($id);
+        if (! $ad) {
+            return $this->errorResponse(__('messages.ad_not_exist'), 404);
+        }
+
+        $ad->status = $ad->status === 'active' ? 'inactive' : 'active';
+        $ad->save();
+
+        return $this->successResponse(new AdminAdResource($ad->load('media')), __('messages.ad_toggle_success', ['status' => $ad->status]));
     }
 
     /**

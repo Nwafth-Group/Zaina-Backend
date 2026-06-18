@@ -17,7 +17,15 @@ class AdFactory extends Factory
     public function definition(): array
     {
         return [
-            //
+            'link' => fake()->url(),
+            'status' => 'active',
         ];
+    }
+
+    public function inactive(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'status' => 'inactive',
+        ]);
     }
 }
