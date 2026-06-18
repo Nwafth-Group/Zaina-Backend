@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\V1\Admin\CountryController;
 use App\Http\Controllers\Api\V1\Admin\CouponController;
 use App\Http\Controllers\Api\V1\Admin\DashboardController;
 use App\Http\Controllers\Api\V1\Admin\EmployeeController;
+use App\Http\Controllers\Api\V1\Admin\GovrenrateController;
 use App\Http\Controllers\Api\V1\Admin\KysController;
 use App\Http\Controllers\Api\V1\Admin\ProfileController;
 use App\Http\Controllers\Api\V1\Admin\ProviderController;
@@ -37,6 +38,9 @@ Route::prefix('admin')->group(function () {
     Route::middleware(['auth:sanctum', IsAdmin::class])->group(function () {
 
         Route::get('dashboard/stats', [DashboardController::class, 'stats']);
+
+        // Current admin's live identity/roles/permissions (keeps the UI in sync).
+        Route::get('me', [ProfileController::class, 'me']);
 
         // Current admin's own profile (self-service).
         Route::get('profile', [ProfileController::class, 'show']);
@@ -75,6 +79,7 @@ Route::prefix('admin')->group(function () {
         // services/workers management area itself does not require either.
         Route::get('cities', [CityController::class, 'index']);
         Route::get('areas', [AreaController::class, 'index']);
+        Route::get('govrenrates', [GovrenrateController::class, 'index']);
 
         // Location management (writes) stays gated behind the location.edit permission.
         Route::middleware('permission:location.edit')->group(function () {
@@ -116,6 +121,13 @@ Route::prefix('admin')->group(function () {
         Route::get('bookings/{booking}', [BookingController::class, 'show']);
         Route::patch('bookings/{booking}/status', [BookingController::class, 'updateStatus']);
 
+        // Home banners (ads) shown in the customer app.
+        Route::apiResource('ads', AdsController::class);
+        Route::patch('ads/{ad}/toggle-status', [AdsController::class, 'toggleStatus']);
+
+        // Announcements shown in the customer app notifications tab.
+        Route::apiResource('announcements', AnnouncementController::class);
+
         //  Route::middleware('permission:providers.view')->prefix('providers')->group(function () {
         //         Route::get('/', [ProviderController::class, 'index']);
         //         Route::post('/', [ProviderController::class, 'store'])->middleware('permission:providers.create');
@@ -136,9 +148,5 @@ Route::prefix('admin')->group(function () {
     Route::prefix('admin')->group(function () {
         Route::apiResource('coupons', CouponController::class);
     });
-
-    Route::apiResource('announcements', AnnouncementController::class);
-
-    Route::apiResource('ads', AdsController::class);
 
 });
