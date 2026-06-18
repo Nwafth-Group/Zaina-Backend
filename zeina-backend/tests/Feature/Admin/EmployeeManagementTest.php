@@ -112,21 +112,59 @@ class EmployeeManagementTest extends TestCase
         $this->postJson(self::ENDPOINT, $this->validPayload())->assertStatus(403);
     }
 
-    public function test_operations_manager_cannot_list_or_manage_employees(): void
+    public function test_super_admin_role_holder_can_access_and_manage_employees(): void
     {
-        // An operations employee carries only its own permissions (users/bookings),
-        // never the employees.* set — so the whole employees area is closed to it.
-        Permission::findOrCreate('users.view', 'sanctum');
+        // Mirrors the production "Super Admin" role: it holds the employees.*
+        // permissions, so a holder can access and manage the whole area.
+        $role = $this->makeRole('Super Admin');
+        foreach (self::EMPLOYEE_PERMISSIONS as $name) {
+            Permission::findOrCreate($name, 'sanctum');
+        }
+        $role->givePermissionTo(self::EMPLOYEE_PERMISSIONS);
+
+        $admin = User::factory()->superAdmin()->create();
+        $admin->assignRole($role);
+        $this->makeRole('Support');
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        $this->actingAs($admin, 'sanctum');
+
+        // List, create, show, update and toggle all succeed.
+        $this->getJson(self::ENDPOINT)->assertStatus(200);
+
+        $created = $this->postJson(self::ENDPOINT, $this->validPayload())->assertStatus(201);
+        $id = $created->json('data.id');
+
+        $this->getJson(self::ENDPOINT.'/'.$id)->assertStatus(200);
+        $this->putJson(self::ENDPOINT.'/'.$id, $this->validPayload(['first_name' => 'Renamed']))->assertStatus(200);
+        $this->patchJson(self::ENDPOINT.'/'.$id.'/toggle-status')->assertStatus(200);
+    }
+
+    public function test_operations_role_holder_cannot_access_or_manage_employees(): void
+    {
+        // Mirrors the production "Operations Manager" role: it carries only its
+        // own permissions (users/bookings) and never employees.*, so every
+        // employee endpoint — read and write — is closed to it.
+        foreach (['users.view', 'bookings.view', 'bookings.edit'] as $name) {
+            Permission::findOrCreate($name, 'sanctum');
+        }
         $opsRole = $this->makeRole('Operations Manager');
-        $opsRole->givePermissionTo('users.view');
+        $opsRole->givePermissionTo(['users.view', 'bookings.view', 'bookings.edit']);
 
         $ops = User::factory()->operation()->create();
         $ops->assignRole($opsRole);
+        $target = User::factory()->operation()->create();
+        $this->makeRole('Support');
         app(PermissionRegistrar::class)->forgetCachedPermissions();
         $this->actingAs($ops, 'sanctum');
 
-        $this->getJson(self::ENDPOINT)->assertStatus(403);
-        $this->postJson(self::ENDPOINT, $this->validPayload())->assertStatus(403);
+        $this->getJson(self::ENDPOINT)->assertStatus(403);                                   // list
+        $this->getJson(self::ENDPOINT.'/'.$target->id)->assertStatus(403);                   // show
+        $this->postJson(self::ENDPOINT, $this->validPayload())->assertStatus(403);           // create
+        $this->putJson(self::ENDPOINT.'/'.$target->id, $this->validPayload())->assertStatus(403); // update
+        $this->patchJson(self::ENDPOINT.'/'.$target->id.'/toggle-status')->assertStatus(403);     // toggle
+
+        // And nothing leaked through: the target was not created/modified.
+        $this->assertDatabaseMissing('users', ['email' => 'nour.adel@zaina.test']);
     }
 
     public function test_admin_can_list_employees_paginated(): void
