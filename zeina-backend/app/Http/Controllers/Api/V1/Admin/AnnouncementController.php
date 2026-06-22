@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Api\V1\Customer\StoreAnnouncementRequest;
+use App\Http\Requests\Api\V1\Admin\StoreAnnouncementRequest;
 use App\Http\Resources\Api\V1\Announcement\AnnouncementResource;
 use App\Models\Announcement;
 use App\Models\User;
