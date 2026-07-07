@@ -120,6 +120,8 @@ Route::prefix('admin')->group(function () {
         Route::get('bookings', [BookingController::class, 'index']);
         Route::get('bookings/{booking}', [BookingController::class, 'show']);
         Route::patch('bookings/{booking}/status', [BookingController::class, 'updateStatus']);
+        Route::get('bookings/{booking}/eligible-workers', [BookingController::class, 'eligibleWorkers']);
+        Route::post('bookings/{booking}/assign-workers', [BookingController::class, 'assignWorkers']);
 
         // Home banners (ads) shown in the customer app.
         Route::apiResource('ads', AdsController::class);

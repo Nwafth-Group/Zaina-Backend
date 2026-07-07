@@ -21,6 +21,29 @@ class AdminBookingDetailResource extends JsonResource
         $lang = app()->getLocale();
         $address = $this->whenLoaded('address') instanceof \App\Models\CustomerAddress ? $this->address : null;
 
+        $pricePerPeriod = (float) ($this->service->base_price ?? 0);
+        $visitsCount = (int) ($this->visit_number ?? 1);
+        $workersCount = $this->relationLoaded('workers') && $this->workers ? $this->workers->count() : 1;
+        $subtotalAmountVal = $pricePerPeriod * $visitsCount * $workersCount;
+
+        $discountPercent = 0;
+        if ($this->service) {
+            $availableTypes = $this->service->available_visit_types ?? [];
+            $visitTypeVal = $this->visit_type ?? 'single_visit';
+            foreach ($availableTypes as $vt) {
+                $vtType = $vt['type'] ?? '';
+                if ($vtType === $visitTypeVal 
+                    || ($visitTypeVal === 'three_visits_per_week' && ($vtType === '3_days_per_week' || $vtType === '3_visits_per_week'))
+                    || ($visitTypeVal === '3_days_per_week' && ($vtType === 'three_visits_per_week' || $vtType === '3_visits_per_week'))
+                ) {
+                    $discountPercent = (float) ($vt['discount'] ?? 0);
+                    break;
+                }
+            }
+        }
+        $serviceDiscountAmount = $subtotalAmountVal * ($discountPercent / 100);
+        $couponDiscountAmount = max(0.0, ((float) $this->discount_amount) - $serviceDiscountAmount);
+
         return [
             'id' => $this->id,
             'booking_ref' => $this->booking_ref,
@@ -43,6 +66,17 @@ class AdminBookingDetailResource extends JsonResource
                 ? Carbon::parse($this->start_time)->format('h:i A').' - '.Carbon::parse($this->end_time)->format('h:i A')
                 : null,
             'duration_minutes' => $this->duration_minutes,
+            'visit_type' => $this->visit_type ?? 'single_visit',
+            'visit_number' => (int) ($this->visit_number ?? 1),
+            'visit_schedule' => $this->relationLoaded('visits') && $this->visits ? $this->visits->map(fn($v) => [
+                'visit_date'   => $v->visit_date,
+                'visit_day'    => Carbon::parse($v->visit_date)->format('l'),
+                'start_time'   => Carbon::parse($v->start_time)->format('H:i'),
+                'end_time'     => Carbon::parse($v->end_time)->format('H:i'),
+                'duration'     => (int) ceil($v->duration_minutes / 60),
+                'visit_status' => $v->status,
+            ])->values()->toArray() : [],
+            'assigned_worker_ids' => $this->relationLoaded('workers') ? $this->workers->pluck('id')->toArray() : [],
 
             'workers' => $this->relationLoaded('workers')
                 ? $this->workers->map(fn ($w) => ['id' => $w->id, 'name' => $w->name, 'nationality' => $w->nationality])->values()
@@ -61,13 +95,21 @@ class AdminBookingDetailResource extends JsonResource
             ] : null,
 
             'price_summary' => [
-                'subtotal' => (float) $this->price_subtotal,
-                'tax' => (float) $this->tax_amount,
-                'discount' => (float) $this->discount_amount,
-                'total' => (float) $this->total_amount,
-                'currency' => 'EGP',
+                'subtotal'                => (float) $this->price_subtotal,
+                'tax'                     => (float) $this->tax_amount,
+                'service_discount_amount' => (float) $serviceDiscountAmount,
+                'coupon_discount_amount'  => (float) $couponDiscountAmount,
+                'has_coupon'              => !is_null($this->coupon_id),
+                'coupon_id'               => $this->coupon_id,
+                'coupon_code'             => $this->relationLoaded('coupon') && $this->coupon ? $this->coupon->code : null,
+                'discount'                => (float) $this->discount_amount,
+                'total'                   => (float) $this->total_amount,
+                'currency'                => $this->currency_code ?? 'EGP',
+                'payment_transaction_id'  => $this->payment_transaction_id ?? '',
+                'payment_method'          => $this->payment_method,
             ],
 
+            'contract_id' => $this->contract_id ?? 1,
             'customer_notes' => $this->customer_notes,
 
             'activity' => $this->relationLoaded('histories')

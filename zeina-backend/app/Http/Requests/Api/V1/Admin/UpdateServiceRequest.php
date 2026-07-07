@@ -21,50 +21,65 @@ class UpdateServiceRequest extends FormRequest
      */
     public function rules(): array
     {
+        $service = $this->route('service');
+        $serviceId = $service ? (is_object($service) ? $service->id : $service) : null;
+        $categoryId = $this->input('category_id') ?? ($service ? $service->category_id : null);
+
         return [
-            // البيانات الأساسية (ضفنا sometimes عشان يقبل يتعدل حقل واحد بس لو لزم الأمر)
-            'category_id' => 'sometimes|required|exists:categories,id',
-            'type' => 'sometimes|required|in:hourly,moqema,both',
-            'name_ar' => 'sometimes|required|string|max:100',
-            'name_en' => 'sometimes|required|string|max:100',
-            'description_ar' => 'nullable|string',
-            'description_en' => 'nullable|string',
+            // البيانات الأساسية
+            'category_id' => 'sometimes|nullable|exists:categories,id',
+            'service_code' => [
+                'sometimes',
+                'nullable',
+                'string',
+                'max:100',
+                \Illuminate\Validation\Rule::unique('services', 'service_code')->ignore($serviceId),
+            ],
+            'type' => 'sometimes|required|in:hourly,other',
+            'name_ar' => [
+                'sometimes',
+                'required',
+                'string',
+                'max:100',
+                \Illuminate\Validation\Rule::unique('services', 'name_ar')->where('category_id', $categoryId)->ignore($serviceId),
+            ],
+            'name_en' => [
+                'sometimes',
+                'required',
+                'string',
+                'max:100',
+                \Illuminate\Validation\Rule::unique('services', 'name_en')->where('category_id', $categoryId)->ignore($serviceId),
+            ],
+            'description_ar' => 'sometimes|required|string|max:500',
+            'description_en' => 'sometimes|required|string|max:500',
             'features' => 'nullable|array',
             'features.*.ar' => 'nullable|string|max:255',
             'features.*.en' => 'nullable|string|max:255',
-            'status' => 'sometimes|required|in:draft,active,hidden,inactive',
-
-            // 🌟 المدد الزمنية (هنا استخدمنا sometimes كدرع حماية رئيسي) 🌟
-            'durations' => 'sometimes|array',
-            // 'durations.allowed_durations'          => 'sometimes|required_if:type,hourly,both|array',
-            // 'durations.min_duration_hours'         => 'sometimes|required_if:type,hourly,both|integer|min:1',
-            'durations.service_period_hours' => 'sometimes|required_if:type,hourly,both|integer|min:1',
-            'durations.allowed_contract_durations' => 'sometimes|required_if:type,moqema,both|array',
-            'durations.min_contract_months' => 'sometimes|required_if:type,moqema,both|integer|min:1',
-
+            'status' => 'sometimes|required|in:active,inactive',
             'workers' => 'sometimes|nullable|array',
-            'workers.*' => 'integer|exists:workers,id',
+            'workers.*' => [
+                'integer',
+                \Illuminate\Validation\Rule::exists('workers', 'id')->where('status', 'active'),
+            ],
+            
+            // Available Visit Type & Pricing
+            'available_visit_types' => 'sometimes|required|array|min:1',
+            'available_visit_types.*.type' => 'required_with:available_visit_types|string|in:single_visit,3_days_per_week',
+            'available_visit_types.*.discount' => 'nullable|numeric|min:0|max:100',
+            'discount_value' => 'sometimes|nullable|numeric|min:0',
+            'base_price' => 'sometimes|required|numeric|min:0',
 
-            // قواعد الخدمة
-            'rules' => 'sometimes|array',
-            'rules.free_cancel_cutoff_hours' => 'nullable|integer|min:0',
-            'rules.reschedule_cutoff_hours' => 'nullable|integer|min:0',
-            'rules.lead_time_min_hours' => 'nullable|integer|min:0',
-            'rules.lead_time_max_days' => 'nullable|integer|min:1',
-            'rules.late_cancel_action' => 'nullable|in:fee,block,manual',
-            'rules.late_cancel_fee_type' => 'nullable|in:percent,fixed',
-            'rules.late_cancel_fee_value' => 'nullable|numeric|min:0',
-            'rules.no_show_policy' => 'nullable|in:compensate,consumed',
-            'rules.max_changes_per_booking' => 'nullable|integer|min:0',
+            // Service Image
+            'image' => 'sometimes|nullable|file|mimes:svg|max:2048',
 
-            // التغطية الجغرافية
+            // Coverage Cities & Areas
             'coverages' => 'sometimes|required|array|min:1',
             'coverages.*.city_id' => 'required_with:coverages|exists:cities,id',
             'coverages.*.area_id' => 'nullable|exists:areas,id',
             'coverages.*.status' => 'nullable|in:active,inactive,coming_soon',
 
-            // التسعير
-            'prices' => 'sometimes|required|array|min:1',
+            // Prices
+            'prices' => 'sometimes|nullable|array',
             'prices.*.pricing_scope' => 'required_with:prices|in:city,area',
             'prices.*.city_id' => 'nullable|exists:cities,id',
             'prices.*.area_id' => 'nullable|exists:areas,id',
@@ -73,16 +88,101 @@ class UpdateServiceRequest extends FormRequest
             'prices.*.effective_start' => 'nullable|date',
             'prices.*.effective_end' => 'nullable|date|after_or_equal:prices.*.effective_start',
 
-            // جدول العمل الأسبوعي (Weekly schedule)
-            'schedules' => 'sometimes|nullable|array',
+            // Service Duration & Time
+            'start_time' => 'sometimes|nullable|date_format:H:i',
+            'end_time' => 'sometimes|nullable|date_format:H:i|after:start_time',
+            'default_duration' => 'sometimes|required|integer|min:1',
+            'duration_unit' => 'sometimes|nullable|string|in:Hours,Days',
+            'has_duration_range' => 'sometimes|nullable|boolean',
+            'min_duration' => 'sometimes|nullable|integer|min:1',
+            'max_duration' => 'sometimes|nullable|integer|min:1|gte:min_duration',
+            'min_workers' => 'sometimes|required|integer|min:1',
+            'max_workers' => 'sometimes|required|integer|min:1|gte:min_workers',
+
+            // Durations array for backward compatibility
+            'durations' => 'sometimes|nullable|array',
+            'durations.service_period_hours' => 'sometimes|nullable|integer|min:1',
+            'durations.allowed_contract_durations' => 'sometimes|nullable|array',
+            'durations.min_contract_months' => 'sometimes|nullable|integer|min:1',
+
+            // Service Shifts & Schedules
+            'working_days' => 'sometimes|nullable|array|min:1',
+            'working_days.*' => 'required_with:working_days|in:saturday,sunday,monday,tuesday,wednesday,thursday,friday',
+            'shifts' => 'required_with:working_days|array|min:1',
+            'shifts.*.start_time' => 'required_with:shifts|date_format:H:i',
+            'shifts.*.end_time' => 'nullable|date_format:H:i',
+
+            // Fallback for old schedules format in tests/seeders
+            'schedules' => 'sometimes|nullable|array|min:1',
             'schedules.*.day' => 'required_with:schedules|in:saturday,sunday,monday,tuesday,wednesday,thursday,friday',
             'schedules.*.start_time' => 'required_with:schedules|date_format:H:i',
             'schedules.*.end_time' => 'required_with:schedules|date_format:H:i',
             'schedules.*.is_active' => 'nullable|boolean',
 
-            // الصور
-            'image' => 'sometimes|nullable|image|mimes:jpeg,png,jpg,webp,svg|max:2048',
-            // 'cover' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
+            // Service Rules
+            'rules' => 'sometimes|array',
+            'rules.allow_cancel' => 'nullable|boolean',
+            'rules.free_cancel_cutoff_hours' => 'required_if:rules.allow_cancel,true|integer|min:0',
+            'rules.allow_reschedule' => 'nullable|boolean',
+            'rules.reschedule_cutoff_hours' => 'required_if:rules.allow_reschedule,true|integer|min:0',
+            'rules.allow_same_day' => 'nullable|boolean',
+            'rules.max_advance_booking_days' => 'nullable|integer|min:0',
+            'rules.lead_time_min_hours' => 'nullable|integer|min:0',
+            'rules.lead_time_max_days' => 'nullable|integer|min:1',
+            'rules.late_cancel_action' => 'nullable|in:fee,block,manual',
+            'rules.late_cancel_fee_type' => 'nullable|in:percent,fixed',
+            'rules.late_cancel_fee_value' => 'nullable|numeric|min:0',
+            'rules.no_show_policy' => 'nullable|in:compensate,consumed',
+            'rules.max_changes_per_booking' => 'nullable|integer|min:0',
+            'rules.arrival_buffer_minutes' => 'nullable|integer|min:0',
+            'rules.late_arrival_grace_minutes' => 'nullable|integer|min:0',
+            
+            // Terms & Conditions
+            'terms_ar' => 'sometimes|required|string|max:5000',
+            'terms_en' => 'sometimes|required|string|max:5000',
+            'acceptance_required' => 'sometimes|nullable|boolean',
+        ];
+    }
+
+    public function after(): array
+    {
+        return [
+            function ($validator) {
+                $service = $this->route('service');
+                if ($this->has('service_code') && $service && $this->input('service_code') !== $service->service_code) {
+                    $validator->errors()->add('service_code', 'The service code cannot be updated.');
+                }
+                $startTime = $this->input('start_time') ?? ($service ? $service->start_time : null);
+                $endTime = $this->input('end_time') ?? ($service ? $service->end_time : null);
+                $shifts = $this->input('shifts', []);
+                $defaultDuration = (int) ($this->input('default_duration') ?? ($service ? $service->default_duration : 1));
+
+                if ($startTime && $endTime) {
+                    foreach ($shifts as $index => $shift) {
+                        if (!empty($shift['start_time'])) {
+                            try {
+                                $start = \Carbon\Carbon::parse($shift['start_time']);
+                                $end = !empty($shift['end_time']) 
+                                    ? \Carbon\Carbon::parse($shift['end_time']) 
+                                    : $start->copy()->addHours($defaultDuration);
+                                    
+                                $startStr = $start->format('H:i');
+                                $endStr = $end->format('H:i');
+
+                                // Check window boundary limits
+                                if ($startStr < $startTime || $endStr > $endTime) {
+                                    $validator->errors()->add(
+                                        "shifts.{$index}.start_time",
+                                        "The shift schedule times must be within the service request window ({$startTime} to {$endTime})."
+                                    );
+                                }
+                            } catch (\Exception $e) {
+                                // Skip parsing errors, handled by standard validation
+                            }
+                        }
+                    }
+                }
+            }
         ];
     }
 

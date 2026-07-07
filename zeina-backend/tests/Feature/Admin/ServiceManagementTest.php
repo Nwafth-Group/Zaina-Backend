@@ -38,13 +38,30 @@ class ServiceManagementTest extends TestCase
             'type' => 'hourly',
             'name_ar' => 'تنظيف منزلي',
             'name_en' => 'Home Cleaning',
+            'description_ar' => 'خدمة تنظيف كاملة للمنزل.',
             'description_en' => 'A full home cleaning service.',
             'status' => 'active',
             'features' => [['ar' => 'سريع', 'en' => 'Fast']],
             'workers' => $workerIds,
+            'available_visit_types' => [
+                ['type' => 'single_visit', 'discount' => 10],
+                ['type' => '3_days_per_week', 'discount' => 15],
+            ],
+            'discount_value' => 10.00,
+            'base_price' => 150.00,
+            'default_duration' => 2,
+            'min_duration' => 1,
+            'max_duration' => 6,
+            'min_workers' => 1,
+            'max_workers' => 3,
+            'terms_ar' => 'الشروط والأحكام الافتراضية للخدمة.',
+            'terms_en' => 'Default terms and conditions for the service.',
+            'acceptance_required' => true,
             'durations' => ['service_period_hours' => 2],
             'rules' => [
+                'allow_cancel' => true,
                 'free_cancel_cutoff_hours' => 2,
+                'allow_reschedule' => true,
                 'reschedule_cutoff_hours' => 3,
                 'lead_time_min_hours' => 1,
                 'lead_time_max_days' => 7,
@@ -89,17 +106,17 @@ class ServiceManagementTest extends TestCase
             ->assertJsonStructure(['status', 'message', 'data' => ['items']]);
     }
 
-    public function test_service_listing_includes_assigned_workers(): void
+    public function test_service_details_includes_assigned_workers(): void
     {
         $this->actingAsAdmin();
         $service = Service::factory()->create();
         $workers = Worker::factory()->count(2)->create();
         $service->workers()->sync($workers->pluck('id')->toArray());
 
-        $this->getJson(self::ENDPOINT)
+        $this->getJson(self::ENDPOINT.'/'.$service->id)
             ->assertStatus(200)
-            ->assertJsonCount(2, 'data.items.0.workers')
-            ->assertJsonPath('data.items.0.workers.0.id', $workers[0]->id);
+            ->assertJsonCount(2, 'data.workers')
+            ->assertJsonPath('data.workers.0.id', $workers[0]->id);
     }
 
     // ---------------------------------------------------------------------
@@ -247,7 +264,7 @@ class ServiceManagementTest extends TestCase
         ])->assertStatus(422)->assertJsonStructure(['params' => ['schedules.0.day']]);
     }
 
-    public function test_admin_can_create_a_moqema_service_persisting_contract_durations(): void
+    public function test_admin_can_create_an_other_service_persisting_contract_durations(): void
     {
         $this->actingAsAdmin();
         $area = Area::factory()->create();
@@ -255,7 +272,7 @@ class ServiceManagementTest extends TestCase
         $worker = Worker::factory()->create();
 
         $payload = $this->hourlyPayload($city->id, [$worker->id], [
-            'type' => 'moqema',
+            'type' => 'other',
             'name_en' => 'Monthly Maid',
             'name_ar' => 'عاملة شهرية',
             'durations' => ['allowed_contract_durations' => [1, 3, 6], 'min_contract_months' => 1],
@@ -301,7 +318,7 @@ class ServiceManagementTest extends TestCase
         $this->actingAsAdmin();
         $category = Category::factory()->create();
 
-        // Workers are optional; coverages and prices are still required.
+        // Workers and prices are optional; coverages is still required.
         $this->postJson(self::ENDPOINT, [
             'category_id' => $category->id,
             'type' => 'hourly',
@@ -311,7 +328,7 @@ class ServiceManagementTest extends TestCase
             'durations' => ['service_period_hours' => 2],
         ])
             ->assertStatus(422)
-            ->assertJsonStructure(['params' => ['coverages', 'prices']]);
+            ->assertJsonStructure(['params' => ['coverages']]);
     }
 
     public function test_admin_can_create_service_without_workers(): void

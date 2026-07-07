@@ -4,20 +4,47 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use OwenIt\Auditing\Contracts\Auditable;
 
-class Service extends Model
+class Service extends Model implements Auditable
 {
     /** @use HasFactory<\Database\Factories\ServiceFactory> */
-    use HasFactory;
+    use HasFactory, \OwenIt\Auditing\Auditable;
 
     protected $fillable = [
         'category_id', 'type', 'name_ar', 'name_en',
         'description_ar', 'description_en', 'status', 'avg_rating', 'features',
+        'service_code', 'available_visit_types', 'discount_value', 'terms_ar',
+        'terms_en', 'acceptance_required', 'start_time', 'end_time',
+        'default_duration', 'duration_unit', 'has_duration_range',
+        'min_duration', 'max_duration', 'min_workers', 'max_workers', 'base_price',
     ];
 
     protected $casts = [
         'features' => 'array',
+        'available_visit_types' => 'array',
+        'acceptance_required' => 'boolean',
+        'has_duration_range' => 'boolean',
+        'discount_value' => 'decimal:2',
+        'base_price' => 'decimal:2',
     ];
+
+    protected static function booted()
+    {
+        static::creating(function ($service) {
+            if (empty($service->service_code)) {
+                $latest = static::orderBy('id', 'desc')->first();
+                $nextId = $latest ? $latest->id + 1 : 1;
+                $service->service_code = 'SVC-' . date('Y') . '-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
+            }
+        });
+
+        static::updating(function ($service) {
+            if ($service->isDirty('service_code')) {
+                $service->service_code = $service->getOriginal('service_code');
+            }
+        });
+    }
 
     public function category()
     {

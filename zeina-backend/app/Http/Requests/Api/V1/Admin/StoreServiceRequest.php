@@ -23,27 +23,98 @@ class StoreServiceRequest extends CustomFormRequest
     {
         return [
             // البيانات الأساسية
-            'category_id' => 'required|exists:categories,id',
-            'type' => 'required|in:hourly,moqema,both',
-            'name_ar' => 'required|string|max:100',
-            'name_en' => 'required|string|max:100',
-            'description_ar' => 'nullable|string',
-            'description_en' => 'nullable|string',
+            'category_id' => 'nullable|exists:categories,id',
+            'service_code' => 'nullable|string|max:100|unique:services,service_code',
+            'type' => 'required|in:hourly,other',
+            'name_ar' => [
+                'required',
+                'string',
+                'max:100',
+                \Illuminate\Validation\Rule::unique('services', 'name_ar')->where('category_id', $this->category_id),
+            ],
+            'name_en' => [
+                'required',
+                'string',
+                'max:100',
+                \Illuminate\Validation\Rule::unique('services', 'name_en')->where('category_id', $this->category_id),
+            ],
+            'description_ar' => 'required|string|max:500',
+            'description_en' => 'required|string|max:500',
             'features' => 'nullable|array',
             'features.*.ar' => 'nullable|string|max:255',
             'features.*.en' => 'nullable|string|max:255',
-            'status' => 'required|in:draft,active,hidden,inactive',
+            'status' => 'required|in:active,inactive',
             'workers' => 'nullable|array',
-            'workers.*' => 'integer|exists:workers,id',
-            // المدد الزمنية (Service Durations) - بناءً على نوع الخدمة
-            // 'durations.allowed_durations'          => 'required_if:type,hourly,both|array',
-            // 'durations.min_duration_hours'         => 'required_if:type,hourly,both|integer|min:1',
-            'durations.service_period_hours' => 'required_if:type,hourly,both|integer|min:1',
-            'durations.allowed_contract_durations' => 'required_if:type,moqema,both|array',
-            'durations.min_contract_months' => 'required_if:type,moqema,both|integer|min:1',
-            // قواعد الخدمة (Service Rules)
-            'rules.free_cancel_cutoff_hours' => 'nullable|integer|min:0',
-            'rules.reschedule_cutoff_hours' => 'nullable|integer|min:0',
+            'workers.*' => [
+                'integer',
+                \Illuminate\Validation\Rule::exists('workers', 'id')->where('status', 'active'),
+            ],
+            
+            // Available Visit Type & Pricing
+            'available_visit_types' => 'required|array|min:1',
+            'available_visit_types.*.type' => 'required|string|in:single_visit,3_days_per_week',
+            'available_visit_types.*.discount' => 'nullable|numeric|min:0|max:100',
+            'discount_value' => 'nullable|numeric|min:0',
+            'base_price' => 'required|numeric|min:0',
+
+            // Service Image
+            'image' => 'nullable|file|mimes:svg|max:2048',
+
+            // Coverage Cities & Areas
+            'coverages' => 'required|array|min:1',
+            'coverages.*.city_id' => 'required|exists:cities,id',
+            'coverages.*.area_id' => 'nullable|exists:areas,id',
+            'coverages.*.status' => 'nullable|in:active,inactive,coming_soon',
+
+            // Prices
+            'prices' => 'nullable|array',
+            'prices.*.pricing_scope' => 'required_with:prices|in:city,area',
+            'prices.*.city_id' => 'nullable|exists:cities,id',
+            'prices.*.area_id' => 'nullable|exists:areas,id',
+            'prices.*.price_per_service_period' => 'required_with:prices|numeric|min:0',
+            'prices.*.currency' => 'nullable|string|max:10',
+            'prices.*.effective_start' => 'nullable|date',
+            'prices.*.effective_end' => 'nullable|date|after_or_equal:prices.*.effective_start',
+
+            // Service Duration & Time
+            'start_time' => 'nullable|date_format:H:i',
+            'end_time' => 'nullable|date_format:H:i|after:start_time',
+            'default_duration' => 'required|integer|min:1',
+            'duration_unit' => 'nullable|string|in:Hours,Days',
+            'has_duration_range' => 'nullable|boolean',
+            'min_duration' => 'nullable|integer|min:1',
+            'max_duration' => 'nullable|integer|min:1|gte:min_duration',
+            'min_workers' => 'required|integer|min:1',
+            'max_workers' => 'required|integer|min:1|gte:min_workers',
+
+            // Durations array for backward compatibility
+            'durations' => 'nullable|array',
+            'durations.service_period_hours' => 'nullable|integer|min:1',
+            'durations.allowed_contract_durations' => 'nullable|array',
+            'durations.min_contract_months' => 'nullable|integer|min:1',
+
+            // Service Shifts & Schedules
+            'working_days' => 'nullable|array|min:1',
+            'working_days.*' => 'required_with:working_days|in:saturday,sunday,monday,tuesday,wednesday,thursday,friday',
+            'shifts' => 'required_with:working_days|array|min:1',
+            'shifts.*.start_time' => 'required_with:shifts|date_format:H:i',
+            'shifts.*.end_time' => 'nullable|date_format:H:i',
+
+            // Fallback for old schedules format in tests/seeders
+            'schedules' => 'nullable|array|min:1',
+            'schedules.*.day' => 'required_with:schedules|in:saturday,sunday,monday,tuesday,wednesday,thursday,friday',
+            'schedules.*.start_time' => 'required_with:schedules|date_format:H:i',
+            'schedules.*.end_time' => 'required_with:schedules|date_format:H:i',
+            'schedules.*.is_active' => 'nullable|boolean',
+
+            // Service Rules
+            'rules' => 'nullable|array',
+            'rules.allow_cancel' => 'nullable|boolean',
+            'rules.free_cancel_cutoff_hours' => 'required_if:rules.allow_cancel,true|integer|min:0',
+            'rules.allow_reschedule' => 'nullable|boolean',
+            'rules.reschedule_cutoff_hours' => 'required_if:rules.allow_reschedule,true|integer|min:0',
+            'rules.allow_same_day' => 'nullable|boolean',
+            'rules.max_advance_booking_days' => 'nullable|integer|min:0',
             'rules.lead_time_min_hours' => 'nullable|integer|min:0',
             'rules.lead_time_max_days' => 'nullable|integer|min:1',
             'rules.late_cancel_action' => 'nullable|in:fee,block,manual',
@@ -51,34 +122,54 @@ class StoreServiceRequest extends CustomFormRequest
             'rules.late_cancel_fee_value' => 'nullable|numeric|min:0',
             'rules.no_show_policy' => 'nullable|in:compensate,consumed',
             'rules.max_changes_per_booking' => 'nullable|integer|min:0',
+            'rules.arrival_buffer_minutes' => 'nullable|integer|min:0',
+            'rules.late_arrival_grace_minutes' => 'nullable|integer|min:0',
+            
+            // Terms & Conditions
+            'terms_ar' => 'required|string|max:5000',
+            'terms_en' => 'required|string|max:5000',
+            'acceptance_required' => 'nullable|boolean',
+        ];
+    }
 
-            // التغطية الجغرافية (Coverages) - مصفوفة
-            'coverages' => 'required|array|min:1',
-            'coverages.*.city_id' => 'required|exists:cities,id',
-            'coverages.*.area_id' => 'nullable|exists:areas,id',
-            'coverages.*.status' => 'nullable|in:active,inactive,coming_soon',
+    public function after(): array
+    {
+        return [
+            function ($validator) {
+                if ($this->filled('service_code')) {
+                    $validator->errors()->add('service_code', 'The service code is generated automatically.');
+                }
+                $startTime = $this->input('start_time');
+                $endTime = $this->input('end_time');
+                $shifts = $this->input('shifts', []);
+                $defaultDuration = (int) ($this->input('default_duration') ?? 1);
 
-            // التسعير (Prices) - مصفوفة
-            'prices' => 'required|array|min:1',
-            'prices.*.pricing_scope' => 'required|in:city,area',
-            'prices.*.city_id' => 'nullable|exists:cities,id',
-            'prices.*.area_id' => 'nullable|exists:areas,id',
-            'prices.*.price_per_service_period' => 'required|numeric|min:0',
-            // 'prices.*.price_per_hour' => 'required|numeric|min:0',
-            'prices.*.currency' => 'nullable|string|max:10',
-            'prices.*.effective_start' => 'nullable|date',
-            'prices.*.effective_end' => 'nullable|date|after_or_equal:prices.*.effective_start',
+                if ($startTime && $endTime) {
+                    foreach ($shifts as $index => $shift) {
+                        if (!empty($shift['start_time'])) {
+                            try {
+                                $start = \Carbon\Carbon::parse($shift['start_time']);
+                                $end = !empty($shift['end_time']) 
+                                    ? \Carbon\Carbon::parse($shift['end_time']) 
+                                    : $start->copy()->addHours($defaultDuration);
+                                    
+                                $startStr = $start->format('H:i');
+                                $endStr = $end->format('H:i');
 
-            // جدول العمل الأسبوعي (Weekly schedule) - مصفوفة اختيارية
-            'schedules' => 'nullable|array',
-            'schedules.*.day' => 'required_with:schedules|in:saturday,sunday,monday,tuesday,wednesday,thursday,friday',
-            'schedules.*.start_time' => 'required_with:schedules|date_format:H:i',
-            'schedules.*.end_time' => 'required_with:schedules|date_format:H:i',
-            'schedules.*.is_active' => 'nullable|boolean',
-
-            // الصور (اختياري)
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp,svg|max:2048',
-            // 'cover' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
+                                // Check window boundary limits
+                                if ($startStr < $startTime || $endStr > $endTime) {
+                                    $validator->errors()->add(
+                                        "shifts.{$index}.start_time",
+                                        "The shift schedule times must be within the service request window ({$startTime} to {$endTime})."
+                                    );
+                                }
+                            } catch (\Exception $e) {
+                                // Skip parsing errors, handled by standard validation
+                            }
+                        }
+                    }
+                }
+            }
         ];
     }
 

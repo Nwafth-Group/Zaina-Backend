@@ -13,8 +13,9 @@ return new class extends Migration
     {
         Schema::create('services', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('category_id')->constrained('categories')->restrictOnDelete();
-            $table->enum('type', ['hourly', 'moqema', 'both'])->default('hourly');
+            $table->foreignId('category_id')->nullable()->constrained('categories')->nullOnDelete();
+            $table->string('service_code')->nullable()->unique();
+            $table->enum('type', ['hourly', 'other'])->default('hourly');
             $table->string('name_ar', 100);
             $table->string('name_en', 100);
             $table->text('description_ar')->nullable();
@@ -22,6 +23,24 @@ return new class extends Migration
             $table->json('features')->nullable();
             $table->decimal('avg_rating', 3, 2)->default(0.00);
             $table->enum('status', ['active', 'inactive'])->default('active');
+            
+            // New Config Fields
+            $table->json('available_visit_types')->nullable();
+            $table->decimal('discount_value', 10, 2)->default(0.00);
+            $table->text('terms_ar')->nullable();
+            $table->text('terms_en')->nullable();
+            $table->boolean('acceptance_required')->default(true);
+            $table->time('start_time')->nullable();
+            $table->time('end_time')->nullable();
+            $table->integer('default_duration')->nullable();
+            $table->string('duration_unit', 50)->default('Hours');
+            $table->boolean('has_duration_range')->default(false);
+            $table->integer('min_duration')->nullable();
+            $table->integer('max_duration')->nullable();
+            $table->integer('min_workers')->default(1);
+            $table->integer('max_workers')->default(1);
+            $table->decimal('base_price', 10, 2)->default(0.00);
+            
             $table->timestamps();
         });
     }

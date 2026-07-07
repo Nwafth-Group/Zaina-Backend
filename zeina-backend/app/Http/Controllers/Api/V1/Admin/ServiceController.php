@@ -13,6 +13,7 @@ use App\Http\Requests\Api\V1\Admin\UpdateServiceRequest;
 use App\Http\Resources\Api\V1\Booking\AdminBookingResource;
 use App\Http\Resources\Api\V1\Review\ReviewResource;
 use App\Http\Resources\Api\V1\Service\ServiceResource;
+use App\Http\Resources\Api\V1\Service\ServiceListResource;
 use App\Models\Service;
 use App\Service\ServiceWriter;
 use App\Traits\ApiResponseTrait;
@@ -29,7 +30,7 @@ class ServiceController extends Controller
     {
         // Filter the listing through the Pipeline (one class per filter).
         $query = app(Pipeline::class)
-            ->send(Service::query()->with(['category', 'duration', 'rules', 'coverages', 'coverages.city', 'coverages.area', 'workers']))
+            ->send(Service::query()->with(['category', 'media', 'startingPrice']))
             ->through([
                 SearchFilter::class,
                 StatusFilter::class,
@@ -45,7 +46,7 @@ class ServiceController extends Controller
         $sortDir = strtolower($request->input('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
         $query->orderBy($sortBy, $sortDir);
 
-        return $this->successResponse(ServiceResource::collection($query->get()), __('messages.services_retrieved_successfully'));
+        return $this->successResponse(ServiceListResource::collection($query->get()), __('messages.services_retrieved_successfully'));
     }
 
     public function show($id)

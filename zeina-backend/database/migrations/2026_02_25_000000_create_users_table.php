@@ -4,8 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
@@ -15,19 +14,23 @@ return new class extends Migration
             $table->id();
             $table->foreignId('country_id')->nullable()->constrained('countries')->restrictOnDelete();
             $table->string("id_number")->nullable()->unique();
-            $table->string('first_name',100)->nullable();
-            $table->string('last_name',100)->nullable();
-            $table->string('full_name',200)->virtualAs("CONCAT(first_name,' ',last_name)");
+            $table->string('first_name', 100)->nullable();
+            $table->string('last_name', 100)->nullable();
+            if (config('database.default') === 'sqlite' || env('DB_CONNECTION') === 'sqlite') {
+                $table->string('full_name', 200)->virtualAs("first_name || ' ' || last_name");
+            } else {
+                $table->string('full_name', 200)->virtualAs("CONCAT(first_name,' ',last_name)");
+            }
             $table->string('phone_number')->unique();
             $table->decimal('wallet_balance', 10, 2)->default(0.00);
-            $table->string('job_title',100)->nullable();
+            $table->string('job_title', 100)->nullable();
             $table->enum('gender', ['Male', 'Female'])->nullable();
             $table->enum('verification_status', ['unverified', 'pending', 'approved', 'rejected'])->default('unverified');
             $table->text('rejection_reason')->nullable();
             $table->string('email')->nullable()->unique();// Email is optional for customers but usually required for Admins/Operations
             $table->string('password')->nullable();// Nullable because Customers login via OTP, while Admins might use a password
-            $table->enum('type',['customer','operation','super_admin','driver'])->default('customer');
-            $table->enum('status',['active', 'inactive', 'suspended'])->default('active');
+            $table->enum('type', ['customer', 'operation', 'super_admin', 'driver'])->default('customer');
+            $table->enum('status', ['active', 'inactive', 'suspended'])->default('active');
             $table->timestamp('email_verified_at')->nullable();
             $table->enum('preferred_language', ['ar', 'en'])->default('en');
             $table->rememberToken();

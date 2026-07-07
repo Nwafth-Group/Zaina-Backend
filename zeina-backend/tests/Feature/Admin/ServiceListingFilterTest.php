@@ -52,12 +52,12 @@ class ServiceListingFilterTest extends TestCase
     {
         $this->actingAsAdmin();
         Service::factory()->create(['name_en' => 'Hourly Svc', 'type' => 'hourly']);
-        Service::factory()->create(['name_en' => 'Moqema Svc', 'type' => 'moqema']);
+        Service::factory()->create(['name_en' => 'Other Svc', 'type' => 'other']);
 
-        $this->getJson(self::ENDPOINT.'?type=moqema')
+        $this->getJson(self::ENDPOINT.'?type=other')
             ->assertOk()
             ->assertJsonCount(1, 'data.items')
-            ->assertJsonPath('data.items.0.name_en', 'Moqema Svc');
+            ->assertJsonPath('data.items.0.name_en', 'Other Svc');
     }
 
     public function test_filter_by_category(): void
@@ -90,7 +90,7 @@ class ServiceListingFilterTest extends TestCase
         $this->actingAsAdmin();
         $category = Category::factory()->create();
         Service::factory()->create(['name_en' => 'Match', 'type' => 'hourly', 'status' => 'active', 'category_id' => $category->id]);
-        Service::factory()->create(['name_en' => 'Wrong Type', 'type' => 'moqema', 'status' => 'active', 'category_id' => $category->id]);
+        Service::factory()->create(['name_en' => 'Wrong Type', 'type' => 'other', 'status' => 'active', 'category_id' => $category->id]);
         Service::factory()->inactive()->create(['name_en' => 'Wrong Status', 'type' => 'hourly', 'category_id' => $category->id]);
 
         $this->getJson(self::ENDPOINT."?type=hourly&status=active&category_id={$category->id}")

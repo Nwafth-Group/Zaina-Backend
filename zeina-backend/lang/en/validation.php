@@ -208,7 +208,7 @@ return [
     'category_id_exists'   => 'The selected category is invalid.',
     
     'type_required' => 'The service type is required.',
-    'type_in'       => 'The service type must be: hourly, moqema, or both.',
+    'type_in'       => 'The service type must be: hourly, other.',
     
     'name_ar_required' => 'The Arabic name is required.',
     'name_ar_string'   => 'The Arabic name must be a string.',
@@ -241,15 +241,15 @@ return [
     // 'min_duration_hours_numeric'     => 'Minimum duration hours must be a number.',
     // 'min_duration_hours_lte'         => 'Minimum duration hours must be less than or equal to the smallest allowed duration.',
 
-    'service_period_hours_required_if' => 'Service period hours are required for moqema services.',
+    'service_period_hours_required_if' => 'Service period hours are required for other services.',
     'service_period_hours_integer'     => 'Service period hours must be an integer.',
     'service_period_hours_min'         => 'Service period hours must be at least 1 hour.',
     
-    'allowed_contract_durations_required_if' => 'Allowed contract durations are required for moqema services.',
+    'allowed_contract_durations_required_if' => 'Allowed contract durations are required for other services.',
     'allowed_contract_durations_array'       => 'Allowed contract durations must be an array.',
     'allowed_contract_durations_numeric'     => 'Each allowed contract duration must be a number.',
     
-    'min_contract_months_required_if' => 'Minimum contract months are required for moqema services.',
+    'min_contract_months_required_if' => 'Minimum contract months are required for other services.',
     'min_contract_months_numeric'     => 'Minimum contract months must be a number.',
     'min_contract_months_lte'         => 'Minimum contract months must be less than or equal to the smallest allowed contract duration.',
 
@@ -308,19 +308,19 @@ return [
 'update_service' => [
     // Basic Data
     'category_id_exists'                     => 'The selected category does not exist.',
-    'type_in'                                => 'The service type must be either hourly, moqema, or both.',
+    'type_in'                                => 'The service type must be either hourly or other.',
     'name_ar_max'                            => 'The Arabic name may not be greater than 100 characters.',
     'name_en_max'                            => 'The English name may not be greater than 100 characters.',
     'status_in'                              => 'The selected service status is invalid.',
     
     // Durations
     'durations_array'                        => 'The durations must be an array.',
-    'service_period_hours_required_if'       => 'The service period hours field is required when type is hourly or both.',
+    'service_period_hours_required_if'       => 'The service period hours field is required when type is hourly.',
     'service_period_hours_integer'          => 'The service period hours must be an integer.',
     'service_period_hours_min'              => 'The service period hours must be at least 1 hour.',
-    'allowed_contract_durations_required_if' => 'The allowed contract durations field is required when type is moqema or both.',
+    'allowed_contract_durations_required_if' => 'The allowed contract durations field is required when type is other.',
     'allowed_contract_durations_array'       => 'The allowed contract durations must be an array.',
-    'min_contract_months_required_if'        => 'The minimum contract months field is required when type is moqema or both.',
+    'min_contract_months_required_if'        => 'The minimum contract months field is required when type is other.',
     'min_contract_months_integer'           => 'The minimum contract months must be an integer.',
     'min_contract_months_min'               => 'The minimum contract months must be at least 1 month.',
 
@@ -501,11 +501,22 @@ return [
         'start_time_date_format' => 'The start time format is invalid. It must be (H:i).',
         'periods_count_required' => 'Please specify the number of required periods.',
         'periods_count_integer'  => 'The periods count must be an integer.',
-        'periods_count_min'      => 'You must select at least one period to book.',
-        'worker_ids_required'    => 'Please select at least one service provider.',
-        'worker_ids_array'       => 'The selected workers format is invalid.',
-        'worker_ids_min'         => 'At least one worker must be chosen to perform the service.',
         'worker_ids_exists'      => 'One or more of the selected workers does not exist or is currently unavailable.',
+        'date_after_or_equal'    => 'The booking date must be a date after or equal to today.',
+        'workers_count_required' => 'The workers count field is required.',
+        'workers_count_integer'  => 'The workers count must be an integer.',
+        'workers_count_min'      => 'The workers count must be at least 1.',
+        'dates_required'             => 'Please select at least one service date.',
+        'dates_array'                => 'The selected dates must be a list.',
+        'dates_exactly_three'        => 'Please select exactly 3 dates for the 3 visits per week schedule.',
+        'dates_exactly_one'          => 'Please select exactly 1 date for the single visit schedule.',
+        'dates_same_week'            => 'All selected dates must belong to the same calendar week.',
+        'dates_same_day_not_allowed' => 'Same-day booking is not allowed for date: :date.',
+        'dates_max_advance'          => 'The date :date cannot be further than :days days in advance.',
+        'workers_count_between'      => 'The workers count must be between :min and :max.',
+        'shift_invalid'              => 'The selected start time and duration must fit entirely within the service shift hours for all dates.',
+        'dates_unique'               => 'Duplicate dates are not allowed in the schedule.',
+        'customer_overlap'           => 'You already have an active booking scheduled at this date and time.',
     ],
 
 'report' => [

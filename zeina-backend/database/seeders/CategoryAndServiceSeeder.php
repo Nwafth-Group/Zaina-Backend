@@ -27,30 +27,31 @@ class CategoryAndServiceSeeder extends Seeder
             return;
         }
 
-        // قائمة الصور العشوائية للأقسام الفرعية والخدمات
+        // قائمة الصور العشوائية للخدمات
         $dummyIconsList = ['icon_1.jpg', 'icon_2.jpg', 'icon_3.jpg', 'cover_1.jpg', 'cover_2.jpg', 'cover_3.jpeg'];
 
-        // 1. تعريف الأقسام الرئيسية (Main Categories)
-        $mainCategoriesData = [
-            'cleaning'    => ['en' => 'Cleaning', 'ar' => 'تنظيف', 'icon' => 'cleanCategory.webp'],
-            'babysitting' => ['en' => 'Babysitting', 'ar' => 'رعاية أطفال', 'icon' => 'Babysitting.webp'],
-            'maintenance' => ['en' => 'Maintenance', 'ar' => 'صيانة منزلية', 'icon' => 'Maintenance.avif'],
-            'beauty'      => ['en' => 'Beauty & Spa', 'ar' => 'تجميل وعناية', 'icon' => 'Beauty&Spa.avif'],
+        // 1. تعريف الأقسام الرئيسية (Categories)
+        $categoriesData = [
+            'cleaning'    => ['en' => 'Cleaning Services', 'ar' => 'خدمات التنظيف', 'icon' => 'cleanCategory.webp'],
+            'babysitting' => ['en' => 'Nanny & Babysitting', 'ar' => 'رعاية الأطفال', 'icon' => 'Babysitting.webp'],
+            'hospitality' => ['en' => 'Hospitality Services', 'ar' => 'خدمات الضيافة', 'icon' => 'Babysitting.webp'],
+            'beauty'      => ['en' => 'Beauty & Care', 'ar' => 'التجميل والعناية', 'icon' => 'Beauty&Spa.avif'],
+            'maintenance' => ['en' => 'Home Maintenance', 'ar' => 'الصيانة المنزلية', 'icon' => 'Maintenance.avif'],
         ];
 
-        $mainCategories = [];
-        foreach ($mainCategoriesData as $key => $data) {
+        $categories = [];
+        foreach ($categoriesData as $key => $data) {
             $category = Category::firstOrCreate(
                 ['name_en' => $data['en'], 'parent_id' => null],
                 ['name_ar' => $data['ar'], 'status' => 'active', 'created_by' => $admin->id ?? null]
             );
-            $mainCategories[$key] = $category;
+            $categories[$key] = $category;
 
-            // رفع الميديا للقسم الرئيسي
+            // رفع الميديا للقسم
             $dummyIconPath = public_path('dummy/' . $data['icon']);
             if (file_exists($dummyIconPath)) {
                 $extension = pathinfo($dummyIconPath, PATHINFO_EXTENSION);
-                $iconName = 'category_main_' . $category->id . '_icon.' . $extension;
+                $iconName = 'category_' . $category->id . '_icon.' . $extension;
                 $iconPath = 'categories/icons/' . $iconName; 
                 
                 Storage::disk('public')->put($iconPath, file_get_contents($dummyIconPath));
@@ -68,62 +69,23 @@ class CategoryAndServiceSeeder extends Seeder
             }
         }
 
-        // 2. تعريف الأقسام الفرعية (Subcategories) 
-        $subCategoriesData = [
-            'home_cleaning'   => ['en' => 'Home Cleaning', 'ar' => 'تنظيف منازل', 'parent' => 'cleaning'],
-            'carpet_cleaning' => ['en' => 'Carpet & Furniture', 'ar' => 'سجاد ومفروشات', 'parent' => 'cleaning'],
-            'child_care'      => ['en' => 'Child Care', 'ar' => 'جليسة أطفال', 'parent' => 'babysitting'],
-            'plumbing'        => ['en' => 'Plumbing', 'ar' => 'سباكة', 'parent' => 'maintenance'],
-            'electrical'      => ['en' => 'Electrical', 'ar' => 'كهرباء', 'parent' => 'maintenance'],
-            'hair_makeup'     => ['en' => 'Hair & Makeup', 'ar' => 'شعر ومكياج', 'parent' => 'beauty'],
-        ];
-
-        $subCategories = [];
-        foreach ($subCategoriesData as $key => $data) {
-            $subCategory = Category::firstOrCreate(
-                ['name_en' => $data['en'], 'parent_id' => $mainCategories[$data['parent']]->id],
-                ['name_ar' => $data['ar'], 'status' => 'active', 'created_by' => $admin->id ?? null]
-            );
-            $subCategories[$key] = $subCategory;
-
-            // رفع الميديا للقسم الفرعي
-            $selectedIcon = Arr::random($dummyIconsList);
-            $dummyIconPath = public_path('dummy/' . $selectedIcon);
-            if (file_exists($dummyIconPath)) {
-                $extension = pathinfo($dummyIconPath, PATHINFO_EXTENSION);
-                $iconName = 'category_sub_' . $subCategory->id . '_icon.' . $extension;
-                $iconPath = 'categories/icons/' . $iconName;
-                
-                Storage::disk('public')->put($iconPath, file_get_contents($dummyIconPath));
-                
-                $subCategory->media()->updateOrCreate(
-                    ['collection' => 'category/icon'],
-                    [
-                        'file_name' => $iconName,
-                        'mime_type' => mime_content_type($dummyIconPath),
-                        'disk'      => 'public',
-                        'path'      => $iconPath,
-                        'size'      => Storage::disk('public')->size($iconPath),
-                    ]
-                );
-            }
-        }
-
-        // 3. تعريف الخدمات
+        // 2. تعريف الخدمات الجديدة المحددة بالصورة (9 خدمات)
         $servicesData = [
-            ['sub' => 'home_cleaning',   'type' => 'hourly', 'en' => 'Regular Home Cleaning',      'ar' => 'تنظيف منزلي عادي',   'price' => 80,  'period' => 2],
-            ['sub' => 'home_cleaning',   'type' => 'hourly', 'en' => 'Deep Home Cleaning',         'ar' => 'تنظيف منزلي عميق',   'price' => 120, 'period' => 3],
-            ['sub' => 'home_cleaning',   'type' => 'both',   'en' => 'Post-Construction Cleaning', 'ar' => 'تنظيف بعد التشطيب',  'price' => 150, 'period' => 4],
-            ['sub' => 'home_cleaning',   'type' => 'hourly', 'en' => 'Move-in/Move-out Cleaning',  'ar' => 'تنظيف نقل العفش',    'price' => 130, 'period' => 2],
-            ['sub' => 'carpet_cleaning', 'type' => 'hourly', 'en' => 'Sofa Deep Cleaning',          'ar' => 'تنظيف كنب عميق',     'price' => 60,  'period' => 2],
-            ['sub' => 'carpet_cleaning', 'type' => 'hourly', 'en' => 'Carpet Washing',             'ar' => 'غسيل سجاد',          'price' => 50,  'period' => 2],
-            ['sub' => 'child_care',      'type' => 'hourly', 'en' => 'Toddler Sitting',            'ar' => 'رعاية أطفال صغار',   'price' => 100, 'period' => 3],
-            ['sub' => 'plumbing',        'type' => 'both',   'en' => 'Leak Detection & Repair',    'ar' => 'كشف وإصلاح تسريبات', 'price' => 150, 'period' => 2],
-            ['sub' => 'electrical',      'type' => 'both',   'en' => 'Smart Home Setup',           'ar' => 'تأسيس أجهزة ذكية',   'price' => 250, 'period' => 2],
-            ['sub' => 'hair_makeup',     'type' => 'both',   'en' => 'Pedicure & Manicure',        'ar' => 'بديكير ومنكير',      'price' => 150, 'period' => 1],
+            // خدمات بالساعة (3)
+            ['cat' => 'cleaning',    'type' => 'hourly', 'en' => 'Domestic Helper (Hourly)', 'ar' => 'عاملة منزلية بالساعة', 'price' => 80, 'period' => 2, 'code' => 'DOMESTIC_HELPER_HOURLY'],
+            ['cat' => 'hospitality', 'type' => 'hourly', 'en' => 'Hospitality Worker (Hourly)', 'ar' => 'عاملة ضيافة بالساعة', 'price' => 90, 'period' => 2, 'code' => 'HOSPITALITY_WORKER_HOURLY'],
+            ['cat' => 'babysitting', 'type' => 'hourly', 'en' => 'Babysitter (Hourly)', 'ar' => 'جليسة اطفال بالساعة', 'price' => 100, 'period' => 3, 'code' => 'BABYSITTER_HOURLY'],
+            
+            // خدمات أخرى (6)
+            ['cat' => 'beauty',      'type' => 'other',  'en' => 'Manicure & Pedicure', 'ar' => 'مناكير و بدكير', 'price' => 150, 'period' => 1, 'code' => 'MANICURE_PEDICURE'],
+            ['cat' => 'cleaning',    'type' => 'other',  'en' => 'Sofa Cleaning', 'ar' => 'تنظيف الكنب', 'price' => 130, 'period' => 2, 'code' => 'SOFA_CLEANING'],
+            ['cat' => 'maintenance', 'type' => 'other',  'en' => 'AC Cleaning', 'ar' => 'تنظيف المكيفات', 'price' => 200, 'period' => 2, 'code' => 'AC_CLEANING'],
+            ['cat' => 'maintenance', 'type' => 'other',  'en' => 'Pest Control', 'ar' => 'مكافحة الحشرات', 'price' => 180, 'period' => 2, 'code' => 'PEST_CONTROL'],
+            ['cat' => 'cleaning',    'type' => 'other',  'en' => 'Cleaning of Stairs, Roofs & Yards', 'ar' => 'تنظيف السلالم والاسطح والاحواش', 'price' => 250, 'period' => 3, 'code' => 'OUTDOOR_CLEANING'],
+            ['cat' => 'cleaning',    'type' => 'other',  'en' => 'Water Tank Cleaning', 'ar' => 'تنظيف خزانات المياه', 'price' => 300, 'period' => 4, 'code' => 'WATER_TANK_CLEANING'],
         ];
 
-        // 4. إدخال الخدمات وتركيب القواعد والأسعار والمناطق
+        // 3. إدخال الخدمات وتركيب القواعد والأسعار والمناطق
         foreach ($servicesData as $index => $data) {
             $features = [
                 ['en' => 'Dusting All Surfaces', 'ar' => 'مسح جميع الأسطح'],
@@ -131,125 +93,95 @@ class CategoryAndServiceSeeder extends Seeder
                 ['en' => 'High-quality equipment', 'ar' => 'معدات عالية الجودة'],
             ];
 
-            $service = Service::firstOrCreate(
-                ['name_en' => $data['en']],
-                [
-                    'category_id'    => $subCategories[$data['sub']]->id,
-                    'type'           => $data['type'],
-                    'name_ar'        => $data['ar'],
-                    'description_ar' => 'وصف تفصيلي لخدمة ' . $data['ar'],
-                    'description_en' => 'Detailed description for ' . $data['en'],
-                    'features'       => $features,
-                    'status'         => 'active',
-                ]
-            );
-
-            // تحديث جدول المدد للنظام الجديد (service_period_hours)
-            DB::table('service_durations')->updateOrInsert(
-                ['service_id' => $service->id],
-                [
-                    'service_period_hours' => $data['period'], 
-                    'created_at'           => now(), 
-                    'updated_at'           => now()
-                ]
-            );
-
-            // إضافة القواعد الإدارية
-            DB::table('service_rules')->updateOrInsert(
-                ['service_id' => $service->id],
-                [
-                    'free_cancel_cutoff_hours' => 6,
-                    'reschedule_cutoff_hours'  => 4,
-                    'lead_time_min_hours'      => 3,
-                    'lead_time_max_days'       => 14,
-                    'late_cancel_action'       => 'fee',
-                    'late_cancel_fee_type'     => 'fixed',
-                    'late_cancel_fee_value'    => 50.00,
-                    'no_show_policy'           => 'consumed',
-                    'max_changes_per_booking'  => 2,
-                    'created_at' => now(), 'updated_at' => now()
-                ]
-            );
-
-            // 🌟 التعديل الجوهري والمضمون: التوزيع الجغرافي والأسعار 🌟
-            // أولاً: نضمن إدراج الخدمة في جميع المدن المتوفرة كـ سعر أساسي عام للمدينة (area_id = null)
+            // Build coverages matching the request body format
+            $coverages = [];
             foreach ($cities as $city) {
-                DB::table('service_coverages')->updateOrInsert(
-                    ['service_id' => $service->id, 'city_id' => $city->id, 'area_id' => null],
-                    ['status' => 'active', 'created_at' => now(), 'updated_at' => now()]
-                );
-
-                DB::table('service_prices')->updateOrInsert(
-                    ['service_id' => $service->id, 'city_id' => $city->id, 'area_id' => null],
-                    [
-                        'price_per_service_period' => $data['price'], // السعر الثابت للمدينة
-                        'currency'                 => 'EGP',
-                        'created_at'               => now(), 
-                        'updated_at'               => now()
-                    ]
-                );
+                $coverages[] = [
+                    'city_id' => $city->id,
+                    'area_id' => null,
+                    'status' => 'active',
+                ];
             }
 
-            // ثانياً: نطبق سيناريو تخصيص بعض المناطق لبعض الخدمات بشكل إضافي (تنوع البيانات للبوستمان)
-            // إذا كان مؤشر الخدمة فردياً، سنقوم بتخصيص أسعار مميزة لـ 3 مناطق عشوائية فوق سعر المدينة
             if ($index % 2 !== 0) {
                 $randomAreas = $areas->random(min(3, $areas->count()));
-
                 foreach ($randomAreas as $selectedArea) {
-                    // إدراج التغطية الخاصة بالمنطقة
-                    DB::table('service_coverages')->updateOrInsert(
-                        ['service_id' => $service->id, 'city_id' => $selectedArea->city_id, 'area_id' => $selectedArea->id],
-                        ['status' => 'active', 'created_at' => now(), 'updated_at' => now()]
-                    );
-
-                    // سعر مخصص للمنطقة (+- 10 أو 20) لغايات الفحص والاختبار بالبوستمان
-                    $areaCustomPrice = $data['price'] + rand(1, 2) * 10;
-
-                    DB::table('service_prices')->updateOrInsert(
-                        ['service_id' => $service->id, 'city_id' => $selectedArea->city_id, 'area_id' => $selectedArea->id],
-                        [
-                            'price_per_service_period' => $areaCustomPrice, 
-                            'currency'                 => 'EGP',
-                            'created_at'               => now(), 
-                            'updated_at'               => now()
-                        ]
-                    );
+                    $coverages[] = [
+                        'city_id' => $selectedArea->city_id,
+                        'area_id' => $selectedArea->id,
+                        'status' => 'active',
+                    ];
                 }
             }
 
-            // إضافة أوقات العمل للشفت (من 9 صباحاً لـ 5 مساءً ومن 6 مساءً لـ 11 مساءً)
-            $workingDays = ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday'];
-            foreach ($workingDays as $day) {
-                DB::table('service_schedules')->updateOrInsert(
-                    [
-                        'service_id' => $service->id, 
-                        'day'        => $day, 
-                        'start_time' => '09:00:00'
-                    ],
-                    [
-                        'end_time'   => '17:00:00',
-                        'is_active'  => true,
-                        'created_at' => now(),
-                        'updated_at' => now()
-                    ]
-                );
+            // Sync workers to this service
+            $workers = \App\Models\Worker::all();
+            if ($workers->isEmpty()) {
+                $workers = \App\Models\Worker::factory(5)->create(['status' => 'active']);
+            }
+            $workerIds = $workers->random(min(3, $workers->count()))->pluck('id')->toArray();
 
-                 DB::table('service_schedules')->updateOrInsert(
-                    [
-                        'service_id' => $service->id, 
-                        'day'        => $day, 
-                        'start_time' => '18:00:00'
-                    ],
-                    [
-                        'end_time'   => '23:00:00',
-                        'is_active'  => true,
-                        'created_at' => now(),
-                        'updated_at' => now()
-                    ]
-                );
+            // Construct payload matching StoreServiceRequest structure exactly
+            $payload = [
+                'category_id' => $categories[$data['cat']]->id,
+                'service_code' => $data['code'],
+                'type' => $data['type'],
+                'name_ar' => $data['ar'],
+                'name_en' => $data['en'],
+                'description_ar' => 'وصف تفصيلي لخدمة ' . $data['ar'],
+                'description_en' => 'Detailed description for ' . $data['en'],
+                'features' => $features,
+                'status' => 'active',
+                'workers' => $workerIds,
+
+                'available_visit_types' => [
+                    ['type' => 'single_visit', 'discount' => 0],
+                    ['type' => '3_days_per_week', 'discount' => 15]
+                ],
+                'base_price' => $data['price'],
+                'start_time' => '08:00',
+                'end_time' => '22:00',
+                'duration_unit' => 'Hours',
+                'default_duration' => $data['period'],
+                'has_duration_range' => true,
+                'min_duration' => 1,
+                'max_duration' => 4,
+                'min_workers' => 1,
+                'max_workers' => 3,
+
+                'coverages' => $coverages,
+
+                'working_days' => ['sunday', 'monday', 'tuesday'],
+                'shifts' => [
+                    ['start_time' => '09:00'],
+                    ['start_time' => '14:00']
+                ],
+
+                'terms_ar' => 'الشروط والأحكام الخاصة بالخدمة...',
+                'terms_en' => 'Terms and conditions for the service...',
+                'acceptance_required' => true,
+
+                'rules' => [
+                    'allow_cancel' => true,
+                    'free_cancel_cutoff_hours' => 24,
+                    'allow_reschedule' => true,
+                    'reschedule_cutoff_hours' => 48,
+                    'allow_same_day' => false,
+                    'max_advance_booking_days' => 30,
+                    'arrival_buffer_minutes' => 15,
+                    'late_arrival_grace_minutes' => 15,
+                ]
+            ];
+
+            // Write service and sync its relations using the ServiceWriter class
+            $service = Service::where('name_en', $data['en'])->first();
+            if ($service) {
+                $service = app(\App\Service\ServiceWriter::class)->update($service, $payload);
+            } else {
+                $service = app(\App\Service\ServiceWriter::class)->create($payload);
             }
 
-            // رفع صور الميديا للخدمة
+            // Sync media icon
             $selectedIcon = Arr::random($dummyIconsList);
             $dummyIconPath = public_path('dummy/' . $selectedIcon);
             if (file_exists($dummyIconPath)) {

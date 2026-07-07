@@ -28,6 +28,7 @@ class ServiceResource extends JsonResource
             'id' => $this->id,
             'category' => new CategoryResourse($this->whenLoaded('category')),
             'type' => $this->type,
+            'service_code' => $this->service_code,
             'name_ar' => $this->name_ar,
             'name_en' => $this->name_en,
             'description_ar' => $this->description_ar,
@@ -35,12 +36,30 @@ class ServiceResource extends JsonResource
             'features' => $this->features ?? [],
             'status' => $this->status,
             'avg_rating' => $this->avg_rating,
+            
+            // New Configuration Parameters
+            'available_visit_types' => $this->available_visit_types ?? [],
+            'discount_value' => $this->discount_value,
+            'terms_ar' => $this->terms_ar,
+            'terms_en' => $this->terms_en,
+            'acceptance_required' => (bool) $this->acceptance_required,
+            'start_time' => $this->start_time,
+            'end_time' => $this->end_time,
+            'default_duration' => $this->default_duration,
+            'duration_unit' => $this->duration_unit,
+            'has_duration_range' => (bool) $this->has_duration_range,
+            'min_duration' => $this->min_duration,
+            'max_duration' => $this->max_duration,
+            'min_workers' => $this->min_workers,
+            'max_workers' => $this->max_workers,
+            'base_price' => $this->base_price,
+
             'duration' => new ServiceDurationResource($this->whenLoaded('duration')),
             'rules' => new ServiceRuleResource($this->whenLoaded('rules')),
             'coverages' => ServiceCoverageResource::collection($this->whenLoaded('coverages')),
             'prices' => ServicePriceResource::collection($this->whenLoaded('priceRules')),
             'image' => $media ? (new MediaResource($media))->getFileUrl() : null,
-
+ 
             'price_details' => [
                 'price_per_service_period' => $priceObj ? $priceObj->price_per_service_period : 0,
                 'currency' => $priceObj ? $priceObj->currency : 'EGP',

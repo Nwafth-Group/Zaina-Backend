@@ -116,6 +116,7 @@ return [
 
     'service_details_retrieved' => 'تم جلب تفاصيل الخدمة بنجاح.',
     'service_not_available' => 'هذه الخدمة غير متاحة حالياً في موقعك.',
+    'category_not_available' => 'هذا القسم غير متاح حالياً.',
 
     'shifts_retrieved' => 'تم جلب الشفتات بنجاح.',
 
@@ -167,7 +168,6 @@ return [
     'cannot_delete_default_address' => 'لا يمكن حذف العنوان الافتراضي. يرجى تعيين عنوان آخر كافتراضي قبل حذف هذا العنوان.',
     'address_set_as_default' => 'تم تعيين العنوان كافتراضي بنجاح.',
     'service_updated_successfully' => 'تم تحديث الخدمة بنجاح.',
-    'error_occurred' => 'حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى لاحقًا.',
     'service_retrieved_successfully' => 'تم جلب الخدمة بنجاح.',
     'points_summary_retrieved' => 'تم جلب ملخص النقاط بنجاح.',
     'points' => [
@@ -229,5 +229,10 @@ return [
     'ad_toggle_success' => 'البانر الآن :status.',
     'earn' => 'نقاط مكتسبة',
     'redeem' => 'نقاط مستبدلة',
-
+    'service_not_available_in_location' => 'هذه الخدمة غير متوفرة في موقعك الحالي.',
+    'error_occurred' => 'حدث خطأ غير متوقع أثناء المعالجة.',
+    'no_active_address' => 'لم يتم العثور على عنوان حفظ نشط لهذا المستخدم.',
+    'coverage_check_completed' => 'تم التحقق من تغطية الخدمة بنجاح.',
+    'worker_assignment_updated_title' => 'تحديث تعيين العمالة 🏠',
+    'worker_assignment_updated_body' => 'تم تعيين أو تعديل العمالة الخاصة بحجزك رقم :ref بنجاح.',
 ];

@@ -114,6 +114,7 @@ return [
 
     'service_details_retrieved' => 'Service details retrieved successfully.',
     'service_not_available' => 'This service is currently not available in your location.',
+    'category_not_available' => 'This category is currently not available.',
 
     'shifts_retrieved' => 'Shifts retrieved successfully.',
 
@@ -235,5 +236,9 @@ return [
     'ad_toggle_success' => 'Banner is now :status.',
     'earn' => 'Earned Points',
     'redeem' => 'Redeemed Points',
-
+    'service_not_available_in_location' => 'This service is not available in your current location.',
+    'no_active_address' => 'No active saved address found for this user.',
+    'coverage_check_completed' => 'Coverage check completed successfully.',
+    'worker_assignment_updated_title' => 'Worker Assignment Update 🏠',
+    'worker_assignment_updated_body' => 'Workers have been successfully assigned or updated for your booking :ref.',
 ];

@@ -23,6 +23,10 @@ class ServiceWriter
     private const BASE_FIELDS = [
         'category_id', 'type', 'name_ar', 'name_en',
         'description_ar', 'description_en', 'status', 'features',
+        'service_code', 'available_visit_types', 'discount_value', 'terms_ar',
+        'terms_en', 'acceptance_required', 'start_time', 'end_time',
+        'default_duration', 'duration_unit', 'has_duration_range',
+        'min_duration', 'max_duration', 'min_workers', 'max_workers', 'base_price',
     ];
 
     /**
@@ -90,7 +94,24 @@ class ServiceWriter
      */
     private function syncRelations(Service $service, array $data): void
     {
-        if (array_key_exists('durations', $data)) {
+        // For backward compatibility, keep the duration relationship updated
+        $durationData = [];
+        if (isset($data['default_duration'])) {
+            $durationData['service_period_hours'] = $data['default_duration'];
+        } elseif (isset($data['durations']['service_period_hours'])) {
+            $durationData['service_period_hours'] = $data['durations']['service_period_hours'];
+        }
+
+        if (isset($data['durations']['allowed_contract_durations'])) {
+            $durationData['allowed_contract_durations'] = $data['durations']['allowed_contract_durations'];
+        }
+        if (isset($data['durations']['min_contract_months'])) {
+            $durationData['min_contract_months'] = $data['durations']['min_contract_months'];
+        }
+
+        if (!empty($durationData)) {
+            $service->duration()->updateOrCreate(['service_id' => $service->id], $durationData);
+        } elseif (array_key_exists('durations', $data)) {
             $service->duration()->updateOrCreate(['service_id' => $service->id], $data['durations']);
         }
 
@@ -112,7 +133,45 @@ class ServiceWriter
             $service->workers()->sync($data['workers']);
         }
 
-        if (array_key_exists('schedules', $data)) {
+        if (array_key_exists('working_days', $data) || array_key_exists('shifts', $data)) {
+            $workingDays = array_key_exists('working_days', $data) 
+                ? $data['working_days'] 
+                : $service->schedules()->pluck('day')->unique()->toArray();
+            
+            $shifts = array_key_exists('shifts', $data) 
+                ? $data['shifts'] 
+                : $service->schedules()->get()->map(function($s) {
+                    return [
+                        'start_time' => \Carbon\Carbon::parse($s->start_time)->format('H:i'),
+                        'end_time' => $s->end_time ? \Carbon\Carbon::parse($s->end_time)->format('H:i') : null,
+                    ];
+                })->unique('start_time')->values()->toArray();
+
+            $service->schedules()->delete();
+            $schedulesToCreate = [];
+            $defaultDuration = (int) ($data['default_duration'] ?? $service->default_duration ?? 1);
+
+            foreach ($workingDays as $day) {
+                foreach ($shifts as $shift) {
+                    if (empty($shift['start_time'])) {
+                        continue;
+                    }
+                    $start = \Carbon\Carbon::parse($shift['start_time']);
+                    
+                    $end = !empty($shift['end_time'])
+                        ? \Carbon\Carbon::parse($shift['end_time'])
+                        : $start->copy()->addHours($defaultDuration);
+                    
+                    $schedulesToCreate[] = [
+                        'day' => $day,
+                        'start_time' => $start->format('H:i:s'),
+                        'end_time' => $end->format('H:i:s'),
+                        'is_active' => true,
+                    ];
+                }
+            }
+            $service->schedules()->createMany($schedulesToCreate);
+        } elseif (array_key_exists('schedules', $data)) {
             $service->schedules()->delete();
             $service->schedules()->createMany($data['schedules']);
         }

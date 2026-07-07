@@ -26,6 +26,13 @@ return new class extends Migration
             // سياسات عدم الحضور والتعديلات
             $table->enum('no_show_policy', ['compensate', 'consumed'])->default('consumed');
             $table->integer('max_changes_per_booking')->default(0);
+            
+            // New UI Config Rules
+            $table->boolean('allow_cancel')->default(true);
+            $table->boolean('allow_reschedule')->default(true);
+            $table->boolean('allow_same_day')->default(false);
+            $table->integer('max_advance_booking_days')->default(0);
+            
             $table->timestamps();
         });
     }
