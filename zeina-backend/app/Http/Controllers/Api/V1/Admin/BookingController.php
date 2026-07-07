@@ -255,6 +255,7 @@ class BookingController extends Controller
             ]);
         });
 
+        
         // Rule BR-16 / BR-17: Notify customer via push notification, database, and SMS queue
         try {
             if ($booking->customer) {
