@@ -219,12 +219,12 @@ class BookingCouponTest extends TestCase
         ]);
         $coupon->cities()->attach($city->id);
 
-        // Scenario 1: Customer has no completed bookings -> excluded from V2
-        $response = $this->getJson('/api/v2/customer/coupons');
+        // Scenario 1: Customer has no completed bookings -> excluded from V1
+        $response = $this->getJson('/api/v1/customer/coupons');
         $response->assertStatus(200);
         $this->assertEmpty($response->json('data.items'));
 
-        // Scenario 2: Create completed bookings, but customer address is in different city -> excluded from V2
+        // Scenario 2: Create completed bookings, but customer address is in different city -> excluded from V1
         Booking::factory()->count(2)->create([
             'customer_id' => $user->id,
             'status' => 'completed'
@@ -239,11 +239,11 @@ class BookingCouponTest extends TestCase
             'is_active' => true
         ]);
 
-        $response = $this->getJson('/api/v2/customer/coupons');
+        $response = $this->getJson('/api/v1/customer/coupons');
         $response->assertStatus(200);
         $this->assertEmpty($response->json('data.items'));
 
-        // Scenario 3: Update customer default address to match eligible city -> coupon returned in V2
+        // Scenario 3: Update customer default address to match eligible city -> coupon returned in V1
         CustomerAddress::where('user_id', $user->id)->update(['is_default' => false]);
         CustomerAddress::factory()->create([
             'user_id' => $user->id,
@@ -252,8 +252,96 @@ class BookingCouponTest extends TestCase
             'is_active' => true
         ]);
 
-        $response = $this->getJson('/api/v2/customer/coupons');
+        $response = $this->getJson('/api/v1/customer/coupons');
         $response->assertStatus(200);
         $response->assertJsonFragment(['code' => $coupon->code]);
+    }
+
+    public function test_customer_can_apply_coupon_to_booking_draft(): void
+    {
+        $user = $this->actingAsCustomer(['status' => 'active', 'verification_status' => 'approved']);
+        $city = City::factory()->create(['status' => 'active']);
+        $area = Area::factory()->create(['city_id' => $city->id, 'status' => 'active']);
+        
+        $address = \App\Models\CustomerAddress::factory()->create([
+            'user_id' => $user->id,
+            'area_id' => $area->id,
+            'is_default' => true,
+            'is_active' => true
+        ]);
+
+        $service = \App\Models\Service::factory()->create([
+            'status' => 'active',
+            'base_price' => 200.00,
+            'min_workers' => 1,
+            'max_workers' => 3
+        ]);
+
+        \App\Models\ServiceDuration::factory()->create([
+            'service_id' => $service->id,
+            'service_period_hours' => 2
+        ]);
+
+        $dayName = strtolower(now()->addDay()->format('l'));
+        \App\Models\ServiceSchedule::factory()->create([
+            'service_id' => $service->id,
+            'day' => $dayName,
+            'start_time' => '08:00:00',
+            'end_time' => '16:00:00',
+            'is_active' => true
+        ]);
+
+        \App\Models\ServiceCoverage::factory()->create([
+            'service_id' => $service->id,
+            'city_id' => $city->id,
+            'area_id' => $area->id,
+            'status' => 'active'
+        ]);
+
+        $worker = \App\Models\Worker::factory()->create(['status' => 'active']);
+        $service->workers()->attach($worker->id);
+
+        $coupon = Coupon::factory()->create([
+            'code' => 'COUPON50',
+            'type' => 'fixed',
+            'value' => 50.00,
+            'min_booking_amount' => 100.00,
+            'start_date' => now()->subDay(),
+            'end_date' => now()->addDay(),
+            'status' => 'active',
+            'is_for_all_users' => true,
+            'is_for_all_cities' => true,
+            'is_for_all_services' => true
+        ]);
+
+        // Validate booking details with coupon code
+        $payload = [
+            'service_id' => $service->id,
+            'address_id' => $address->id,
+            'dates' => [now()->addDay()->toDateString()],
+            'start_time' => '10:00',
+            'workers_count' => 1,
+            'coupon_code' => 'COUPON50'
+        ];
+
+        $response = $this->postJson('/api/v1/customer/bookings/apply-coupon', $payload);
+        $response->assertOk();
+        $response->assertJsonStructure([
+            'status',
+            'data' => [
+                'worker_ids',
+                'pricing' => [
+                    'subtotal',
+                    'tax',
+                    'discount',
+                    'coupon_discount_amount',
+                    'total'
+                ]
+            ]
+        ]);
+
+        $this->assertEquals(200.00, $response->json('data.pricing.subtotal'));
+        $this->assertEquals(50.00, $response->json('data.pricing.coupon_discount_amount'));
+        $this->assertEquals(150.00, $response->json('data.pricing.total'));
     }
 }

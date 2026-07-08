@@ -5,39 +5,79 @@ namespace App\Http\Controllers\Api\V1\Customer;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\V1\Coupon\CouponResource;
 use App\Models\Coupon;
+use App\Models\Booking;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\Request;
 
 class CouponController extends Controller
 { 
+    use ApiResponseTrait;
 
-use ApiResponseTrait;
     /**
      * Display a listing of the resource.
      */
     public function index(Request $request)
     {
-        $customerId = auth()->id();
+        $user = auth()->user();
         $now = now();
 
-        // بناء الاستعلام الذكي
-        $coupons = Coupon::where('status', 'active')
+        $completedBookingsCount = 0;
+        $defaultAddress = null;
+
+        if ($user) {
+            $completedBookingsCount = Booking::where('customer_id', $user->id)
+                ->where('status', 'completed')
+                ->count();
+
+            $defaultAddress = $user->addresses()
+                ->where('is_default', true)
+                ->where('is_active', true)
+                ->with('area')
+                ->first();
+        }
+
+        // Build elegant Eloquent query
+        $query = Coupon::where('status', 'active')
             ->where('start_date', '<=', $now)
-            ->where('end_date', '>=', $now) // نضمن أن الكوبون فعال زمنياً ولم ينتهِ
-            ->where(function ($query) use ($customerId) {
-                // أ. الكوبون عام لكل الناس
-                $query->where('is_for_all_users', true)
-                // ب. أو الكوبون مخصص وامتياز لهذا الكستمر تحديداً عبر جدول الربط الوسيط
-                      ->orWhere(function ($subQ) use ($customerId) {
-                          $subQ->where('is_for_all_users', false)
-                               ->whereHas('users', function ($uQ) use ($customerId) {
-                                   $uQ->where('user_id', $customerId);
-                               });
-                      });
-            })
-            // إذا كان الكوبون لخدمات مخصصة، نسحب الخدمات معه فوراً لمنع الـ N+1
-            ->with('services')
-            ->get();
+            ->where('end_date', '>=', $now)
+            ->where('completed_bookings_count', '<=', $completedBookingsCount)
+            ->where(function ($q) use ($user) {
+                $q->where('is_for_all_users', true);
+                if ($user) {
+                    $q->orWhereHas('users', function ($uQ) use ($user) {
+                        $uQ->where('users.id', $user->id);
+                    });
+                }
+            });
+
+        // Location filtering based on user default address
+        if ($user && $defaultAddress) {
+            $areaId = $defaultAddress->area_id;
+            $cityId = $defaultAddress->area ? $defaultAddress->area->city_id : null;
+
+            $query->where(function ($q) use ($cityId, $areaId) {
+                $q->where('is_for_all_cities', true)
+                  ->orWhere(function ($subQ) use ($cityId, $areaId) {
+                      $subQ->where('is_for_all_cities', false)
+                           ->where(function ($locQ) use ($cityId, $areaId) {
+                               if ($areaId) {
+                                   $locQ->whereHas('areas', function ($aQ) use ($areaId) {
+                                       $aQ->where('areas.id', $areaId);
+                                   });
+                               }
+                               if ($cityId) {
+                                   $locQ->orWhere(function ($citySubQ) use ($cityId) {
+                                       $citySubQ->whereHas('cities', function ($cQ) use ($cityId) {
+                                           $cQ->where('cities.id', $cityId);
+                                       })->whereDoesntHave('areas');
+                                   });
+                               }
+                           });
+                  });
+            });
+        }
+
+        $coupons = $query->with(['services', 'cities', 'areas'])->get();
 
         return $this->successResponse(
             CouponResource::collection($coupons), 
@@ -46,26 +86,69 @@ use ApiResponseTrait;
     }
 
     /**
-     * عرض تفاصيل كوبون محدد للكستمر
+     * Display the specified resource.
      */
     public function show($id)
     {
-        $customerId = auth()->id();
+        $user = auth()->user();
         $now = now();
 
-        // جلب الكوبون مع التأكد التام أن العميل يملك صلاحية رؤيته واستخدامه
-        $coupon = Coupon::where('id', $id)
+        $completedBookingsCount = 0;
+        $defaultAddress = null;
+
+        if ($user) {
+            $completedBookingsCount = Booking::where('customer_id', $user->id)
+                ->where('status', 'completed')
+                ->count();
+
+            $defaultAddress = $user->addresses()
+                ->where('is_default', true)
+                ->where('is_active', true)
+                ->with('area')
+                ->first();
+        }
+
+        $query = Coupon::where('id', $id)
             ->where('status', 'active')
             ->where('start_date', '<=', $now)
             ->where('end_date', '>=', $now)
-            ->where(function ($query) use ($customerId) {
-                $query->where('is_for_all_users', true)
-                      ->orWhereHas('users', function ($uQ) use ($customerId) {
-                          $uQ->where('user_id', $customerId);
-                      });
-            })
-            ->with('services')
-            ->first();
+            ->where('completed_bookings_count', '<=', $completedBookingsCount)
+            ->where(function ($q) use ($user) {
+                $q->where('is_for_all_users', true);
+                if ($user) {
+                    $q->orWhereHas('users', function ($uQ) use ($user) {
+                        $uQ->where('users.id', $user->id);
+                    });
+                }
+            });
+
+        if ($user && $defaultAddress) {
+            $areaId = $defaultAddress->area_id;
+            $cityId = $defaultAddress->area ? $defaultAddress->area->city_id : null;
+
+            $query->where(function ($q) use ($cityId, $areaId) {
+                $q->where('is_for_all_cities', true)
+                  ->orWhere(function ($subQ) use ($cityId, $areaId) {
+                      $subQ->where('is_for_all_cities', false)
+                           ->where(function ($locQ) use ($cityId, $areaId) {
+                               if ($areaId) {
+                                   $locQ->whereHas('areas', function ($aQ) use ($areaId) {
+                                       $aQ->where('areas.id', $areaId);
+                                   });
+                               }
+                               if ($cityId) {
+                                   $locQ->orWhere(function ($citySubQ) use ($cityId) {
+                                       $citySubQ->whereHas('cities', function ($cQ) use ($cityId) {
+                                           $cQ->where('cities.id', $cityId);
+                                       })->whereDoesntHave('areas');
+                                   });
+                               }
+                           });
+                  });
+            });
+        }
+
+        $coupon = $query->with(['services', 'cities', 'areas'])->first();
 
         if (!$coupon) {
             return $this->errorResponse(
@@ -78,30 +161,5 @@ use ApiResponseTrait;
             new CouponResource($coupon), 
             __('messages.coupon_details_retrieved') ?? 'Coupon details retrieved successfully.'
         );
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
-    {
-        //
-    }
-
-    
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
     }
 }

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Resources\Api\V2\Booking;
+namespace App\Http\Resources\Api\V1\Booking;
 
 use Carbon\Carbon;
 use Illuminate\Http\Request;

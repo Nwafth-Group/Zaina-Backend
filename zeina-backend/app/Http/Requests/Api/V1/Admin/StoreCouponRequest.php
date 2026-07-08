@@ -40,12 +40,17 @@ class StoreCouponRequest extends CustomFormRequest
             'start_date' => ['required', 'date', 'after_or_equal:today'],
             'end_date' => ['required', 'date', 'after_or_equal:start_date'],
             
-            'usage_limit' => ['required', 'integer', 'min:1'],
+            'usage_limit' => ['nullable', 'integer', 'min:1'],
             'user_usage_limit' => [
                 'required',
                 'integer',
                 'min:1',
-                'max:' . ($this->input('usage_limit') ?? 999999)
+                function ($attribute, $value, $fail) {
+                    $usageLimit = $this->input('usage_limit');
+                    if (!is_null($usageLimit) && $value > $usageLimit) {
+                        $fail('The user usage limit field must not be greater than ' . $usageLimit . '.');
+                    }
+                }
             ],
             
             'is_for_all_users' => ['required', 'boolean'],

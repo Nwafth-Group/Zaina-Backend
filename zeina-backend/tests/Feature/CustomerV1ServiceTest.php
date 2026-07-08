@@ -10,14 +10,14 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\ActsAsAdmin;
 use Tests\TestCase;
 
-class CustomerV2ServiceTest extends TestCase
+class CustomerV1ServiceTest extends TestCase
 {
     use RefreshDatabase;
     use ActsAsAdmin;
 
     private const ADMIN_ENDPOINT = '/api/v1/admin/services';
     private const V1_CUSTOMER_ENDPOINT = '/api/v1/customer/services';
-    private const V2_CUSTOMER_ENDPOINT = '/api/v2/customer/services';
+    private const V2_CUSTOMER_ENDPOINT = '/api/v1/customer/services';
 
     public function test_v2_customer_cannot_view_active_services_under_inactive_category(): void
     {
@@ -77,19 +77,7 @@ class CustomerV2ServiceTest extends TestCase
         $this->getJson(self::V2_CUSTOMER_ENDPOINT . "/{$service->id}/available-workers?date=2026-07-12&start_time=09:00")->assertStatus(404);
     }
 
-    public function test_v1_customer_available_workers_periods_count_is_required(): void
-    {
-        $category = Category::factory()->create(['status' => 'active']);
-        $service = Service::factory()->create([
-            'category_id' => $category->id,
-            'status' => 'active'
-        ]);
 
-        // V1 endpoint: periods_count is required, should fail with 422 if missing
-        $response = $this->getJson(self::V1_CUSTOMER_ENDPOINT . "/{$service->id}/available-workers?date=2026-07-06&start_time=10:00");
-        $response->assertStatus(422);
-        $response->assertJsonStructure(['params' => ['periods_count']]);
-    }
 
     public function test_admin_cannot_update_service_code(): void
     {
@@ -181,7 +169,7 @@ class CustomerV2ServiceTest extends TestCase
 
     public function test_v2_customer_home_page_only_returns_banners_and_upcoming_appointment(): void
     {
-        $response = $this->getJson('/api/v2/customer/home');
+        $response = $this->getJson('/api/v1/customer/home');
         $response->assertStatus(200);
 
         // Verify keys in the data envelope

@@ -42,12 +42,9 @@ Route::prefix('customer')->group(function () {
     Route::get('home', [HomeController::class, 'index']);
     Route::get('/categories', [CategoryController::class, 'getMainCategories']); // 4
     Route::get('/categories/{category}/sub', [CategoryController::class, 'getSubcategories']); //
-    Route::get('/services/{service}', [ServiceController::class, 'show']); // 3
-    Route::get('services/{service}/shifts', [ServiceController::class, 'getShiftsForDate']); //
-    Route::get('services/{service}/available-duration', [ServiceController::class, 'getAvailableDurations']); //
-    Route::get('/services/{service}/available-workers', [ServiceController::class, 'getAvailableWorkers']);
-    Route::get('/services', [ServiceController::class, 'index']); // 1  // لجلب كل الخدمات مع Paginate
-    Route::get('/categories/{category}/services', [ServiceController::class, 'getServicesByCategory']); // 2
+    Route::get('/services', [ServiceController::class, 'index']);
+    Route::get('/services/{service}', [ServiceController::class, 'show']);
+    Route::get('/services/{service}/available-visit-types', [ServiceController::class, 'getAvailableVisitTypes']);
     Route::get('/reviews/{service}', [ReviewController::class, 'index']); // 5
 
     Route::prefix('legal')->group(function () {
@@ -82,7 +79,12 @@ Route::prefix('customer')->group(function () {
         Route::post('address/{id}/set-default', [AddressController::class, 'setDefault']);
         // Home page
 
+        // Services coverage
+        Route::get('/services/{service}/check-coverage', [ServiceController::class, 'checkCoverage']);
+
         // Bookings
+        Route::post('/bookings/validate', [BookingController::class, 'validateBooking']);
+        Route::post('/bookings/apply-coupon', [BookingController::class, 'applyCoupon']);
         Route::get('/reports', [BookingController::class, 'myReports']);
         Route::get('/reports/{report}', [BookingController::class, 'showReport']);
         Route::apiResource('bookings', BookingController::class);

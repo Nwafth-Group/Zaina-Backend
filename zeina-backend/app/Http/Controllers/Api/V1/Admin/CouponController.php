@@ -20,7 +20,7 @@ class CouponController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Coupon::query();
+        $query = Coupon::withCount(['users', 'cities', 'areas', 'services']);
 
         // 1. Search filter by code or name
         if ($request->filled('search')) {

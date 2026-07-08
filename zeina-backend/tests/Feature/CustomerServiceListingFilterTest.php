@@ -11,7 +11,7 @@ class CustomerServiceListingFilterTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const ENDPOINT = '/api/v2/customer/services';
+    private const ENDPOINT = '/api/v1/customer/services';
 
     public function test_customer_can_list_all_active_services(): void
     {
