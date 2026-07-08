@@ -21,6 +21,30 @@ class BookingListResource extends JsonResource
         $dayName = $startDate->isoFormat('dddd');
         $startDayAndDate = "{$dayName}, {$startDate->format('d M Y')}";
 
+        $expectedArrivalTime = null;
+        if ($this->service && $this->service->relationLoaded('rules') && $this->service->rules) {
+            $rules = $this->service->rules;
+            $buffer = (int) ($rules->arrival_buffer_minutes ?? 0);
+            $grace = (int) ($rules->late_arrival_grace_minutes ?? 0);
+
+            $startTime = Carbon::parse($this->start_time);
+            $fromTime = $startTime->copy()->subMinutes($buffer)->format('g:i A');
+            $toTime = $startTime->copy()->addMinutes($grace)->format('g:i A');
+            
+            $expectedArrivalTime = "{$fromTime} - {$toTime}";
+        }
+
+        $firstVisitDate = $this->booking_date;
+        $firstVisitFormatted = $startDayAndDate;
+        if ($this->relationLoaded('visits') && $this->visits && $this->visits->isNotEmpty()) {
+            $firstVisit = $this->visits->sortBy('visit_date')->first();
+            $firstVisitDate = $firstVisit->visit_date;
+            
+            $fvDate = Carbon::parse($firstVisitDate);
+            $fvDayName = $fvDate->isoFormat('dddd');
+            $firstVisitFormatted = "{$fvDayName}, {$fvDate->format('d M Y')}";
+        }
+
         return [
             'booking_id'        => $this->id,
             'booking_reference' => $this->booking_ref,
@@ -28,6 +52,9 @@ class BookingListResource extends JsonResource
             'service_date'      => $this->booking_date,
             'start_time'        => Carbon::parse($this->start_time)->format('H:i'),
             'end_time'          => Carbon::parse($this->end_time)->format('H:i'),
+            'expected_arrival_time' => $expectedArrivalTime,
+            'first_schedule_date'   => $firstVisitDate,
+            'first_schedule_date_formatted' => $firstVisitFormatted,
             'booking_status'    => $this->status,
             'visit_type'        => $this->visit_type ?? 'single_visit',
             'visit_schedule'    => $this->relationLoaded('visits') && $this->visits ? $this->visits->map(fn($v) => [

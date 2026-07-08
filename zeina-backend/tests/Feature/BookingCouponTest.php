@@ -344,4 +344,64 @@ class BookingCouponTest extends TestCase
         $this->assertEquals(50.00, $response->json('data.pricing.coupon_discount_amount'));
         $this->assertEquals(150.00, $response->json('data.pricing.total'));
     }
+
+    public function test_customer_bookings_index_includes_expected_arrival_time_and_schedule_dates(): void
+    {
+        $user = $this->actingAsCustomer(['status' => 'active', 'verification_status' => 'approved']);
+        $city = City::factory()->create(['status' => 'active']);
+        $area = Area::factory()->create(['city_id' => $city->id, 'status' => 'active']);
+        $address = CustomerAddress::factory()->create([
+            'user_id' => $user->id,
+            'area_id' => $area->id,
+            'is_default' => true,
+            'is_active' => true
+        ]);
+
+        $service = Service::factory()->create([
+            'status' => 'active',
+            'base_price' => 120.00
+        ]);
+
+        \App\Models\ServiceRule::factory()->create([
+            'service_id' => $service->id,
+            'arrival_buffer_minutes' => 15,
+            'late_arrival_grace_minutes' => 30
+        ]);
+
+        $booking = Booking::create([
+            'booking_ref' => 'BK-INDEX-TEST',
+            'customer_id' => $user->id,
+            'service_id' => $service->id,
+            'address_id' => $address->id,
+            'booking_date' => '2026-08-15',
+            'start_time' => '14:00:00',
+            'end_time' => '16:00:00',
+            'duration_minutes' => 120,
+            'total_amount' => 120.00,
+            'price_subtotal' => 120.00,
+            'status' => 'Upcoming',
+            'payment_status' => 'paid',
+            'payment_method' => 'wallet',
+        ]);
+
+        $response = $this->getJson('/api/v1/customer/bookings');
+        $response->assertOk();
+        $response->assertJsonStructure([
+            'data' => [
+                'items' => [
+                    [
+                        'booking_id',
+                        'expected_arrival_time',
+                        'first_schedule_date',
+                        'first_schedule_date_formatted'
+                    ]
+                ]
+            ]
+        ]);
+
+        // 14:00 - 15 mins buffer = 13:45 (1:45 PM); 14:00 + 30 mins grace = 14:30 (2:30 PM)
+        $this->assertEquals('1:45 PM - 2:30 PM', $response->json('data.items.0.expected_arrival_time'));
+        $this->assertEquals('2026-08-15', $response->json('data.items.0.first_schedule_date'));
+        $this->assertStringContainsString('15 Aug 2026', $response->json('data.items.0.first_schedule_date_formatted'));
+    }
 }
