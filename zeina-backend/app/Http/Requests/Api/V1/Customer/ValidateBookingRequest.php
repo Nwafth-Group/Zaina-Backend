@@ -31,6 +31,7 @@ class ValidateBookingRequest extends FormRequest
             'workers_count'          => ['required', 'integer', 'min:1'],
             'preferred_worker_ids'   => ['nullable', 'array'],
             'preferred_worker_ids.*' => ['exists:workers,id'],
+            'coupon_code'            => ['nullable', 'string'],
         ];
     }
 

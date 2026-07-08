@@ -324,7 +324,7 @@ class BookingCouponTest extends TestCase
             'coupon_code' => 'COUPON50'
         ];
 
-        $response = $this->postJson('/api/v1/customer/bookings/apply-coupon', $payload);
+        $response = $this->postJson('/api/v1/customer/bookings/validate', $payload);
         $response->assertOk();
         $response->assertJsonStructure([
             'status',

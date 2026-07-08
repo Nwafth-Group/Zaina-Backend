@@ -94,36 +94,6 @@ class BookingController extends Controller
     }
 
     /**
-     * Apply coupon code to a booking draft to calculate updated price breakdown.
-     */
-    public function applyCoupon(ValidateBookingRequest $request)
-    {
-        $user = auth()->user();
-
-        $request->validate([
-            'coupon_code' => ['required', 'string'],
-        ]);
-
-        try {
-            $result = $this->customerBookingService->allocateWorkersAndCalculatePrice($user, array_merge($request->validated(), [
-                'coupon_code' => $request->coupon_code,
-            ]));
-            return $this->successResponse($result, __('messages.coupon_applied_successfully') ?? 'Coupon applied successfully.');
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            throw $e;
-        } catch (\Exception $e) {
-            Log::error('Apply coupon failed: ' . $e->getMessage(), [
-                'exception' => $e,
-                'user_id' => auth()->id(),
-                'request' => $request->all(),
-            ]);
-            $statusCode = in_array($e->getCode(), [400, 402, 422, 429]) ? $e->getCode() : 500;
-            $msg = $statusCode === 500 ? __('messages.error_occurred') : $e->getMessage();
-            return $this->errorResponse($msg, $statusCode);
-        }
-    }
-
-    /**
      * Step 2: Store booking after worker allocation.
      */
     public function store(StoreBookingRequestV2 $request)

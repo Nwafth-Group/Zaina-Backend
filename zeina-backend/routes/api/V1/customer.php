@@ -84,7 +84,6 @@ Route::prefix('customer')->group(function () {
 
         // Bookings
         Route::post('/bookings/validate', [BookingController::class, 'validateBooking']);
-        Route::post('/bookings/apply-coupon', [BookingController::class, 'applyCoupon']);
         Route::get('/reports', [BookingController::class, 'myReports']);
         Route::get('/reports/{report}', [BookingController::class, 'showReport']);
         Route::apiResource('bookings', BookingController::class);
