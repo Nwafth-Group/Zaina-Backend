@@ -241,4 +241,20 @@ return [
     'coverage_check_completed' => 'Coverage check completed successfully.',
     'worker_assignment_updated_title' => 'Worker Assignment Update 🏠',
     'worker_assignment_updated_body' => 'Workers have been successfully assigned or updated for your booking :ref.',
+    
+    // Coupons eligibility and CRUD
+    'coupon_inactive' => 'This coupon is not active.',
+    'coupon_not_started' => 'This coupon validity period has not started yet.',
+    'coupon_expired' => 'This coupon has expired.',
+    'coupon_user_limit_reached' => 'You have reached your maximum usage limit for this coupon.',
+    'coupon_unauthenticated' => 'Please log in to apply this coupon.',
+    'coupon_not_for_user' => 'This coupon is not assigned to your account.',
+    'coupon_address_required' => 'A booking address is required to validate location eligibility.',
+    'coupon_location_ineligible' => 'This coupon is not available for your selected booking location.',
+    'coupon_insufficient_completed_bookings' => 'You do not meet the minimum completed bookings requirement to use this coupon.',
+    'coupon_service_ineligible' => 'This coupon cannot be applied to the selected service.',
+    'coupon_visit_type_ineligible' => 'This coupon cannot be applied to the selected visit type.',
+    'coupon_shift_ineligible' => 'This coupon cannot be applied to the selected shift or service time.',
+    'coupon_updated_successfully' => 'Coupon updated successfully.',
+    'coupon_deleted_successfully' => 'Coupon deleted successfully.',
 ];

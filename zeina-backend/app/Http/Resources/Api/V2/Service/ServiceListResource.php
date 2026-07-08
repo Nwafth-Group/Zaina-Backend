@@ -24,7 +24,6 @@ class ServiceListResource extends JsonResource
             'name_en' => $this->name_en,
             'image' => $media ? (new MediaResource($media))->getFileUrl() : null,
             'type' => $this->type,
-            'available_visit_types' => $this->available_visit_types ?? [],
         ];
     }
 }

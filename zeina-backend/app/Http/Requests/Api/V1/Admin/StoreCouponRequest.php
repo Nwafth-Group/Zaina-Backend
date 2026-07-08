@@ -2,9 +2,10 @@
 
 namespace App\Http\Requests\Api\V1\Admin;
 
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\Api\V1\CustomFormRequest;
+use Illuminate\Validation\Rule;
 
-class StoreCouponRequest extends FormRequest
+class StoreCouponRequest extends CustomFormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -16,26 +17,67 @@ class StoreCouponRequest extends FormRequest
 
     /**
      * Get the validation rules that apply to the request.
-     *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
         return [
-            'code' => 'required|string|unique:coupons,code',
-            'type' => 'required|in:fixed,percentage',
-            'value' => 'required|numeric|min:0',
-            'max_discount' => 'nullable|numeric|min:0',
-            'min_booking_amount' => 'nullable|numeric|min:0',
-            'start_date' => 'required|date|after_or_equal:today',
-            'end_date' => 'required|date|after:start_date',
-            // محددات النطاق
-            'is_for_all_users' => 'required|boolean',
-            'users' => 'required_if:is_for_all_users,false|array', // مصفوفة IDs للمستخدمين
-            'users.*' => 'exists:users,id',
-            'is_for_all_services' => 'required|boolean',
-            'services' => 'required_if:is_for_all_services,false|array', // مصفوفة IDs للخدمات
-            'services.*' => 'exists:services,id',
+            'name' => ['required', 'string', 'max:255', 'unique:coupons,name'],
+            'code' => ['required', 'string', 'max:10', 'alpha_dash', 'unique:coupons,code'],
+            'type' => ['required', 'in:fixed,percentage'],
+            'value' => [
+                'required',
+                'numeric',
+                'min:0.01',
+                function ($attribute, $value, $fail) {
+                    if ($this->input('type') === 'percentage' && $value > 100) {
+                        $fail(__('validation.percentage_max_value') ?: 'Percentage discount cannot exceed 100%.');
+                    }
+                }
+            ],
+            'max_discount' => ['nullable', 'numeric', 'min:0'],
+            'min_booking_amount' => ['nullable', 'numeric', 'min:0'],
+            
+            'start_date' => ['required', 'date', 'after_or_equal:today'],
+            'end_date' => ['required', 'date', 'after_or_equal:start_date'],
+            
+            'usage_limit' => ['required', 'integer', 'min:1'],
+            'user_usage_limit' => [
+                'required',
+                'integer',
+                'min:1',
+                'max:' . ($this->input('usage_limit') ?? 999999)
+            ],
+            
+            'is_for_all_users' => ['required', 'boolean'],
+            'users' => ['required_if:is_for_all_users,false', 'array'],
+            'users.*' => ['exists:users,id'],
+            
+            'is_for_all_cities' => ['required', 'boolean'],
+            'cities' => ['required_if:is_for_all_cities,false', 'array'],
+            'cities.*' => ['exists:cities,id'],
+            
+            'areas' => ['nullable', 'array'],
+            'areas.*' => ['exists:areas,id'],
+            
+            'completed_bookings_count' => ['nullable', 'integer', 'min:0'],
+            
+            'is_for_all_services' => ['required', 'boolean'],
+            
+            // Validation when all services are selected but restricted by visit type/shifts
+            'allowed_visit_types' => ['nullable', 'array'],
+            'allowed_shifts' => ['nullable', 'array'],
+            'allowed_shifts.*.start_time' => ['required_with:allowed_shifts', 'date_format:H:i'],
+            'allowed_shifts.*.end_time' => ['required_with:allowed_shifts', 'date_format:H:i'],
+            
+            // Validation when specific services are selected
+            'services' => ['required_if:is_for_all_services,false', 'array'],
+            'services.*.id' => ['required_with:services', 'exists:services,id'],
+            'services.*.allowed_visit_types' => ['nullable', 'array'],
+            'services.*.allowed_shifts' => ['nullable', 'array'],
+            'services.*.allowed_shifts.*.start_time' => ['required_with:services.*.allowed_shifts', 'date_format:H:i'],
+            'services.*.allowed_shifts.*.end_time' => ['required_with:services.*.allowed_shifts', 'date_format:H:i'],
+            
+            'status' => ['required', 'in:active,inactive'],
         ];
     }
 }

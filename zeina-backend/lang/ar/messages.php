@@ -235,4 +235,20 @@ return [
     'coverage_check_completed' => 'تم التحقق من تغطية الخدمة بنجاح.',
     'worker_assignment_updated_title' => 'تحديث تعيين العمالة 🏠',
     'worker_assignment_updated_body' => 'تم تعيين أو تعديل العمالة الخاصة بحجزك رقم :ref بنجاح.',
+
+    // Coupons eligibility and CRUD
+    'coupon_inactive' => 'هذا الكوبون غير فعال.',
+    'coupon_not_started' => 'فترة صلاحية هذا الكوبون لم تبدأ بعد.',
+    'coupon_expired' => 'هذا الكوبون منتهي الصلاحية.',
+    'coupon_user_limit_reached' => 'لقد تجاوزت الحد الأقصى المسموح به لاستخدام هذا الكوبون.',
+    'coupon_unauthenticated' => 'يرجى تسجيل الدخول لتطبيق الكوبون.',
+    'coupon_not_for_user' => 'هذا الكوبون غير مخصص لحسابك.',
+    'coupon_address_required' => 'يلزم توفر عنوان الحجز للتحقق من أهلية الموقع.',
+    'coupon_location_ineligible' => 'هذا الكوبون غير متاح لموقع الحجز المحدد.',
+    'coupon_insufficient_completed_bookings' => 'لم تصل للحد الأدنى من الحجوزات المكتملة المطلوبة لاستخدام هذا الكوبون.',
+    'coupon_service_ineligible' => 'هذا الكوبون لا يشمل الخدمة المحددة.',
+    'coupon_visit_type_ineligible' => 'هذا الكوبون لا يشمل نوع الزيارة المحدد.',
+    'coupon_shift_ineligible' => 'هذا الكوبون غير متاح لفترة الخدمة أو الشفت المحدد.',
+    'coupon_updated_successfully' => 'تم تحديث الكوبون بنجاح.',
+    'coupon_deleted_successfully' => 'تم حذف الكوبون بنجاح.',
 ];

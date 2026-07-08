@@ -4,12 +4,8 @@ namespace App\Http\Controllers\Api\V2\Customer;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V2\Customer\ListServicesRequest;
-use App\Http\Requests\Api\V2\Customer\GetAvailableWorkersRequest;
-use App\Http\Requests\Api\V2\Customer\GetShiftsForDateRequest;
 use App\Http\Resources\Api\V2\Service\ServiceResource;
 use App\Http\Resources\Api\V2\Service\ServiceListResource;
-use App\Http\Resources\Api\V1\Worker\WorkerResource;
-use App\Models\Category;
 use App\Models\Service;
 use App\Service\Customer\CustomerService;
 use App\Traits\ApiResponseTrait;
@@ -22,12 +18,11 @@ class ServiceController extends Controller
     public function __construct(private CustomerService $customerService) {}
 
     /**
-     * Get all active services filtered and paginated.
+     * Get all active services filtered.
      */
     public function index(ListServicesRequest $request)
     {
-        $perPage = $request->input('per_page', 10);
-        $services = $this->customerService->listServices($request->validated(), $perPage);
+        $services = $this->customerService->listServices($request->validated());
 
         return $this->successResponse(
             ServiceListResource::collection($services),
@@ -49,29 +44,14 @@ class ServiceController extends Controller
     }
 
     /**
-     * Retrieve available shifts for a date.
+     * Retrieve available visit types for a service.
      */
-    public function getShiftsForDate(GetShiftsForDateRequest $request, Service $service)
+    public function getAvailableVisitTypes(Service $service)
     {
-        $shiftsData = $this->customerService->getShiftsForDate($service, $request->date);
-
-        return $this->successResponse(['shifts' => $shiftsData], __('messages.shifts_retrieved'));
-    }
-
-    /**
-     * Retrieve available preferred and other workers for a shift.
-     */
-    public function getAvailableWorkers(GetAvailableWorkersRequest $request, Service $service)
-    {
-        $workers = $this->customerService->getAvailableWorkers(
-            $service,
-            $request->date,
-            $request->start_time
+        return $this->successResponse(
+            $service->available_visit_types ?? [],
+            __('messages.available_visit_types_retrieved') ?? 'Available visit types retrieved successfully.'
         );
-
-        return $this->successResponse([
-            'preferred_workers' => WorkerResource::collection($workers['preferred']),
-        ], __('messages.providers_fetch_success') ?? 'تم جلب مقدمي الخدمة المتاحين بنجاح.');
     }
 
     /**

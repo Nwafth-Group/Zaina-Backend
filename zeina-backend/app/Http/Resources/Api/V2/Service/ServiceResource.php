@@ -49,13 +49,16 @@ class ServiceResource extends JsonResource
             'max_workers' => $this->max_workers,
             'base_price' => $this->base_price,
 
-            'duration' => new ServiceDurationResource($this->whenLoaded('duration')),
-            'rules' => new ServiceRuleResource($this->whenLoaded('rules')),
+            'duration' => ServiceDurationResource::make($this->whenLoaded('duration')),
+            'rules' => ServiceRuleResource::make($this->whenLoaded('rules')),
             'coverages' => ServiceCoverageResource::collection($this->whenLoaded('coverages')),
             'prices' => ServicePriceResource::collection($this->whenLoaded('priceRules')),
-            'image' => $media ? (new MediaResource($media))->getFileUrl() : null,
+            'image' => $media ? MediaResource::make($media)->getFileUrl() : null,
  
-            'workers' => WorkerResource::collection($this->whenLoaded('workers')),
+            'preferred_workers' => $this->relationLoaded('preferred_workers') 
+                ? WorkerResource::collection($this->preferred_workers)
+                : WorkerResource::collection($this->getPreferredWorkers()),
+            'available_dates'   => $this->getAvailableDates(),
             'available_days' => $this->relationLoaded('schedules') && $this->schedules 
                 ? $this->schedules->where('is_active', true)->pluck('day')->unique()->values()->toArray()
                 : [],
@@ -70,5 +73,51 @@ class ServiceResource extends JsonResource
                 })->values()->toArray()
                 : [],
         ];
+    }
+
+    private function getAvailableDates(): array
+    {
+        $dates = [];
+        $rules = $this->rules;
+        $maxDays = ($rules && $rules->max_advance_booking_days > 0) ? (int) $rules->max_advance_booking_days : 30;
+        $allowSameDay = $rules ? (bool) $rules->allow_same_day : false;
+
+        $startDate = $allowSameDay ? \Carbon\Carbon::today() : \Carbon\Carbon::tomorrow();
+        $endDate = \Carbon\Carbon::today()->addDays($maxDays);
+
+        $availableDays = $this->relationLoaded('schedules') && $this->schedules 
+            ? $this->schedules->where('is_active', true)->pluck('day')->unique()->map(fn($day) => strtolower($day))->toArray()
+            : [];
+
+        for ($date = $startDate->copy(); $date->lte($endDate); $date->addDay()) {
+            $dayName = strtolower($date->format('l'));
+            if (in_array($dayName, $availableDays)) {
+                $dates[] = $date->toDateString() . ' 00:00:00';
+            }
+        }
+
+        return $dates;
+    }
+
+    private function getPreferredWorkers()
+    {
+        $userId = auth('sanctum')->id();
+        if (!$userId) {
+            return collect();
+        }
+
+        $preferredIds = \App\Models\BookingAssignment::whereHas('booking', function ($q) use ($userId) {
+                $q->where('customer_id', $userId)
+                  ->where('service_id', $this->id)
+                  ->where('status', 'completed');
+            })
+            ->pluck('worker_id')
+            ->unique()
+            ->toArray();
+
+        return $this->workers()
+            ->where('status', 'active')
+            ->whereIn('workers.id', $preferredIds)
+            ->get();
     }
 }

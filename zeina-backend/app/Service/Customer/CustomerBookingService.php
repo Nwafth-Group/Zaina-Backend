@@ -70,7 +70,10 @@ class CustomerBookingService
             $allocatedWorkers->count(), 
             count($dates), 
             $data['visit_type'] ?? 'single_visit', 
-            $data['coupon_code'] ?? null
+            $data['coupon_code'] ?? null,
+            $user,
+            $times['start_str'],
+            $times['end_str']
         );
 
         return [
@@ -151,7 +154,10 @@ class CustomerBookingService
             count($workerIds), 
             count($dates), 
             $data['visit_type'] ?? 'single_visit', 
-            $data['coupon_code'] ?? null
+            $data['coupon_code'] ?? null,
+            $user,
+            $times['start_str'],
+            $times['end_str']
         );
         $totalAmount = $pricing['pricing']['total'];
 
@@ -423,7 +429,7 @@ class CustomerBookingService
     /**
      * Calculate price calculations: subtotal, service discount, coupon discount, tax (VAT=0), and total.
      */
-    private function calculatePricing(Service $service, CustomerAddress $address, int $workersCount, int $visitsCount, string $visitType, ?string $couponCode = null): array
+    private function calculatePricing(Service $service, CustomerAddress $address, int $workersCount, int $visitsCount, string $visitType, ?string $couponCode = null, $user = null, $startTime = null, $endTime = null): array
     {
         $pricePerPeriod = (float) ($service->base_price ?? 0);
         $subtotal = $pricePerPeriod * $visitsCount * $workersCount;
@@ -449,19 +455,15 @@ class CustomerBookingService
         $coupon = null;
 
         if (!empty($couponCode)) {
-            $now = now();
-            $coupon = Coupon::where('code', $couponCode)
-                ->where('status', 'active')
-                ->where(function ($q) use ($now) {
-                    $q->whereNull('start_date')->orWhere('start_date', '<=', $now);
-                })
-                ->where(function ($q) use ($now) {
-                    $q->whereNull('end_date')->orWhere('end_date', '>=', $now);
-                })
-                ->first();
+            $coupon = Coupon::where('code', $couponCode)->first();
 
             if (!$coupon) {
-                throw new \Exception(__('messages.invalid_or_expired_coupon'), 422);
+                throw new \Exception(__('messages.coupon_not_found_or_expired'), 422);
+            }
+
+            $errCode = $coupon->checkEligibility($user, $service, $visitType, $startTime ?? '00:00', $endTime ?? '00:00', $address);
+            if ($errCode) {
+                throw new \Exception(__('messages.' . $errCode), 422);
             }
 
             if ($coupon->type === 'fixed') {

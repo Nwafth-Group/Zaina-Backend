@@ -54,11 +54,11 @@ class ServiceResource extends JsonResource
             'max_workers' => $this->max_workers,
             'base_price' => $this->base_price,
 
-            'duration' => new ServiceDurationResource($this->whenLoaded('duration')),
-            'rules' => new ServiceRuleResource($this->whenLoaded('rules')),
+            'duration' => ServiceDurationResource::make($this->whenLoaded('duration')),
+            'rules' => ServiceRuleResource::make($this->whenLoaded('rules')),
             'coverages' => ServiceCoverageResource::collection($this->whenLoaded('coverages')),
             'prices' => ServicePriceResource::collection($this->whenLoaded('priceRules')),
-            'image' => $media ? (new MediaResource($media))->getFileUrl() : null,
+            'image' => $media ? MediaResource::make($media)->getFileUrl() : null,
  
             'price_details' => [
                 'price_per_service_period' => $priceObj ? $priceObj->price_per_service_period : 0,

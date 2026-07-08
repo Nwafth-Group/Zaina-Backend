@@ -37,20 +37,44 @@ class CustomerV2ServiceTest extends TestCase
         $response->assertStatus(404);
     }
 
-    public function test_v2_customer_available_workers_periods_count_is_optional(): void
+    public function test_v2_customer_service_endpoints(): void
     {
         $category = Category::factory()->create(['status' => 'active']);
         $service = Service::factory()->create([
             'category_id' => $category->id,
-            'status' => 'active'
+            'status' => 'active',
+            'available_visit_types' => [['type' => 'single_visit', 'discount' => 0]],
         ]);
+        
         $worker = Worker::factory()->create(['status' => 'active']);
         $service->workers()->attach($worker->id);
 
-        // V2 endpoint: periods_count is nullable/optional
-        $response = $this->getJson(self::V2_CUSTOMER_ENDPOINT . "/{$service->id}/available-workers?date=2026-07-06&start_time=10:00");
+        // 1. List is not paginated and does not have available_visit_types
+        $response = $this->getJson(self::V2_CUSTOMER_ENDPOINT);
         $response->assertStatus(200);
-        $response->assertJsonStructure(['data' => ['preferred_workers', 'other_workers']]);
+        $response->assertJsonMissingPath('data.links');
+        $response->assertJsonMissingPath('data.meta');
+        $response->assertJsonStructure(['data' => ['items' => [['id', 'name_en', 'type']]]]);
+        $this->assertNull($response->json('data.items.0.available_visit_types'));
+
+        // 2. Available visit types endpoint returns visit types directly
+        $response = $this->getJson(self::V2_CUSTOMER_ENDPOINT . "/{$service->id}/available-visit-types");
+        $response->assertStatus(200);
+        $response->assertJsonFragment(['type' => 'single_visit']);
+
+        // 3. Show endpoint returns preferred_workers and available_dates
+        $response = $this->getJson(self::V2_CUSTOMER_ENDPOINT . "/{$service->id}");
+        $response->assertStatus(200);
+        $response->assertJsonStructure([
+            'data' => [
+                'preferred_workers',
+                'available_dates',
+            ]
+        ]);
+
+        // 4. Deleted shifts and available-workers endpoints return 404
+        $this->getJson(self::V2_CUSTOMER_ENDPOINT . "/{$service->id}/shifts?date=2026-07-20")->assertStatus(404);
+        $this->getJson(self::V2_CUSTOMER_ENDPOINT . "/{$service->id}/available-workers?date=2026-07-12&start_time=09:00")->assertStatus(404);
     }
 
     public function test_v1_customer_available_workers_periods_count_is_required(): void

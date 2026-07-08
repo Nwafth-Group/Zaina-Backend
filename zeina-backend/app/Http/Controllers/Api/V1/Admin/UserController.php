@@ -67,6 +67,18 @@ class UserController extends Controller
             $query->whereDate('created_at', '<=', $request->input('date_to'));
         }
 
+        // Filter by location (default addresses of customers)
+        if ($request->filled('city_id') || $request->filled('area_id')) {
+            $query->whereHas('addresses', function ($aQuery) use ($request) {
+                $aQuery->where('is_active', true);
+                if ($request->filled('area_id')) {
+                    $aQuery->where('area_id', $request->input('area_id'));
+                } elseif ($request->filled('city_id')) {
+                    $aQuery->where('city_id', $request->input('city_id'));
+                }
+            });
+        }
+
         // 6. تفعيل الـ Search المتقدم للنصوص
         if ($request->filled('search')) {
             $this->applySearchFilter($query, $request->input('search'));

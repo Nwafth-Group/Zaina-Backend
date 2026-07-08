@@ -130,6 +130,9 @@ Route::prefix('admin')->group(function () {
         // Announcements shown in the customer app notifications tab.
         Route::apiResource('announcements', AnnouncementController::class);
 
+        // Coupons management
+        Route::apiResource('coupons', CouponController::class);
+
         //  Route::middleware('permission:providers.view')->prefix('providers')->group(function () {
         //         Route::get('/', [ProviderController::class, 'index']);
         //         Route::post('/', [ProviderController::class, 'store'])->middleware('permission:providers.create');
@@ -141,14 +144,6 @@ Route::prefix('admin')->group(function () {
 
     });
 
-    // coupon routes
 
-    Route::apiResource('coupons', CouponController::class);
-
-    // coupon routes
-
-    Route::prefix('admin')->group(function () {
-        Route::apiResource('coupons', CouponController::class);
-    });
 
 });
