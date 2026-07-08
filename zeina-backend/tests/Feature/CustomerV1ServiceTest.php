@@ -232,7 +232,8 @@ class CustomerV1ServiceTest extends TestCase
                     'booking_ref',
                     'expected_arrival_time',
                     'first_schedule_date',
-                    'first_schedule_date_formatted'
+                    'first_schedule_date_formatted',
+                    'visit_type'
                 ]
             ]
         ]);
@@ -240,5 +241,6 @@ class CustomerV1ServiceTest extends TestCase
         $this->assertEquals('10:45 AM - 11:30 AM', $response->json('data.upcoming_appointment.expected_arrival_time'));
         $this->assertEquals('2026-09-20', $response->json('data.upcoming_appointment.first_schedule_date'));
         $this->assertStringContainsString('20 Sep 2026', $response->json('data.upcoming_appointment.first_schedule_date_formatted'));
+        $this->assertEquals('single_visit', $response->json('data.upcoming_appointment.visit_type'));
     }
 }

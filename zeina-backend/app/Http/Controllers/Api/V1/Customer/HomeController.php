@@ -99,6 +99,7 @@ class HomeController extends Controller
                     'expected_arrival_time' => $expectedArrivalTime,
                     'first_schedule_date' => $firstVisitDate,
                     'first_schedule_date_formatted' => $firstVisitFormatted,
+                    'visit_type' => $booking->visit_type ?? 'single_visit',
                 ];
             }
         }
