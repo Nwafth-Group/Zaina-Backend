@@ -33,7 +33,7 @@ class HomeController extends Controller
 
         if (auth('sanctum')->check()) {
             $user = auth('sanctum')->user();
-            $booking = Booking::with(['service.media'])
+            $booking = Booking::with(['service.media', 'service.rules', 'visits'])
                 ->where('customer_id', $user->id)
                 ->whereIn('status', ['Upcoming', 'inService'])
                 ->where(function ($query) use ($currentDate, $currentTime) {
@@ -53,6 +53,36 @@ class HomeController extends Controller
                 $durationText = $hours > 0 ? "{$hours} Hours" : "{$booking->duration_minutes} Mins";
                 $mediaService = $booking->service->media()->where('collection', 'service/icon')->first();
 
+                // Compute expected arrival time range
+                $expectedArrivalTime = null;
+                if ($booking->service && $booking->service->rules) {
+                    $rules = $booking->service->rules;
+                    $buffer = (int) ($rules->arrival_buffer_minutes ?? 0);
+                    $grace = (int) ($rules->late_arrival_grace_minutes ?? 0);
+
+                    $startTime = Carbon::parse($booking->start_time);
+                    $fromTime = $startTime->copy()->subMinutes($buffer)->format('g:i A');
+                    $toTime = $startTime->copy()->addMinutes($grace)->format('g:i A');
+                    
+                    $expectedArrivalTime = "{$fromTime} - {$toTime}";
+                }
+
+                // Compute first schedule date
+                $startDate = Carbon::parse($booking->booking_date);
+                $dayName = $startDate->isoFormat('dddd');
+                $startDayAndDate = "{$dayName}, {$startDate->format('d M Y')}";
+
+                $firstVisitDate = $booking->booking_date;
+                $firstVisitFormatted = $startDayAndDate;
+                if ($booking->relationLoaded('visits') && $booking->visits && $booking->visits->isNotEmpty()) {
+                    $firstVisit = $booking->visits->sortBy('visit_date')->first();
+                    $firstVisitDate = $firstVisit->visit_date;
+                    
+                    $fvDate = Carbon::parse($firstVisitDate);
+                    $fvDayName = $fvDate->isoFormat('dddd');
+                    $firstVisitFormatted = "{$fvDayName}, {$fvDate->format('d M Y')}";
+                }
+
                 $upcomingBooking = [
                     'id' => $booking->id,
                     'booking_ref' => $booking->booking_ref,
@@ -66,6 +96,9 @@ class HomeController extends Controller
                     'date_day' => Carbon::parse($booking->booking_date)->format('d'),
                     'date_month' => Carbon::parse($booking->booking_date)->format('M'),
                     'time' => Carbon::parse($booking->start_time)->format('h:i A'),
+                    'expected_arrival_time' => $expectedArrivalTime,
+                    'first_schedule_date' => $firstVisitDate,
+                    'first_schedule_date_formatted' => $firstVisitFormatted,
                 ];
             }
         }

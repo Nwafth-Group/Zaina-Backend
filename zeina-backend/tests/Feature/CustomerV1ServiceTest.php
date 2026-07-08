@@ -187,4 +187,58 @@ class CustomerV1ServiceTest extends TestCase
         $this->assertArrayNotHasKey('categories', $data);
         $this->assertArrayNotHasKey('popular_services', $data);
     }
+
+    public function test_customer_home_page_with_upcoming_appointment_details(): void
+    {
+        $user = $this->actingAsCustomer(['status' => 'active', 'verification_status' => 'approved']);
+        $city = City::factory()->create(['status' => 'active']);
+        $area = \App\Models\Area::factory()->create(['city_id' => $city->id, 'status' => 'active']);
+        $address = \App\Models\CustomerAddress::factory()->create([
+            'user_id' => $user->id,
+            'area_id' => $area->id,
+            'is_default' => true,
+            'is_active' => true
+        ]);
+
+        $service = Service::factory()->create(['status' => 'active', 'base_price' => 100.00]);
+        \App\Models\ServiceRule::factory()->create([
+            'service_id' => $service->id,
+            'arrival_buffer_minutes' => 15,
+            'late_arrival_grace_minutes' => 30
+        ]);
+
+        \App\Models\Booking::create([
+            'booking_ref' => 'BK-HOME-TEST',
+            'customer_id' => $user->id,
+            'service_id' => $service->id,
+            'address_id' => $address->id,
+            'booking_date' => '2026-09-20',
+            'start_time' => '11:00:00',
+            'end_time' => '13:00:00',
+            'duration_minutes' => 120,
+            'total_amount' => 100.00,
+            'price_subtotal' => 100.00,
+            'status' => 'Upcoming',
+            'payment_status' => 'paid',
+            'payment_method' => 'wallet',
+        ]);
+
+        $response = $this->getJson('/api/v1/customer/home');
+        $response->assertOk();
+        $response->assertJsonStructure([
+            'data' => [
+                'upcoming_appointment' => [
+                    'id',
+                    'booking_ref',
+                    'expected_arrival_time',
+                    'first_schedule_date',
+                    'first_schedule_date_formatted'
+                ]
+            ]
+        ]);
+
+        $this->assertEquals('10:45 AM - 11:30 AM', $response->json('data.upcoming_appointment.expected_arrival_time'));
+        $this->assertEquals('2026-09-20', $response->json('data.upcoming_appointment.first_schedule_date'));
+        $this->assertStringContainsString('20 Sep 2026', $response->json('data.upcoming_appointment.first_schedule_date_formatted'));
+    }
 }
