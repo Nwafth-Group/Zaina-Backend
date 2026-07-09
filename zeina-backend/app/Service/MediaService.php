@@ -21,6 +21,9 @@ class MediaService
     public function upload(UploadedFile $file, Model $model, string $collection = 'default', string $disk = 'public'): Media
     {
         $path = $file->store($collection, $disk);
+        if ($path === false) {
+            throw new \RuntimeException("Failed to store the uploaded file on disk: {$disk}. Please check folder and storage permissions.");
+        }
         try {
             return Media::create([
                 'model_type' => get_class($model),

@@ -61,10 +61,15 @@ class ServiceController extends Controller
     {
         $user = auth()->user();
         
-        $address = \App\Models\CustomerAddress::with('area')
+        $query = \App\Models\CustomerAddress::with('area')
             ->where('user_id', $user->id)
-            ->where('is_active', true)
-            ->first();
+            ->where('is_active', true);
+
+        if ($request->filled('address_id')) {
+            $address = $query->where('id', $request->address_id)->first();
+        } else {
+            $address = (clone $query)->where('is_default', true)->first() ?? $query->first();
+        }
 
         if (!$address) {
             return $this->successResponse([

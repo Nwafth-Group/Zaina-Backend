@@ -243,4 +243,50 @@ class CustomerV1ServiceTest extends TestCase
         $this->assertStringContainsString('20 Sep 2026', $response->json('data.upcoming_appointment.first_schedule_date_formatted'));
         $this->assertEquals('single_visit', $response->json('data.upcoming_appointment.visit_type'));
     }
+
+    public function test_check_coverage_prioritizes_default_address_and_supports_custom_address_id(): void
+    {
+        $user = $this->actingAsCustomer(['status' => 'active', 'verification_status' => 'approved']);
+        
+        $city = City::factory()->create(['status' => 'active']);
+        $areaCovered = \App\Models\Area::factory()->create(['city_id' => $city->id, 'status' => 'active']);
+        $areaNotCovered = \App\Models\Area::factory()->create(['city_id' => $city->id, 'status' => 'active']);
+        
+        // Create a service covered in $areaCovered but not in $areaNotCovered
+        $service = Service::factory()->create(['status' => 'active']);
+        \App\Models\ServiceCoverage::create([
+            'service_id' => $service->id,
+            'city_id' => $city->id,
+            'area_id' => $areaCovered->id,
+            'status' => 'active'
+        ]);
+
+        // Address 1: Non-default address (in covered area)
+        $addressCovered = \App\Models\CustomerAddress::factory()->create([
+            'user_id' => $user->id,
+            'area_id' => $areaCovered->id,
+            'is_default' => false,
+            'is_active' => true
+        ]);
+
+        // Address 2: Default address (in non-covered area)
+        $addressDefault = \App\Models\CustomerAddress::factory()->create([
+            'user_id' => $user->id,
+            'area_id' => $areaNotCovered->id,
+            'is_default' => true,
+            'is_active' => true
+        ]);
+
+        // 1. Check without address_id: should check default address ($addressDefault), which is NOT covered
+        $response = $this->getJson("/api/v1/customer/services/{$service->id}/check-coverage");
+        $response->assertOk();
+        $this->assertFalse($response->json('data.is_covered'));
+        $this->assertEquals($addressDefault->id, $response->json('data.address.id'));
+
+        // 2. Check with address_id = $addressCovered->id: should check $addressCovered, which IS covered
+        $response = $this->getJson("/api/v1/customer/services/{$service->id}/check-coverage?address_id={$addressCovered->id}");
+        $response->assertOk();
+        $this->assertTrue($response->json('data.is_covered'));
+        $this->assertEquals($addressCovered->id, $response->json('data.address.id'));
+    }
 }
