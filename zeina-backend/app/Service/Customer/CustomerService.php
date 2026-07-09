@@ -31,7 +31,7 @@ class CustomerService
      */
     public function showService(Service $service): Service
     {
-        if ($service->status !== 'active' || ($service->category && $service->category->status !== 'active')) {
+        if ($service->status !== 'active') {
             abort(404, __('messages.service_not_available'));
         }
 
