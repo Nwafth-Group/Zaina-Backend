@@ -21,10 +21,21 @@ class RescheduleBookingRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
-          'new_date'       => 'required|date_format:Y-m-d|after_or_equal:today',
-          'new_start_time' => 'required|date_format:H:i',
-          'new_end_time'   => 'required|date_format:H:i|after:new_start_time',
+        $rules = [
+            'dates' => ['required', 'array'],
+            'start_time' => ['required', 'date_format:H:i'],
         ];
+
+        if (str_contains($this->path(), 'api/v1/admin')) {
+            $rules['dates.*'] = ['required', 'date_format:Y-m-d'];
+        } else {
+            $rules['dates.*'] = ['required', 'date_format:Y-m-d', 'after_or_equal:today'];
+            
+            if (!str_ends_with($this->path(), 'send-otp')) {
+                $rules['otp'] = ['required', 'string', 'size:6'];
+            }
+        }
+
+        return $rules;
     }
 }

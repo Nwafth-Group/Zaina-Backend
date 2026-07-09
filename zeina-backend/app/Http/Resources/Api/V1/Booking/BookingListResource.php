@@ -30,7 +30,7 @@ class BookingListResource extends JsonResource
             $startTime = Carbon::parse($this->start_time);
             $fromTime = $startTime->copy()->subMinutes($buffer)->format('g:i A');
             $toTime = $startTime->copy()->addMinutes($grace)->format('g:i A');
-            
+
             $expectedArrivalTime = "{$fromTime} - {$toTime}";
         }
 
@@ -39,44 +39,44 @@ class BookingListResource extends JsonResource
         if ($this->relationLoaded('visits') && $this->visits && $this->visits->isNotEmpty()) {
             $firstVisit = $this->visits->sortBy('visit_date')->first();
             $firstVisitDate = $firstVisit->visit_date;
-            
+
             $fvDate = Carbon::parse($firstVisitDate);
             $fvDayName = $fvDate->isoFormat('dddd');
             $firstVisitFormatted = "{$fvDayName}, {$fvDate->format('d M Y')}";
         }
 
         return [
-            'booking_id'        => $this->id,
+            'booking_id' => $this->id,
             'booking_reference' => $this->booking_ref,
-            'service_name'      => $serviceName,
-            'service_date'      => $this->booking_date,
-            'start_time'        => Carbon::parse($this->start_time)->format('H:i'),
-            'end_time'          => Carbon::parse($this->end_time)->format('H:i'),
+            'service_name' => $serviceName,
+            'service_date' => $this->booking_date,
+            'start_time' => Carbon::parse($this->start_time)->format('H:i'),
+            'end_time' => Carbon::parse($this->end_time)->format('H:i'),
             'expected_arrival_time' => $expectedArrivalTime,
-            'first_schedule_date'   => $firstVisitDate,
+            'first_schedule_date' => $firstVisitDate,
             'first_schedule_date_formatted' => $firstVisitFormatted,
-            'booking_status'    => $this->status,
-            'visit_type'        => $this->visit_type ?? 'single_visit',
-            'visit_schedule'    => $this->relationLoaded('visits') && $this->visits ? $this->visits->map(fn($v) => [
-                'visit_date'   => $v->visit_date,
-                'visit_day'    => Carbon::parse($v->visit_date)->isoFormat('dddd'),
-                'start_time'   => Carbon::parse($v->start_time)->format('H:i'),
-                'end_time'     => Carbon::parse($v->end_time)->format('H:i'),
-                'duration'     => (int) ceil($this->duration_minutes / 60),
+            'booking_status' => $this->status,
+            'visit_type' => $this->visit_type ?? 'single_visit',
+            'visit_schedule' => $this->relationLoaded('visits') && $this->visits ? $this->visits->map(fn($v) => [
+                'visit_date' => $v->visit_date,
+                'visit_day' => Carbon::parse($v->visit_date)->isoFormat('dddd'),
+                'start_time' => Carbon::parse($v->start_time)->format('H:i'),
+                'end_time' => Carbon::parse($v->end_time)->format('H:i'),
+                'duration' => (int) ceil($this->duration_minutes / 60),
                 'visit_status' => $v->status,
             ])->values()->toArray() : [],
-            'total_amount'      => (float) $this->total_amount,
-            'currency_code'     => $this->currency_code ?? 'EGP',
+            'total_amount' => (float) $this->total_amount,
+            'currency_code' => $this->currency_code ?? 'EGP',
 
             // Pre-formatted card details
             'card_details' => [
                 'contract_number_request' => $this->booking_ref,
-                'start_day_and_date'      => $startDayAndDate,
-                'duration'                => (int) ceil($this->duration_minutes / 60),
-                'status'                  => $this->status,
-                'visit_type'              => $this->visit_type ?? 'single_visit',
-                'price_and_currency'      => [
-                    'amount'   => (float) $this->total_amount,
+                'start_day_and_date' => $startDayAndDate,
+                'duration' => (int) ceil($this->duration_minutes / 60),
+                'status' => $this->status,
+                'visit_type' => $this->visit_type ?? 'single_visit',
+                'price_and_currency' => [
+                    'amount' => (float) $this->total_amount,
                     'currency' => $this->currency_code ?? 'EGP',
                 ]
             ]

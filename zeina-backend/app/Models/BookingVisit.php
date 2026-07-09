@@ -15,6 +15,8 @@ class BookingVisit extends Model
         'start_time',
         'end_time',
         'status',
+        'cancelled_at',
+        'cancellation_reason',
     ];
 
     public function booking()

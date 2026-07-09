@@ -16,6 +16,7 @@ use App\Filters\Booking\ServiceFilter;
 use App\Filters\Booking\StatusFilter;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Admin\UpdateBookingStatusRequest;
+use App\Http\Requests\Api\V1\Customer\RescheduleBookingRequest;
 use App\Http\Resources\Api\V1\Booking\AdminBookingDetailResource;
 use App\Http\Resources\Api\V1\Booking\AdminBookingResource;
 use App\Notifications\BookingNotification;
@@ -86,14 +87,18 @@ class BookingController extends Controller
      */
     public function updateStatus(UpdateBookingStatusRequest $request, Booking $booking)
     {
-        $booking = $this->bookingStatus->change(
-            $booking,
-            BookingStatus::from($request->validated('status')),
-            $request->validated('note'),
-            $request->user(),
-        );
+        try {
+            $booking = $this->bookingStatus->change(
+                $booking,
+                BookingStatus::from($request->validated('status')),
+                $request->validated('note'),
+                $request->user(),
+            );
 
-        return $this->successResponse(new AdminBookingResource($booking), __('messages.booking_status_updated'));
+            return $this->successResponse(new AdminBookingResource($booking), __('messages.booking_status_updated'));
+        } catch (\Exception $ex) {
+            return $this->errorResponse($ex->getMessage(), $ex->getCode() ?: 400);
+        }
     }
 
     /**
@@ -276,5 +281,47 @@ class BookingController extends Controller
         $booking->load(['workers', 'histories']);
 
         return $this->successResponse(new AdminBookingDetailResource($booking), __('messages.booking_workers_updated') ?? 'تم تحديث تعيين العمالة بنجاح.');
+    }
+
+    public function reschedule(RescheduleBookingRequest $request, Booking $booking)
+    {
+        try {
+            $bookingService = app(\App\Service\BookingService::class);
+            $updatedBooking = $bookingService->rescheduleBooking($booking->id, auth()->id(), $request->validated(), true);
+
+            // Notify customer
+            try {
+                if ($updatedBooking->customer) {
+                    $newStart = \Carbon\Carbon::parse($request->start_time);
+                    $firstDate = collect($request->dates)->sort()->first();
+
+                    $updatedBooking->customer->notify(new BookingNotification(
+                        __('sms.booking_rescheduled_title'),
+                        __('sms.booking_rescheduled_message', [
+                            'ref' => $updatedBooking->booking_ref,
+                            'date' => $firstDate,
+                            'time' => $newStart->format('h:i A'),
+                        ]),
+                        $updatedBooking->id,
+                        [
+                            'booking_ref' => $updatedBooking->booking_ref,
+                            'booking_date' => $firstDate,
+                            'booking_time' => $newStart->format('h:i A'),
+                            'workers_count' => $updatedBooking->workers()->count(),
+                        ]
+                    ));
+                }
+            } catch (\Exception $notifEx) {
+                Log::error('Failed to trigger admin reschedule notification: ' . $notifEx->getMessage());
+            }
+
+            return $this->successResponse(
+                new AdminBookingDetailResource($updatedBooking->load(['customer', 'service', 'workers', 'address', 'histories.createdBy', 'visits'])),
+                __('messages.booking_rescheduled_successfully')
+            );
+        } catch (\Exception $e) {
+            $statusCode = in_array($e->getCode(), [400, 422]) ? $e->getCode() : 500;
+            return $this->errorResponse($e->getMessage(), $statusCode);
+        }
     }
 }

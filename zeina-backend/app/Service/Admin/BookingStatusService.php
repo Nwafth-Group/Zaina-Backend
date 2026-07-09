@@ -22,6 +22,12 @@ class BookingStatusService
      */
     public function change(Booking $booking, BookingStatus $status, ?string $note, User $actor): Booking
     {
+        if ($status === BookingStatus::Cancelled) {
+            $bookingService = app(\App\Service\BookingService::class);
+            $bookingService->cancelBooking($booking->id, $actor->id, $note, true);
+            return $booking->load(['customer', 'service', 'workers']);
+        }
+
         return DB::transaction(function () use ($booking, $status, $note, $actor): Booking {
             $previousStatus = $booking->status;
 

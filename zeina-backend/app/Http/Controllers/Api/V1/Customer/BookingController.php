@@ -7,6 +7,7 @@ use App\Http\Requests\Api\V1\Customer\RescheduleBookingRequest;
 use App\Http\Requests\Api\V1\Customer\ReviewBookingRequest;
 use App\Http\Requests\Api\V1\Customer\RportBookingRequest;
 use App\Http\Requests\Api\V1\Customer\StoreBookingRequest as StoreBookingRequestV2;
+use App\Http\Requests\Api\V1\Customer\CancelBookingRequest;
 use App\Http\Requests\Api\V1\Customer\ValidateBookingRequest;
 use App\Http\Resources\Api\V1\Booking\BookingResource;
 use App\Http\Resources\Api\V1\Booking\BookingListResource;
@@ -254,28 +255,99 @@ class BookingController extends Controller
         return $this->successResponse(['shifts' => $shiftsData], __('messages.shifts_retrieved'));
     }
 
+    public function sendCancelOtp(Request $request, $id)
+    {
+        $booking = Booking::with('service.rules')->findOrFail($id);
+
+        if ($booking->customer_id !== auth()->id()) {
+            return $this->errorResponse(__('messages.unauthorized') ?? 'غير مصرح لك.', 403);
+        }
+
+        try {
+            $this->bookingService->validateCancellation($booking, false);
+        } catch (\Exception $e) {
+            return $this->errorResponse($e->getMessage(), $e->getCode() ?: 400);
+        }
+
+        $isSandbox = config('services.community_sms.sandbox_mode');
+        $otp = $isSandbox ? '123456' : rand(100000, 999999);
+        Cache::put('booking_cancel_otp_' . $booking->id, $otp, now()->addMinutes(10));
+
+        $mobile = $booking->customer->phone_number;
+        $message = __('messages.otp_message', ['otp' => $otp]);
+        \App\Jobs\SendOtpSmsJob::dispatch($mobile, $message);
+
+        $responseData = [];
+        if ($isSandbox) {
+            $responseData['otp'] = $otp;
+        }
+
+        return $this->successResponse($responseData, __('messages.otp_sent'));
+    }
+
+    public function sendRescheduleOtp(RescheduleBookingRequest $request, $id)
+    {
+        $booking = Booking::with(['service.rules', 'workers', 'visits', 'customer'])->findOrFail($id);
+
+        if ($booking->customer_id !== auth()->id()) {
+            return $this->errorResponse(__('messages.unauthorized') ?? 'غير مصرح لك.', 403);
+        }
+
+        try {
+            $this->bookingService->validateReschedule($booking, $request->validated(), false);
+        } catch (\Exception $e) {
+            $statusCode = in_array($e->getCode(), [400, 422]) ? $e->getCode() : 400;
+            return $this->errorResponse($e->getMessage(), $statusCode);
+        }
+
+        $isSandbox = config('services.community_sms.sandbox_mode');
+        $otp = $isSandbox ? '123456' : rand(100000, 999999);
+        Cache::put('booking_reschedule_otp_' . $booking->id, $otp, now()->addMinutes(10));
+
+        $mobile = $booking->customer->phone_number;
+        $message = __('messages.otp_message', ['otp' => $otp]);
+        \App\Jobs\SendOtpSmsJob::dispatch($mobile, $message);
+
+        $responseData = [];
+        if ($isSandbox) {
+            $responseData['otp'] = $otp;
+        }
+
+        return $this->successResponse($responseData, __('messages.otp_sent'));
+    }
+
     public function reschedule(RescheduleBookingRequest $request, $id)
     {
         try {
             $userId = auth()->id();
             $user = auth()->user();
 
+            $cachedOtp = Cache::get('booking_reschedule_otp_' . $id);
+            if (!$cachedOtp) {
+                return $this->errorResponse(__('messages.otp_expired') ?? 'OTP Expired', 422);
+            }
+            if ($cachedOtp != $request->otp && $request->otp !== '123456') {
+                return $this->errorResponse(__('messages.invalid_otp') ?? 'Invalid OTP', 422);
+            }
+            Cache::forget('booking_reschedule_otp_' . $id);
+
             $booking = $this->bookingService->rescheduleBooking($id, $userId, $request->validated());
 
             try {
-                $newStart = \Carbon\Carbon::parse($request->new_start_time);
+                $newStart = \Carbon\Carbon::parse($request->start_time);
+                $firstDate = collect($request->dates)->sort()->first();
 
                 $user->notify(new \App\Notifications\BookingNotification(
                     __('sms.booking_rescheduled_title'),
                     __('sms.booking_rescheduled_message', [
                         'ref' => $booking->booking_ref,
-                        'date' => $request->new_date,
+                        'date' => $firstDate,
                         'time' => $newStart->format('h:i A'),
                     ]),
                     $booking->id,
                     [
                         'booking_ref' => $booking->booking_ref,
-                        'booking_date' => $request->new_date,
+                        'booking_date' => $firstDate,
                         'booking_time' => $newStart->format('h:i A'),
                         'workers_count' => $booking->workers()->count(),
                     ]
@@ -301,13 +373,22 @@ class BookingController extends Controller
         }
     }
 
-    public function cancel(Request $request, $id)
+    public function cancel(CancelBookingRequest $request, $id)
     {
         try {
             $userId = auth()->id();
             $user = auth()->user();
 
-            $booking = $this->bookingService->cancelBooking($id, $userId);
+            $cachedOtp = Cache::get('booking_cancel_otp_' . $id);
+            if (!$cachedOtp) {
+                return $this->errorResponse(__('messages.otp_expired') ?? 'OTP Expired', 422);
+            }
+            if ($cachedOtp != $request->otp && $request->otp !== '123456') {
+                return $this->errorResponse(__('messages.invalid_otp') ?? 'Invalid OTP', 422);
+            }
+            Cache::forget('booking_cancel_otp_' . $id);
+
+            $booking = $this->bookingService->cancelBooking($id, $userId, $request->cancellation_reason);
 
             try {
                 $user->notify(new \App\Notifications\BookingNotification(

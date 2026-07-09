@@ -125,6 +125,15 @@ class AdminBookingDetailResource extends JsonResource
                 ])->values()
                 : [],
 
+            'payment_method'         => $this->payment_method,
+            'paid_points'            => (int) $this->paid_points,
+            'refund_amount'          => (float) $this->refund_amount,
+            'refund_points'          => (int) $this->refund_points,
+            'refund_destination'     => $this->refund_destination,
+            'refund_status'          => $this->refund_status,
+            'cancelled_by'           => $this->cancelled_by,
+            'cancelled_at'           => $this->cancelled_at ? Carbon::parse($this->cancelled_at)->toIso8601String() : null,
+            'cancellation_reason'    => $this->cancellation_reason,
             'created_at' => $this->created_at?->toDateTimeString(),
         ];
     }

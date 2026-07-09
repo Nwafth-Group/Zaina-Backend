@@ -122,6 +122,7 @@ Route::prefix('admin')->group(function () {
         Route::patch('bookings/{booking}/status', [BookingController::class, 'updateStatus']);
         Route::get('bookings/{booking}/eligible-workers', [BookingController::class, 'eligibleWorkers']);
         Route::post('bookings/{booking}/assign-workers', [BookingController::class, 'assignWorkers']);
+        Route::post('bookings/{booking}/reschedule', [BookingController::class, 'reschedule']);
 
         // Home banners (ads) shown in the customer app.
         Route::apiResource('ads', AdsController::class);

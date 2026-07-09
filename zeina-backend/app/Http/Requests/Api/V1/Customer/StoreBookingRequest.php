@@ -99,7 +99,7 @@ class StoreBookingRequest extends FormRequest
                 // 2. Validate all dates belong to the same calendar week
                 if ($visitType === 'three_visits_per_week') {
                     $weeks = collect($dates)->map(function ($d) {
-                        return Carbon::parse($d)->format('o-W');
+                        return Carbon::parse($d)->startOfWeek(Carbon::SATURDAY)->toDateString();
                     })->unique();
 
                     if ($weeks->count() > 1) {

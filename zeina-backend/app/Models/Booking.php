@@ -9,12 +9,14 @@ class Booking extends Model
 {
     /** @use HasFactory<\Database\Factories\BookingFactory> */
     use HasFactory;
-  protected $fillable = [
+    protected $fillable = [
         'booking_ref', 'customer_id', 'service_id', 'address_id', 'provider_id',
         'scheduled_at', 'duration_minutes', 'number_of_workers',
         'price_subtotal', 'tax_amount', 'discount_amount', 'total_amount', 'coupon_id',
         'status', 'payment_status', 'customer_notes', 'start_time', 'end_time', 'booking_date', 'worker_id',
-        'visit_type', 'visit_number', 'payment_transaction_id', 'currency_code', 'contract_id'
+        'visit_type', 'visit_number', 'payment_transaction_id', 'currency_code', 'contract_id',
+        'payment_method', 'paid_points', 'refund_amount', 'refund_points', 'refund_destination',
+        'refund_status', 'cancelled_by', 'cancelled_at', 'cancellation_reason'
     ];
 
     protected $casts = [

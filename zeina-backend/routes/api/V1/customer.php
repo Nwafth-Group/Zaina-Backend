@@ -88,7 +88,9 @@ Route::prefix('customer')->group(function () {
         Route::get('/reports/{report}', [BookingController::class, 'showReport']);
         Route::apiResource('bookings', BookingController::class);
         Route::get('bookings/{booking}/shifts/schedule', [BookingController::class, 'getRescheduleShifts']); //
+        Route::post('bookings/{booking}/reschedule/send-otp', [BookingController::class, 'sendRescheduleOtp']);
         Route::post('bookings/{booking}/reschedule', [BookingController::class, 'reschedule']);
+        Route::post('bookings/{booking}/cancel/send-otp', [BookingController::class, 'sendCancelOtp']);
         Route::put('bookings/{booking}/cancel', [BookingController::class, 'cancel']);
         Route::post('bookings/{id}/report', [BookingController::class, 'report']);
         Route::post('bookings/{id}/review', [BookingController::class, 'review']);

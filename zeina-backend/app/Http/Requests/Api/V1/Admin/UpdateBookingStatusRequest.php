@@ -20,7 +20,11 @@ class UpdateBookingStatusRequest extends FormRequest
     {
         return [
             'status' => ['required', Rule::enum(BookingStatus::class)],
-            'note' => ['nullable', 'string', 'max:500'],
+            'note' => [
+                Rule::requiredIf($this->input('status') === BookingStatus::Cancelled->value),
+                'string',
+                'max:500'
+            ],
         ];
     }
 }

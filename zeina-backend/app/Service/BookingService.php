@@ -235,148 +235,342 @@ class BookingService
     }
 
 
-    public function rescheduleBooking($bookingId, $userId, array $data)
-{
-    // 1. جلب الحجز مع تفاصيل العمال والقواعد لحماية الأداء ومنع الـ N+1
-    $booking = Booking::with(['service.rules', 'workers'])->findOrFail($bookingId);
+    public function rescheduleBooking($bookingId, $userId, array $data, $isAdmin = false)
+    {
+        // 1. Fetch booking with details
+        $booking = Booking::with(['service.rules', 'workers', 'visits', 'customer'])->findOrFail($bookingId);
 
-    // 🔒 حماية وصلاحيات: التأكد أن الحجز يخص المستخدم الحالي
-    if ($booking->customer_id !== $userId) {
-        throw new \Exception(__('messages.unauthorized'), 403);
-    }
-
-    // الحجز يجب أن يكون بحالة Upcoming ليقبل إعادة الجدولة
-    if ($booking->status !== 'Upcoming') {
-        throw new \Exception(__('messages.booking_not_upcoming', ['status' => $booking->status]), 400);
-    }
-
-    // 2. حساب المدة الجديدة ومقارنتها بالقديمة تلافياً لأي تلاعب
-    $newStart = Carbon::parse($data['new_start_time']);
-    $newEnd = Carbon::parse($data['new_end_time']);
-    $newDurationMinutes = (int) $newStart->diffInMinutes($newEnd);
-
-    if ($newDurationMinutes !== $booking->duration_minutes) {
-        throw new \Exception(__('messages.reschedule_duration_mismatch'), 422);
-    }
-
-    // 3. تطبيق قواعد الـ Business (Service Rules)
-    $rules = $booking->service->rules;
-    if ($rules) {
-        $oldBookingDateTime = Carbon::parse($booking->booking_date . ' ' . $booking->start_time);
-        $cutoffHours = $rules->reschedule_cutoff_hours;
-
-        // أ. فحص الـ Cutoff
-        if (now()->addHours($cutoffHours)->greaterThan($oldBookingDateTime)) {
-            throw new \Exception(__('messages.reschedule_cutoff') ?? 'عذراً، لا يمكن إعادة الجدولة لاقتراب موعد الخدمة.', 400);
+        // Ownership validation (bypassed for admin)
+        if (!$isAdmin && $booking->customer_id !== $userId) {
+            throw new \Exception(__('messages.unauthorized') ?? 'Unauthorized', 403);
         }
 
-        // ب. فحص الحد الأقصى لعدد مرات إعادة الجدولة
-        if ($rules->max_changes_per_booking > 0) {
-            $changesCount = BookingHistory::where('booking_id', $booking->id)
-                ->where('note', 'like', '%إعادة جدولة%')
-                ->count();
+        // Validate
+        $validationResult = $this->validateReschedule($booking, $data, $isAdmin);
+        $finalWorkers = $validationResult['final_workers'];
+        $newStartStr = $validationResult['new_start_str'];
+        $newEndStr = $validationResult['new_end_str'];
+        $dates = $data['dates'];
+        $newStart = Carbon::parse($data['start_time']);
 
-            if ($changesCount >= $rules->max_changes_per_booking) {
-                throw new \Exception(__('messages.reschedule_max_changes', ['max_changes' => $rules->max_changes_per_booking]), 400);
+        // DB Transaction
+        DB::beginTransaction();
+        try {
+            // Update Booking Assignments
+            BookingAssignment::where('booking_id', $booking->id)
+                ->where('status', 'active')
+                ->update(['status' => 'replaced']);
+
+            foreach ($finalWorkers as $worker) {
+                BookingAssignment::create([
+                    'booking_id' => $booking->id,
+                    'worker_id' => $worker->id,
+                    'status' => 'active',
+                    'assigned_at' => now(),
+                ]);
+            }
+
+            // Sort dates to ensure earliest is main booking_date
+            $sortedDates = collect($dates)->sort()->values();
+
+            // Update Booking Header
+            $booking->update([
+                'booking_date' => $sortedDates[0],
+                'start_time' => $newStartStr,
+                'end_time' => $newEndStr,
+            ]);
+
+            // Update visits
+            if ($booking->relationLoaded('visits') && $booking->visits) {
+                foreach ($booking->visits as $index => $visit) {
+                    if (isset($sortedDates[$index])) {
+                        $visit->update([
+                            'visit_date' => $sortedDates[$index],
+                            'start_time' => $newStartStr,
+                            'end_time' => $newEndStr,
+                            'status' => 'Upcoming',
+                        ]);
+                    }
+                }
+            }
+
+            // Record History log
+            BookingHistory::create([
+                'booking_id' => $booking->id,
+                'old_status' => 'Upcoming',
+                'new_status' => 'Upcoming',
+                'note'       => $isAdmin 
+                    ? 'Rescheduled by admin. New schedule starts on: ' . $sortedDates[0] . ' at ' . $newStart->format('h:i A')
+                    : 'Rescheduled by customer. New schedule starts on: ' . $sortedDates[0] . ' at ' . $newStart->format('h:i A'),
+                'created_by' => $isAdmin ? $userId : $booking->customer_id,
+            ]);
+
+            DB::commit();
+            return $booking;
+
+        } catch (\Exception $transactionEx) {
+            DB::rollBack();
+            throw $transactionEx;
+        }
+    }
+
+    public function validateReschedule(Booking $booking, array $data, $isAdmin = false)
+    {
+        $booking->loadMissing(['visits', 'workers', 'service.rules']);
+
+        // Must be Upcoming status
+        if ($booking->status !== 'Upcoming') {
+            throw new \Exception(__('messages.booking_not_upcoming', ['status' => $booking->status]) ?? 'Booking is not upcoming', 400);
+        }
+
+        // Allow reschedule rule check (bypassed for admin)
+        $rules = $booking->service->rules;
+        if (!$isAdmin && $rules && !$rules->allow_reschedule) {
+            throw new \Exception('Rescheduling is not allowed for this service.', 400);
+        }
+
+        // Block reschedule if any visit is completed or inService
+        if ($booking->relationLoaded('visits') && $booking->visits && $booking->visits->isNotEmpty()) {
+            $nonUpcomingCount = $booking->visits->where('status', '!=', 'Upcoming')->count();
+            if ($nonUpcomingCount > 0) {
+                throw new \Exception('Cannot reschedule a booking that has already started or been completed.', 400);
             }
         }
 
-        $newBookingDateTime = Carbon::parse($data['new_date'] . ' ' . $data['new_start_time']);
+        // Cut-off timing validation (bypassed for admin)
+        if (!$isAdmin) {
+            $cutoffHours = $rules ? (int) $rules->reschedule_cutoff_hours : 0;
+            
+            $earliestVisit = null;
+            if ($booking->relationLoaded('visits') && $booking->visits && $booking->visits->isNotEmpty()) {
+                $earliestVisit = $booking->visits->sortBy(fn($v) => $v->visit_date . ' ' . $v->start_time)->first();
+            }
+            
+            $earliestDateTimeStr = $earliestVisit 
+                ? ($earliestVisit->visit_date . ' ' . $earliestVisit->start_time)
+                : ($booking->booking_date . ' ' . $booking->start_time);
+                
+            $earliestDateTime = Carbon::parse($earliestDateTimeStr);
 
-        // ج. فحص الـ Lead Time الأدنى
-        if (now()->addHours($rules->lead_time_min_hours)->greaterThan($newBookingDateTime)) {
-            throw new \Exception(__('messages.reschedule_lead_time_min'), 400);
+            if (now()->addHours($cutoffHours)->greaterThan($earliestDateTime)) {
+                throw new \Exception(__('messages.reschedule_cutoff') ?? 'Cannot reschedule as the service starts in less than the cutoff limit.', 400);
+            }
         }
 
-        // د. فحص الـ Lead Time الأقصى
-        if (now()->addDays($rules->lead_time_max_days)->endOfDay()->lessThan($newBookingDateTime)) {
-            throw new \Exception(__('messages.reschedule_lead_time_max'), 400);
+        // Validate dates count based on visit_type
+        $dates = $data['dates'];
+        if ($booking->visit_type === 'three_visits_per_week') {
+            if (count($dates) !== 3) {
+                throw new \Exception('Please select exactly 3 dates for a 3-visit booking.', 400);
+            }
+            // Check all 3 belong to the same week
+            $weeks = collect($dates)->map(fn($d) => Carbon::parse($d)->startOfWeek(Carbon::SATURDAY)->toDateString())->unique();
+            if ($weeks->count() > 1) {
+                throw new \Exception('All selected dates must belong to the same calendar week.', 400);
+            }
+        } else {
+            if (count($dates) !== 1) {
+                throw new \Exception('Please select exactly 1 date for a single visit booking.', 400);
+            }
+        }
+
+        // Calculate start and end time
+        $newStart = Carbon::parse($data['start_time']);
+        $newEnd = $newStart->copy()->addMinutes($booking->duration_minutes);
+        $newStartStr = $newStart->format('H:i:s');
+        $newEndStr = $newEnd->format('H:i:s');
+
+        // Validate service shifts for the new dates
+        foreach ($dates as $date) {
+            $dayName = strtolower(Carbon::parse($date)->format('l'));
+            $schedules = \App\Models\ServiceSchedule::where('service_id', $booking->service_id)
+                ->where('day', $dayName)
+                ->where('is_active', true)
+                ->get();
+
+            if ($schedules->isEmpty()) {
+                throw new \Exception("The service does not have active schedules on {$date}.", 422);
+            }
+
+            $isValidShift = false;
+            foreach ($schedules as $schedule) {
+                $shiftStart = Carbon::parse($schedule->start_time)->format('H:i:s');
+                $shiftEnd = Carbon::parse($schedule->end_time)->format('H:i:s');
+                if ($newStartStr >= $shiftStart && $newEndStr <= $shiftEnd) {
+                    $isValidShift = true;
+                    break;
+                }
+            }
+
+            if (!$isValidShift) {
+                throw new \Exception("The selected time slot is outside the available shifts for {$date}.", 422);
+            }
+        }
+
+        // Worker Availability Check & Allocation
+        $requiredCount = $booking->relationLoaded('workers') ? $booking->workers->count() : $booking->workers()->count();
+        if ($requiredCount === 0) {
+            $requiredCount = 1;
+        }
+        $availableCurrentWorkers = [];
+
+        foreach ($booking->workers as $worker) {
+            $isAvailable = true;
+            foreach ($dates as $date) {
+                if ($this->isWorkerBusyOnDateSlot($worker->id, $date, $newStartStr, $newEndStr, $booking->id)) {
+                    $isAvailable = false;
+                    break;
+                }
+            }
+            if ($isAvailable && $worker->status === 'active') {
+                $availableCurrentWorkers[] = $worker;
+            }
+        }
+
+        $gap = $requiredCount - count($availableCurrentWorkers);
+        $finalWorkers = $availableCurrentWorkers;
+
+        if ($gap > 0) {
+            $allEligibleWorkers = $booking->service->workers()->where('workers.status', 'active')->get();
+            $availableNewWorkers = [];
+
+            foreach ($allEligibleWorkers as $worker) {
+                if (collect($availableCurrentWorkers)->contains('id', $worker->id)) {
+                    continue;
+                }
+                $isAvailable = true;
+                foreach ($dates as $date) {
+                    if ($this->isWorkerBusyOnDateSlot($worker->id, $date, $newStartStr, $newEndStr, $booking->id)) {
+                        $isAvailable = false;
+                        break;
+                    }
+                }
+                if ($isAvailable) {
+                    $availableNewWorkers[] = $worker;
+                }
+            }
+
+            if (count($availableNewWorkers) < $gap) {
+                throw new \Exception('Cannot reschedule: not enough available workers during the selected times.', 422);
+            }
+
+            $randomSelections = collect($availableNewWorkers)->random($gap);
+            $finalWorkers = array_merge($finalWorkers, $randomSelections->all());
+        }
+
+        return [
+            'final_workers' => $finalWorkers,
+            'new_start_str' => $newStartStr,
+            'new_end_str' => $newEndStr,
+        ];
+    }
+
+    private function isWorkerBusyOnDateSlot($workerId, $date, $start, $end, $bookingId)
+    {
+        return BookingAssignment::where('status', 'active')
+            ->where('worker_id', $workerId)
+            ->where('booking_id', '!=', $bookingId)
+            ->where(function ($q) use ($date, $start, $end) {
+                $q->whereHas('booking', function ($subQ) use ($date, $start, $end) {
+                    $subQ->where('booking_date', $date)
+                         ->whereIn('status', ['Upcoming', 'inService'])
+                         ->where('start_time', '<', $end)
+                         ->where('end_time', '>', $start);
+                })
+                ->orWhereHas('booking.visits', function ($subQ) use ($date, $start, $end) {
+                    $subQ->where('visit_date', $date)
+                         ->whereIn('status', ['Upcoming', 'inService'])
+                         ->where('start_time', '<', $end)
+                         ->where('end_time', '>', $start);
+                });
+            })
+            ->exists();
+    }
+
+public function cancelBooking($bookingId, $userId, $reason = null, $isAdmin = false)
+{
+    // Retrieve the booking with rules, visits, and customer
+    $booking = Booking::with(['service.rules', 'visits', 'customer'])->findOrFail($bookingId);
+
+    // 1. Ownership validation (bypassed for admin)
+    if (!$isAdmin && $booking->customer_id !== $userId) {
+        throw new \Exception(__('messages.unauthorized') ?? 'Unauthorized', 403);
+    }
+
+    // 2. Validate cancellation rules
+    $this->validateCancellation($booking, $isAdmin);
+
+    // 3. Calculate Refund details
+    $refundAmount = 0;
+    $refundPoints = 0;
+    $refundDestination = null;
+
+    if ($booking->payment_status === 'paid') {
+        if ($booking->payment_method === 'points') {
+            $refundPoints = (int) $booking->paid_points;
+            $refundDestination = 'points';
+        } else {
+            $refundAmount = (float) $booking->total_amount;
+            $refundDestination = 'wallet';
         }
     }
 
-    // 4. فحص الشفتات الرسمية للخدمة في اليوم الجديد
-    $dayName = strtolower(Carbon::parse($data['new_date'])->format('l'));
-    $schedules = \App\Models\ServiceSchedule::where('service_id', $booking->service_id)
-        ->where('day', $dayName)
-        ->where('is_active', true)
-        ->get();
-
-    if ($schedules->isEmpty()) {
-        throw new \Exception(__('messages.service_not_scheduals'), 422);
-    }
-
-    $isValidShift = false;
-    $newStartStr  = $newStart->format('H:i:s');
-    $newEndStr    = $newEnd->format('H:i:s');
-
-    foreach ($schedules as $schedule) {
-        $shiftStart = Carbon::parse($schedule->start_time)->format('H:i:s');
-        $shiftEnd   = Carbon::parse($schedule->end_time)->format('H:i:s');
-
-        if ($newStartStr >= $shiftStart && $newEndStr <= $shiftEnd) {
-            $isValidShift = true;
-            break;
-        }
-    }
-
-    if (!$isValidShift) {
-        throw new \Exception(__('messages.service_not_scheduals') ?? 'الموعد المختار يقع خارج ساعات شفتات الخدمة.', 422);
-    }
-
-    // 5. استخراج الـ IDs لطاقم العمال الحاليين المرتبطين بالحجز
-    $workerIds = $booking->workers->pluck('id')->toArray();
-
-    // 🌟 التعديل الجوهري والحديدى: الفحص عبر جدول الـ BookingAssignment لتفادي التضارب 🌟
-    $isAnyWorkerBusy = BookingAssignment::whereIn('worker_id', $workerIds)
-        ->where('status', 'active')
-        ->where('booking_id', '!=', $booking->id) // استثناء الحجز الحالي نفسه
-        ->whereHas('booking', function ($q) use ($data, $newStartStr, $newEndStr) {
-            $q->where('booking_date', $data['new_date'])
-              ->whereIn('status', ['Upcoming', 'inService'])
-              ->where(function ($timeQ) use ($newStartStr, $newEndStr) {
-                  $timeQ->where('start_time', '<', $newEndStr)
-                        ->where('end_time', '>', $newStartStr);
-              });
-        })
-        ->exists();
-
-    if ($isAnyWorkerBusy) {
-        throw new \Exception(__('messages.worker_busy') ?? 'عذراً، أحد العمال المخصصين لحجزك مشغول في هذا الوقت المختار.', 422);
-    }
-
-    // 6. بدء المعاملة الآمنة والتحديث بقفل الحماية من الـ Race Condition
+    // 4. DB Transaction
     DB::beginTransaction();
     try {
-        // تفعيل الـ Pessimistic Lock (lockForUpdate) على جدول الـ Assignments لمنع أي تداخل متزامن
-        BookingAssignment::whereIn('worker_id', $workerIds)
-            ->where('status', 'active')
-            ->where('booking_id', '!=', $booking->id)
-            ->whereHas('booking', function ($q) use ($data, $newStartStr, $newEndStr) {
-                $q->where('booking_date', $data['new_date'])
-                  ->whereIn('status', ['Upcoming', 'inService'])
-                  ->where(function ($timeQ) use ($newStartStr, $newEndStr) {
-                      $timeQ->where('start_time', '<', $newEndStr)
-                            ->where('end_time', '>', $newStartStr);
-                  });
-            })
-            ->lockForUpdate()
-            ->exists();
-
-        // تحديث المواعيد بجدول الحجز الرئيسي
+        // Update Booking Header
         $booking->update([
-            'booking_date' => $data['new_date'],
-            'start_time'   => $newStartStr,
-            'end_time'     => $newEndStr,
+            'status' => 'cancelled',
+            'cancelled_by' => $isAdmin ? 'admin' : 'customer',
+            'cancelled_at' => now(),
+            'cancellation_reason' => $reason,
+            'refund_amount' => $refundAmount,
+            'refund_points' => $refundPoints,
+            'refund_destination' => $refundDestination,
+            'refund_status' => ($refundDestination ? 'completed' : null),
         ]);
 
-        // تسجيل العملية في سجل الـ History
+        // Update booking visits status to cancelled
+        if ($booking->relationLoaded('visits') && $booking->visits) {
+            foreach ($booking->visits as $visit) {
+                $visit->update(['status' => 'cancelled']);
+            }
+        }
+
+        // We keep the assignments active so the client knows what workers were selected,
+        // but since the booking status is 'cancelled', these workers are free to be assigned elsewhere.
+
+        // Adjust Coupon
+        if ($booking->coupon_id) {
+            $coupon = \App\Models\Coupon::find($booking->coupon_id);
+            if ($coupon && $coupon->used_count > 0) {
+                $coupon->decrement('used_count');
+            }
+        }
+
+        // Log history change
         BookingHistory::create([
             'booking_id' => $booking->id,
             'old_status' => 'Upcoming',
-            'new_status' => 'Upcoming',
-            'note'       => 'عملية إعادة جدولة - تم تعديل الموعد إلى: ' . $data['new_date'] . ' ' . $newStart->format('h:i A'),
-            'created_by' => $userId,
+            'new_status' => 'cancelled',
+            'note'       => $isAdmin ? 'Cancelled by admin. Reason: ' . $reason : 'Cancelled by customer. Reason: ' . $reason,
+            'created_by' => $isAdmin ? $userId : $booking->customer_id,
         ]);
+
+        // Refund points or wallet
+        if ($booking->payment_status === 'paid') {
+            $customer = $booking->customer;
+            if ($refundDestination === 'points') {
+                $customer->pointTransactions()->create([
+                    'type' => 'earn',
+                    'amount' => $refundPoints,
+                    'title_ar' => 'استرداد نقاط للحجز رقم: ' . $booking->booking_ref,
+                    'title_en' => 'Refund points for Booking Ref: ' . $booking->booking_ref,
+                ]);
+            } elseif ($refundDestination === 'wallet') {
+                $customer->deposit($refundAmount, 'Refund - Cancelled Booking', $booking->booking_ref);
+            }
+        }
 
         DB::commit();
         return $booking;
@@ -387,105 +581,46 @@ class BookingService
     }
 }
 
-
-
-public function cancelBooking($bookingId, $userId)
+public function validateCancellation(Booking $booking, $isAdmin = false)
 {
-    // جلب الحجز مع القواعد لضمان سرعة معالجة البيانات ومنع الـ N+1
-    $booking = Booking::with('service.rules')->findOrFail($bookingId);
+    $booking->loadMissing(['visits', 'service.rules']);
 
-    // 1. الحماية والصلاحيات
-    if ($booking->customer_id !== $userId) {
-        throw new \Exception(__('messages.unauthorized'), 403);
+    // Can only cancel Upcoming bookings
+    if ($booking->status !== 'Upcoming') {
+        throw new \Exception(__('messages.booking_not_upcoming', ['status' => $booking->status]) ?? 'Booking is not upcoming', 400);
     }
 
-    if ($booking->status !== 'Upcoming') {
-        throw new \Exception(__('messages.booking_not_upcoming', ['status' => $booking->status]), 400);
+    // Completed visit constraint (blocks both customer and admin)
+    if ($booking->relationLoaded('visits') && $booking->visits && $booking->visits->isNotEmpty()) {
+        $completedVisits = $booking->visits->where('status', 'completed')->count();
+        if ($completedVisits > 0) {
+            throw new \Exception('Cannot cancel a booking that has already completed visits.', 400);
+        }
     }
 
     $rules = $booking->service->rules;
-    $cancellationFee = 0;
-    $historyNote = 'تم إلغاء الحجز من قبل العميل (إلغاء مجاني كامل).';
 
-    // 2. تطبيق قواعد الإلغاء وحساب الغرامة المخصومة
-    if ($rules) {
-        $bookingDateTime = Carbon::parse($booking->booking_date . ' ' . $booking->start_time);
-        $cutoffHours = $rules->free_cancel_cutoff_hours; 
+    // Cut-off time validation (bypassed for admin)
+    if (!$isAdmin && $rules) {
+        if (!$rules->allow_cancel) {
+            throw new \Exception('Cancellation is not allowed for this service.', 400);
+        }
 
-        // فحص هل الإلغاء تم بعد تخطي المدة المجانية المسموحة؟
+        $earliestVisit = null;
+        if ($booking->relationLoaded('visits') && $booking->visits && $booking->visits->isNotEmpty()) {
+            $earliestVisit = $booking->visits->sortBy(fn($v) => $v->visit_date . ' ' . $v->start_time)->first();
+        }
+        
+        $earliestDateTimeStr = $earliestVisit 
+            ? ($earliestVisit->visit_date . ' ' . $earliestVisit->start_time)
+            : ($booking->booking_date . ' ' . $booking->start_time);
+            
+        $bookingDateTime = Carbon::parse($earliestDateTimeStr);
+        $cutoffHours = (int) $rules->free_cancel_cutoff_hours;
+
         if (now()->addHours($cutoffHours)->greaterThan($bookingDateTime)) {
-
-            // الأكشن 1: منع الإلغاء نهائياً (Block)
-            if ($rules->late_cancel_action === 'block') {
-                throw new \Exception(__('messages.late_cancel_blocked', ['cutoffHours' => $cutoffHours]), 400);
-            }
-
-            // الأكشن 2: حساب الغرامة (Fee)
-            if ($rules->late_cancel_action === 'fee') {
-                if ($rules->late_cancel_fee_type === 'fixed') {
-                    $cancellationFee = (float) $rules->late_cancel_fee_value;
-                } elseif ($rules->late_cancel_fee_type === 'percent') {
-                    $cancellationFee = ($booking->total_amount * $rules->late_cancel_fee_value) / 100;
-                }
-
-                // حماية: الغرامة لا يمكن أن تتخطى القيمة الإجمالية المدفوعة للحجز
-                if ($cancellationFee > $booking->total_amount) {
-                    $cancellationFee = $booking->total_amount;
-                }
-
-                $historyNote = __('messages.late_cancel_fee_applied', ['fee' => number_format($cancellationFee, 2)]) 
-                    . ' - تم إلغاء الحجز من قبل العميل وتطبيق غرامة إلغاء متأخر.';
-            }
+            throw new \Exception(__('messages.late_cancel_blocked', ['cutoffHours' => $cutoffHours]) ?? 'Cannot cancel within cutoff limit.', 400);
         }
-    }
-
-    // 3. حساب قيمة المسترد الصافي للمحفظة
-    $refundAmount = $booking->total_amount - $cancellationFee;
-
-    // 4. تنفيذ العمليات داخل قاعدة البيانات (Database Transaction)
-    DB::beginTransaction();
-    try {
-        // أ. تحديث رأس الحجز (يبقى بالحجز فقط قيمة الغرامة المثبتة كإيراد)
-        $booking->update([
-            'status' => 'cancelled',
-            'total_amount' => $cancellationFee, 
-        ]);
-
-        // ب. تحرير "جميع" العمال المرتبطين بالحجز دفعة واحدة
-        BookingAssignment::where('booking_id', $booking->id)
-            ->update([
-                'status' => 'cancelled'
-            ]);
-
-        // ج. ميكانيكية الكوبون: خفض عداد الاستخدام إن وجد
-        if ($booking->coupon_id) {
-            $coupon = \App\Models\Coupon::find($booking->coupon_id);
-            if ($coupon && $coupon->used_count > 0) {
-                $coupon->decrement('used_count');
-            }
-        }
-
-        // د. تسجيل الحركة التاريخية
-        BookingHistory::create([
-            'booking_id' => $booking->id,
-            'old_status' => 'Upcoming',
-            'new_status' => 'cancelled',
-            'note'       => $historyNote,
-            'created_by' => $userId,
-        ]);
-
-        // هـ. ميكانيكية المحفظة: إرجاع المبلغ الصافي للعميل
-        if ($refundAmount > 0) {
-            $user = auth()->user(); // أو مرير مستخدم الحجز كمعامل إذا رغبت
-            $user->deposit($refundAmount, 'Refund - Cancelled Booking', $booking->booking_ref);
-        }
-
-        DB::commit();
-        return $booking;
-
-    } catch (\Exception $transactionEx) {
-        DB::rollBack();
-        throw $transactionEx;
     }
 }
 
