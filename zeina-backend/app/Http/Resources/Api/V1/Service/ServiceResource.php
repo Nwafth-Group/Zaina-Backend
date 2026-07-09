@@ -42,7 +42,7 @@ class ServiceResource extends JsonResource
             'description_en' => $this->description_en,
             'features' => $this->features ?? [],
             'avg_rating' => $this->avg_rating,
-            
+
             // New Configuration Parameters
             'available_visit_types' => $this->available_visit_types ?? [],
             'start_time' => $this->start_time,
@@ -60,19 +60,19 @@ class ServiceResource extends JsonResource
             'coverages' => ServiceCoverageResource::collection($this->whenLoaded('coverages')),
             'prices' => ServicePriceResource::collection($this->whenLoaded('priceRules')),
             'image' => $media ? MediaResource::make($media)->getFileUrl() : null,
- 
-            'preferred_workers' => $this->relationLoaded('preferred_workers') 
+
+            'preferred_workers' => $this->relationLoaded('preferred_workers')
                 ? WorkerResource::collection($this->preferred_workers)
                 : WorkerResource::collection($this->getPreferredWorkers()),
-            'available_dates'   => $this->getAvailableDates(),
-            'available_days' => $this->relationLoaded('schedules') && $this->schedules 
+            'available_dates' => $this->getAvailableDates(),
+            'available_days' => $this->relationLoaded('schedules') && $this->schedules
                 ? $this->schedules->where('is_active', true)->pluck('day')->unique()->values()->toArray()
                 : [],
-            'available_shifts' => $this->relationLoaded('schedules') && $this->schedules 
+            'available_shifts' => $this->relationLoaded('schedules') && $this->schedules
                 ? $this->schedules->where('is_active', true)->map(function ($s) {
                     return [
                         'start_time' => substr($s->start_time, 0, 5),
-                        'end_time'   => substr($s->end_time, 0, 5),
+                        'end_time' => substr($s->end_time, 0, 5),
                     ];
                 })->unique(function ($item) {
                     return $item['start_time'] . '-' . $item['end_time'];
@@ -91,7 +91,7 @@ class ServiceResource extends JsonResource
         $startDate = $allowSameDay ? \Carbon\Carbon::today() : \Carbon\Carbon::tomorrow();
         $endDate = \Carbon\Carbon::today()->addDays($maxDays);
 
-        $availableDays = $this->relationLoaded('schedules') && $this->schedules 
+        $availableDays = $this->relationLoaded('schedules') && $this->schedules
             ? $this->schedules->where('is_active', true)->pluck('day')->unique()->map(fn($day) => strtolower($day))->toArray()
             : [];
 
@@ -113,10 +113,10 @@ class ServiceResource extends JsonResource
         }
 
         $preferredIds = \App\Models\BookingAssignment::whereHas('booking', function ($q) use ($userId) {
-                $q->where('customer_id', $userId)
-                  ->where('service_id', $this->id)
-                  ->where('status', 'completed');
-            })
+            $q->where('customer_id', $userId)
+                ->where('service_id', $this->id)
+                ->where('status', 'completed');
+        })
             ->pluck('worker_id')
             ->unique()
             ->toArray();
