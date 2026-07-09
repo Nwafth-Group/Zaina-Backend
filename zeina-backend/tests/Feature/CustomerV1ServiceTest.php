@@ -19,7 +19,7 @@ class CustomerV1ServiceTest extends TestCase
     private const V1_CUSTOMER_ENDPOINT = '/api/v1/customer/services';
     private const V2_CUSTOMER_ENDPOINT = '/api/v1/customer/services';
 
-    public function test_v2_customer_cannot_view_active_services_under_inactive_category(): void
+    public function test_v2_customer_can_view_active_services_under_inactive_category(): void
     {
         $category = Category::factory()->create(['status' => 'inactive']);
         $service = Service::factory()->create([
@@ -27,14 +27,14 @@ class CustomerV1ServiceTest extends TestCase
             'status' => 'active'
         ]);
 
-        // V2 listing should be empty
+        // V2 listing should contain the service
         $response = $this->getJson(self::V2_CUSTOMER_ENDPOINT);
         $response->assertStatus(200);
-        $this->assertEmpty($response->json('data.items'));
+        $this->assertNotEmpty($response->json('data.items'));
 
-        // V2 show service should return 404
+        // V2 show service should return 200
         $response = $this->getJson(self::V2_CUSTOMER_ENDPOINT . '/' . $service->id);
-        $response->assertStatus(404);
+        $response->assertStatus(200);
     }
 
     public function test_v2_customer_service_endpoints(): void

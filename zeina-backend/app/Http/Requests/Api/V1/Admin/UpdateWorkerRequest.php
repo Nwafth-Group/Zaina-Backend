@@ -21,31 +21,42 @@ class UpdateWorkerRequest extends FormRequest
      */
     public function rules(): array
     { 
+        $workerId = $this->route('worker') instanceof \App\Models\Worker 
+            ? $this->route('worker')->id 
+            : $this->route('worker');
+
         return [
-           'name' => ['sometimes','required' ,'string', 'max:255'],
-           'nationality' => ['sometimes','required' ,'string', 'max:255'],
-           'status' => ['sometimes','nullable' , 'in:active,inactive'],
-           'services' => ['sometimes','nullable', 'array'],
-           'services.*' => ['exists:services,id'],
-           'image' => ['sometimes','nullable', 'image', 'mimes:jpeg,png,jpg,gif,svg', 'max:2048'],
+            'name' => ['sometimes', 'required', 'string', 'max:255'],
+            'phone_number' => ['sometimes', 'required', 'string', 'unique:workers,phone_number,' . $workerId, 'max:255'],
+            'nationality' => ['sometimes', 'required', 'string', 'max:255'],
+            'id_number' => ['sometimes', 'required', 'string', 'unique:workers,id_number,' . $workerId, 'max:255'],
+            'address' => ['sometimes', 'required', 'string'],
+            'gender' => ['sometimes', 'required', 'string', 'in:male,female'],
+            'status' => ['sometimes', 'nullable', 'in:active,inactive,suspended'],
+            'services' => ['sometimes', 'nullable', 'array', 'max:1'],
+            'services.*' => ['exists:services,id'],
+            'image' => ['sometimes', 'nullable', 'image', 'mimes:jpeg,png,jpg,gif,svg', 'max:2048'],
         ];
     }
 
-    public function messages(){
+    public function messages()
+    {
         return [
-          'name.required' => __('validation.store_worker.name_required'),
-          'name.string' => __('validation.store_worker.name_string'),
-          'name.max' => __('validation.store_worker.name_max'),
-          'nationality.required' => __('validation.store_worker.nationality_required'),
-          'nationality.string' => __('validation.store_worker.nationality_string'),
-          'nationality.max' => __('validation.store_worker.nationality_max'),
-          'status.in' => __('validation.store_worker.status_in'),
+            'name.required' => 'Please fill all required worker information before saving.',
+            'nationality.required' => 'Please fill all required worker information before saving.',
+            'phone_number.required' => 'Please fill all required worker information before saving.',
+            'phone_number.unique' => 'Phone number is already used by another worker.',
+            'id_number.required' => 'Please fill all required worker information before saving.',
+            'id_number.unique' => 'ID number is already used by another worker.',
+            'address.required' => 'Please fill all required worker information before saving.',
+            'gender.required' => 'Please fill all required worker information before saving.',
+            'services.max' => 'This worker is already assigned to a service. A worker can only be assigned to one service.',
+            'status.in' => __('validation.store_worker.status_in'),
             'services.array' => __('validation.store_worker.services_array'),
             'services.*.exists' => __('validation.store_worker.services_exists'),
             'image.image' => __('validation.store_worker.image_image'),
             'image.mimes' => __('validation.store_worker.image_mimes'),
             'image.max' => __('validation.store_worker.image_max'),
-
         ];
     }
 }

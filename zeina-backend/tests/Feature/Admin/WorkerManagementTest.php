@@ -71,18 +71,30 @@ class WorkerManagementTest extends TestCase
         // Worker create returns 201 (unlike Category which returns 200).
         $response = $this->postJson(self::ENDPOINT, [
             'name' => 'Layla Hassan',
+            'phone_number' => '0511111111',
             'nationality' => 'Egypt',
+            'id_number' => '1234567890',
+            'address' => 'Cairo, Egypt',
+            'gender' => 'female',
             'status' => 'inactive',
         ]);
 
         $response->assertStatus(201)
             ->assertJsonPath('data.name', 'Layla Hassan')
             ->assertJsonPath('data.nationality', 'Egypt')
+            ->assertJsonPath('data.phone_number', '0511111111')
+            ->assertJsonPath('data.id_number', '1234567890')
+            ->assertJsonPath('data.address', 'Cairo, Egypt')
+            ->assertJsonPath('data.gender', 'female')
             ->assertJsonPath('data.status', 'inactive');
 
         $this->assertDatabaseHas('workers', [
             'name' => 'Layla Hassan',
             'nationality' => 'Egypt',
+            'phone_number' => '0511111111',
+            'id_number' => '1234567890',
+            'address' => 'Cairo, Egypt',
+            'gender' => 'female',
             'status' => 'inactive',
         ]);
     }
@@ -90,35 +102,56 @@ class WorkerManagementTest extends TestCase
     public function test_admin_can_link_worker_to_services_on_create(): void
     {
         $this->actingAsAdmin();
-        $services = Service::factory()->count(2)->create();
+        $service = Service::factory()->create();
 
         $response = $this->postJson(self::ENDPOINT, [
             'name' => 'Mona Adel',
+            'phone_number' => '0522222222',
             'nationality' => 'Palestine',
-            'services' => $services->pluck('id')->toArray(),
+            'id_number' => '2234567890',
+            'address' => 'Gaza, Palestine',
+            'gender' => 'female',
+            'services' => [$service->id],
         ]);
 
         $response->assertStatus(201);
         $worker = Worker::where('name', 'Mona Adel')->firstOrFail();
 
-        foreach ($services as $service) {
-            $this->assertDatabaseHas('service_workers', [
-                'worker_id' => $worker->id,
-                'service_id' => $service->id,
-            ]);
-        }
+        $this->assertDatabaseHas('service_workers', [
+            'worker_id' => $worker->id,
+            'service_id' => $service->id,
+        ]);
+    }
+
+    public function test_create_worker_rejects_multiple_services_on_create(): void
+    {
+        $this->actingAsAdmin();
+        $services = Service::factory()->count(2)->create();
+
+        $this->postJson(self::ENDPOINT, [
+            'name' => 'Mona Adel Duplicate',
+            'phone_number' => '0522222223',
+            'nationality' => 'Palestine',
+            'id_number' => '2234567891',
+            'address' => 'Gaza, Palestine',
+            'gender' => 'female',
+            'services' => $services->pluck('id')->toArray(),
+        ])
+            ->assertStatus(422)
+            ->assertJsonStructure(['params' => ['services']]);
     }
 
     public function test_create_worker_defaults_status_to_active_in_db(): void
     {
         $this->actingAsAdmin();
 
-        // Status omitted -> DB applies the 'active' default. (As with Category,
-        // the immediate response serializes the un-refreshed model, so
-        // data.status comes back null — documented here.)
         $response = $this->postJson(self::ENDPOINT, [
             'name' => 'Sara Omar',
+            'phone_number' => '0533333333',
             'nationality' => 'India',
+            'id_number' => '3234567890',
+            'address' => 'Mumbai, India',
+            'gender' => 'female',
         ]);
 
         $response->assertStatus(201)->assertJsonPath('data.status', null);
@@ -129,7 +162,13 @@ class WorkerManagementTest extends TestCase
     {
         $this->actingAsAdmin();
 
-        $this->postJson(self::ENDPOINT, ['nationality' => 'Egypt'])
+        $this->postJson(self::ENDPOINT, [
+            'nationality' => 'Egypt',
+            'phone_number' => '0544444444',
+            'id_number' => '4234567890',
+            'address' => 'Cairo, Egypt',
+            'gender' => 'female',
+        ])
             ->assertStatus(422)
             ->assertJsonStructure(['params' => ['name']]);
     }
@@ -138,7 +177,13 @@ class WorkerManagementTest extends TestCase
     {
         $this->actingAsAdmin();
 
-        $this->postJson(self::ENDPOINT, ['name' => 'No Nationality'])
+        $this->postJson(self::ENDPOINT, [
+            'name' => 'No Nationality',
+            'phone_number' => '0544444445',
+            'id_number' => '4234567891',
+            'address' => 'Cairo, Egypt',
+            'gender' => 'female',
+        ])
             ->assertStatus(422)
             ->assertJsonStructure(['params' => ['nationality']]);
     }
@@ -149,7 +194,11 @@ class WorkerManagementTest extends TestCase
 
         $this->postJson(self::ENDPOINT, [
             'name' => 'Bad Status',
+            'phone_number' => '0544444446',
             'nationality' => 'Egypt',
+            'id_number' => '4234567892',
+            'address' => 'Cairo, Egypt',
+            'gender' => 'female',
             'status' => 'on_leave',
         ])
             ->assertStatus(422)
@@ -162,7 +211,11 @@ class WorkerManagementTest extends TestCase
 
         $this->postJson(self::ENDPOINT, [
             'name' => 'Ghost Link',
+            'phone_number' => '0544444447',
             'nationality' => 'Egypt',
+            'id_number' => '4234567893',
+            'address' => 'Cairo, Egypt',
+            'gender' => 'female',
             'services' => [99999],
         ])
             ->assertStatus(422)

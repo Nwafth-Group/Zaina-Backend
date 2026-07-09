@@ -416,7 +416,7 @@ class CustomerBookingService
             $remaining = $availableWorkers->whereNotIn('id', $allocated->pluck('id'))->values();
             if ($remaining->count() < $needed) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
-                    'workers_count' => 'Not enough workers available for this shift and date.'
+                    'workers_count' => 'No available worker was found for the selected service, date, and time.'
                 ]);
             }
             $randomPicked = $remaining->random($needed)->values();

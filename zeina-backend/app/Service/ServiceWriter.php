@@ -130,7 +130,20 @@ class ServiceWriter
         }
 
         if (array_key_exists('workers', $data)) {
-            $service->workers()->sync($data['workers']);
+            $workerIds = $data['workers'] ?? [];
+            if (!empty($workerIds)) {
+                $alreadyAssigned = DB::table('service_workers')
+                    ->whereIn('worker_id', $workerIds)
+                    ->where('service_id', '!=', $service->id)
+                    ->exists();
+
+                if ($alreadyAssigned) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'workers' => 'This worker is already assigned to a service. A worker can only be assigned to one service.'
+                    ]);
+                }
+            }
+            $service->workers()->sync($workerIds);
         }
 
         if (array_key_exists('working_days', $data) || array_key_exists('shifts', $data)) {

@@ -46,7 +46,7 @@ class ServiceController extends Controller
         $sortDir = strtolower($request->input('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
         $query->orderBy($sortBy, $sortDir);
 
-        return $this->successResponse(ServiceListResource::collection($query->get()), __('messages.services_retrieved_successfully'));
+        return $this->successResponse(ServiceResource::collection($query->get()), __('messages.services_retrieved_successfully'));
     }
 
     public function show($id)

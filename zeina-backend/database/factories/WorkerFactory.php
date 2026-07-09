@@ -23,6 +23,10 @@ class WorkerFactory extends Factory
             'nationality' => fake()->randomElement($nationalities), // جنسية عشوائية من المصفوفة
             'avg_rating' => fake()->randomFloat(1, 3.5, 5.0), // تقييم عشوائي من 3.5 إلى 5.0 (رقم عشري واحد)
             'status' => 'active',
+            'phone_number' => fake()->unique()->numerify('05########'),
+            'id_number' => fake()->unique()->numerify('##########'),
+            'address' => fake()->address(),
+            'gender' => fake()->randomElement(['male', 'female']),
         ];
     }
 

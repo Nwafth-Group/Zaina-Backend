@@ -42,6 +42,7 @@ class ServiceResource extends JsonResource
             'description_en' => $this->description_en,
             'features' => $this->features ?? [],
             'avg_rating' => $this->avg_rating,
+            'status' => $this->status,
 
             // New Configuration Parameters
             'available_visit_types' => $this->available_visit_types ?? [],
@@ -64,6 +65,7 @@ class ServiceResource extends JsonResource
             'preferred_workers' => $this->relationLoaded('preferred_workers')
                 ? WorkerResource::collection($this->preferred_workers)
                 : WorkerResource::collection($this->getPreferredWorkers()),
+            'workers' => $this->when(str_contains($request->path(), 'admin'), WorkerResource::collection($this->whenLoaded('workers'))),
             'available_dates' => $this->getAvailableDates(),
             'available_days' => $this->relationLoaded('schedules') && $this->schedules
                 ? $this->schedules->where('is_active', true)->pluck('day')->unique()->values()->toArray()

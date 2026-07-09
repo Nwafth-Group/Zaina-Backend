@@ -22,30 +22,37 @@ class StoreWorkerRequest extends FormRequest
     public function rules(): array
     {
         return [
-                'name' => ['required', 'string', 'max:255'],
-                'nationality' => ['required', 'string', 'max:255'],
-                'status' => ['nullable' , 'in:active,inactive'],
-                'services' => ['nullable', 'array'],
-                'services.*' => ['exists:services,id'],
-                'image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,svg', 'max:2048'],
+            'name' => ['required', 'string', 'max:255'],
+            'phone_number' => ['required', 'string', 'unique:workers,phone_number', 'max:255'],
+            'nationality' => ['required', 'string', 'max:255'],
+            'id_number' => ['required', 'string', 'unique:workers,id_number', 'max:255'],
+            'address' => ['required', 'string'],
+            'gender' => ['required', 'string', 'in:male,female'],
+            'status' => ['nullable', 'in:active,inactive,suspended'],
+            'services' => ['nullable', 'array', 'max:1'],
+            'services.*' => ['exists:services,id'],
+            'image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,svg', 'max:2048'],
         ];
     }
 
-    public function messages(){
+    public function messages()
+    {
         return [
-          'name.required' => __('validation.store_worker.name_required'),
-          'name.string' => __('validation.store_worker.name_string'),
-          'name.max' => __('validation.store_worker.name_max'),
-          'nationality.required' => __('validation.store_worker.nationality_required'),
-          'nationality.string' => __('validation.store_worker.nationality_string'),
-          'nationality.max' => __('validation.store_worker.nationality_max'),
-          'status.in' => __('validation.store_worker.status_in'),
+            'name.required' => 'Please fill all required worker information before saving.',
+            'nationality.required' => 'Please fill all required worker information before saving.',
+            'phone_number.required' => 'Please fill all required worker information before saving.',
+            'phone_number.unique' => 'Phone number is already used by another worker.',
+            'id_number.required' => 'Please fill all required worker information before saving.',
+            'id_number.unique' => 'ID number is already used by another worker.',
+            'address.required' => 'Please fill all required worker information before saving.',
+            'gender.required' => 'Please fill all required worker information before saving.',
+            'services.max' => 'This worker is already assigned to a service. A worker can only be assigned to one service.',
+            'status.in' => __('validation.store_worker.status_in'),
             'services.array' => __('validation.store_worker.services_array'),
             'services.*.exists' => __('validation.store_worker.services_exists'),
             'image.image' => __('validation.store_worker.image_image'),
             'image.mimes' => __('validation.store_worker.image_mimes'),
             'image.max' => __('validation.store_worker.image_max'),
-
         ];
     }
 }

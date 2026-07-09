@@ -13,6 +13,7 @@ use App\Http\Requests\Api\V1\Admin\UpdateWorkerRequest;
 use App\Http\Resources\Api\V1\Booking\AdminBookingResource;
 use App\Http\Resources\Api\V1\Review\ReviewResource;
 use App\Http\Resources\Api\V1\Worker\WorkerResource;
+use App\Http\Resources\Api\V1\Worker\WorkerListResource;
 use App\Models\Worker;
 use App\Service\MediaService;
 use App\Traits\ApiResponseTrait;
@@ -45,6 +46,17 @@ class WorkerController extends Controller
             ])
             ->thenReturn();
 
+        if ($request->boolean('unassigned_only')) {
+            $query->where(function ($q) use ($request) {
+                $q->whereDoesntHave('services');
+                if ($request->filled('include_service_id')) {
+                    $q->orWhereHas('services', function ($sq) use ($request) {
+                        $sq->where('services.id', $request->include_service_id);
+                    });
+                }
+            });
+        }
+
         // 2. الترتيب الديناميكي الآمن (allow-list)
         $allowedSorts = ['name', 'avg_rating', 'created_at', 'id'];
         $sortBy = in_array($request->input('sort_by'), $allowedSorts, true) ? $request->input('sort_by') : 'created_at';
@@ -55,7 +67,7 @@ class WorkerController extends Controller
         $perPage = (int) $request->input('per_page', 10);
         $workers = $query->paginate($perPage)->withQueryString();
 
-        return $this->successResponse(WorkerResource::collection($workers), __('messages.workers_retrieved_successfully'));
+        return $this->successResponse(WorkerListResource::collection($workers), __('messages.workers_retrieved_successfully'));
     }
 
     /**
@@ -78,7 +90,7 @@ class WorkerController extends Controller
     public function store(StoreWorkerRequest $request)
     {
         $data = $request->validated();
-        $create_data = collect($data)->only(['name', 'nationality', 'status'])->toArray();
+        $create_data = collect($data)->only(['name', 'nationality', 'status', 'phone_number', 'id_number', 'address', 'gender'])->toArray();
         $worker = Worker::create($create_data);
 
         if (isset($data['services'])) {
@@ -145,7 +157,7 @@ class WorkerController extends Controller
     public function update(UpdateWorkerRequest $request, Worker $worker)
     {
         $data = $request->validated();
-        $update_data = collect($data)->only(['name', 'nationality', 'status'])->toArray();
+        $update_data = collect($data)->only(['name', 'nationality', 'status', 'phone_number', 'id_number', 'address', 'gender'])->toArray();
         $worker->update($update_data);
         if (isset($data['services'])) {
             $worker->services()->sync($data['services']);

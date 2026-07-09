@@ -15,6 +15,10 @@ class Worker extends Model
         'nationality',
         'avg_rating',
         'status',
+        'phone_number',
+        'id_number',
+        'address',
+        'gender',
     ];
 
     /**
