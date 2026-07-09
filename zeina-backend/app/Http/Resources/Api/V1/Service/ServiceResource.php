@@ -21,8 +21,19 @@ class ServiceResource extends JsonResource
         $priceObj = $this->getCustomerPrice();
         $isStartingPrice = $priceObj ? $priceObj->is_fallback : true;
 
+        $defaultAddressId = null;
+        if (auth('sanctum')->check()) {
+            $user = auth('sanctum')->user();
+            $defaultAddress = $user->addresses()->where('is_default', true)->first()
+                ?? $user->addresses()->first();
+            if ($defaultAddress) {
+                $defaultAddressId = $defaultAddress->id;
+            }
+        }
+
         return [
             'id' => $this->id,
+            'address_id' => $defaultAddressId,
             'type' => $this->type,
             'service_code' => $this->service_code,
             'name_ar' => $this->name_ar,
