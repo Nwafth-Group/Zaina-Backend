@@ -35,6 +35,8 @@ class ServiceResource extends JsonResource
             'id' => $this->id,
             'address_id' => $defaultAddressId,
             'type' => $this->type,
+            'worker_gender_options' => $this->worker_gender_options ?? [],
+            'pricing_type' => $this->pricing_type ?? 'per_service',
             'service_code' => $this->service_code,
             'name_ar' => $this->name_ar,
             'name_en' => $this->name_en,
@@ -66,6 +68,7 @@ class ServiceResource extends JsonResource
                 ? WorkerResource::collection($this->preferred_workers)
                 : WorkerResource::collection($this->getPreferredWorkers()),
             'workers' => $this->when(str_contains($request->path(), 'admin'), WorkerResource::collection($this->whenLoaded('workers'))),
+            'schedules' => ServiceScheduleResource::collection($this->whenLoaded('schedules')),
             'available_dates' => $this->getAvailableDates(),
             'available_days' => $this->relationLoaded('schedules') && $this->schedules
                 ? $this->schedules->where('is_active', true)->pluck('day')->unique()->values()->toArray()

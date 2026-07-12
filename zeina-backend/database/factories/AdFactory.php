@@ -17,6 +17,12 @@ class AdFactory extends Factory
     public function definition(): array
     {
         return [
+            'title_en' => fake()->sentence(3),
+            'title_ar' => 'عنوان إعلان تجريبي',
+            'type' => 'general',
+            'text_en' => fake()->paragraph(),
+            'text_ar' => 'محتوى نصي للإعلان التجريبي',
+            'link_type' => 'external',
             'link' => fake()->url(),
             'status' => 'active',
         ];

@@ -64,9 +64,10 @@ class RolesAndUsersSeeder extends Seeder
             [
                 'first_name' => 'Admin',
                 'last_name' => 'ZainahApp',
-                'email' => 'admin@zeina.com',
-                'password' => Hash::make('admin@123'),
+                'email' => 'admin@example.com',
+                'password' => Hash::make('password'),
                 'verification_status' => 'approved',
+                'gender' => 'Male',
                 'type' => 'super_admin',
                 'status' => 'active',
             ]

@@ -9,6 +9,7 @@ use App\Http\Requests\Api\V1\Customer\RportBookingRequest;
 use App\Http\Requests\Api\V1\Customer\StoreBookingRequest as StoreBookingRequestV2;
 use App\Http\Requests\Api\V1\Customer\CancelBookingRequest;
 use App\Http\Requests\Api\V1\Customer\ValidateBookingRequest;
+use App\Http\Requests\Api\V1\Customer\GetAvailableDatesRequest;
 use App\Http\Resources\Api\V1\Booking\BookingResource;
 use App\Http\Resources\Api\V1\Booking\BookingListResource;
 use App\Http\Resources\Api\V1\Reports\ReportsResource;
@@ -68,6 +69,102 @@ class BookingController extends Controller
             new BookingResource($booking->load(['service.media', 'address', 'workers', 'visits'])),
             __('messages.booking_details_fetched_successfully') ?? 'تم جلب تفاصيل الحجز بنجاح.'
         );
+    }
+
+    /**
+     * Retrieve calendar available dates based on time, duration, gender, worker count, and service/address.
+     */
+    public function availableDates(GetAvailableDatesRequest $request)
+    {
+        $data = $request->validated();
+        $service = \App\Models\Service::with(['rules', 'schedules'])->findOrFail($data['service_id']);
+
+        $data['duration'] = (int) $data['duration'];
+        $data['workers_count'] = (int) $data['workers_count'];
+
+        $minDuration = $service->min_duration ?? 4;
+        $maxDuration = $service->max_duration ?? 6;
+        if ($data['duration'] < $minDuration || $data['duration'] > $maxDuration) {
+            return $this->errorResponse("Duration must be between {$minDuration} and {$maxDuration} hours.", 422);
+        }
+
+        $minWorkers = $service->min_workers ?? 2;
+        $maxWorkers = $service->max_workers ?? 12;
+        if ($data['workers_count'] < $minWorkers || $data['workers_count'] > $maxWorkers) {
+            return $this->errorResponse("Workers count must be between {$minWorkers} and {$maxWorkers} workers.", 422);
+        }
+
+        $genderOptions = $service->worker_gender_options ?? [];
+        if (!in_array($data['worker_gender'], $genderOptions)) {
+            return $this->errorResponse("The selected gender is not available for this service.", 422);
+        }
+
+        $startTime = \Carbon\Carbon::parse($data['start_time']);
+        $endTime = $startTime->copy()->addHours($data['duration']);
+        
+        $serviceStart = \Carbon\Carbon::parse($service->start_time ?? '08:00');
+        $serviceEnd = \Carbon\Carbon::parse($service->end_time ?? '20:00');
+        
+        if ($startTime->lt($serviceStart) || $endTime->gt($serviceEnd)) {
+            return $this->errorResponse("Selected hours must be within the service window ({$service->start_time} to {$service->end_time}).", 422);
+        }
+
+        $dates = [];
+        $maxDays = ($service->rules && $service->rules->max_advance_booking_days > 0) 
+            ? (int) $service->rules->max_advance_booking_days 
+            : 30;
+        $allowSameDay = $service->rules ? (bool) $service->rules->allow_same_day : false;
+
+        $startDate = $allowSameDay ? \Carbon\Carbon::today() : \Carbon\Carbon::tomorrow();
+        $endDate = \Carbon\Carbon::today()->addDays($maxDays);
+
+        $workingDays = $service->schedules()
+            ->where('is_active', true)
+            ->pluck('day')
+            ->unique()
+            ->map(fn($d) => strtolower($d))
+            ->toArray();
+
+        $serviceWorkers = $service->workers()
+            ->where('status', 'active')
+            ->where('gender', strtolower($data['worker_gender']))
+            ->pluck('workers.id')
+            ->toArray();
+
+        if (count($serviceWorkers) < $data['workers_count']) {
+            return $this->successResponse([], 'No dates available with matching worker count and gender.');
+        }
+
+        $startStr = $startTime->format('H:i:s');
+        $endStr = $endTime->format('H:i:s');
+
+        for ($date = $startDate->copy(); $date->lte($endDate); $date->addDay()) {
+            $dayName = strtolower($date->format('l'));
+            if (!in_array($dayName, $workingDays)) {
+                continue;
+            }
+
+            $dateStr = $date->toDateString();
+
+            $busyWorkerCount = \App\Models\BookingAssignment::whereIn('worker_id', $serviceWorkers)
+                ->where('status', 'active')
+                ->whereHas('booking', function ($q) use ($dateStr, $startStr, $endStr) {
+                    $q->where('booking_date', $dateStr)
+                        ->whereIn('status', ['Upcoming', 'inService'])
+                        ->where(function ($timeQ) use ($startStr, $endStr) {
+                            $timeQ->where('start_time', '<', $endStr)
+                                  ->where('end_time', '>', $startStr);
+                        });
+                })
+                ->count();
+
+            $availableCount = count($serviceWorkers) - $busyWorkerCount;
+            if ($availableCount >= $data['workers_count']) {
+                $dates[] = $dateStr . ' 00:00:00';
+            }
+        }
+
+        return $this->successResponse($dates, 'Available dates retrieved successfully.');
     }
 
     /**

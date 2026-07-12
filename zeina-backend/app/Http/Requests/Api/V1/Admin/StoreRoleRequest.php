@@ -22,8 +22,8 @@ class StoreRoleRequest extends CustomFormRequest
      */
     public function rules(): array
     {   
-        $roleId = $this->route('role') ??  null;
-
+        $roleParam = $this->route('role');
+        $roleId = $roleParam instanceof \App\Models\Role ? $roleParam->id : $roleParam;
         
         return [
             'name'        => ['required', 'string', 'max:100', 'unique:roles,name,' . $roleId],

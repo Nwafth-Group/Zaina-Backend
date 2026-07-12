@@ -35,6 +35,7 @@ class UpdateEmployeeRequest extends FormRequest
             'status'       => 'required|in:active,inactive,suspended',
             'roles'        => 'required|array|min:1',
             'roles.*'      => 'exists:roles,name',
+            'image'        => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ];
     }
 }

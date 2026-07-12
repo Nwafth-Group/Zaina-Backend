@@ -115,11 +115,12 @@ class CategoryAndServiceSeeder extends Seeder
             }
 
             // Sync workers to this service
-            $workers = \App\Models\Worker::all();
-            if ($workers->isEmpty()) {
-                $workers = \App\Models\Worker::factory(5)->create(['status' => 'active']);
-            }
-            $workerIds = $workers->random(min(3, $workers->count()))->pluck('id')->toArray();
+            $newWorkers = \App\Models\Worker::factory(3)->create(['status' => 'active']);
+            $workerIds = $newWorkers->pluck('id')->toArray();
+
+            $isFirstService = ($data['code'] === 'DOMESTIC_HELPER_HOURLY');
+            $isSecondService = ($data['code'] === 'HOSPITALITY_WORKER_HOURLY');
+            $isThirdService = ($data['code'] === 'BABYSITTER_HOURLY');
 
             // Construct payload matching StoreServiceRequest structure exactly
             $payload = [
@@ -134,27 +135,31 @@ class CategoryAndServiceSeeder extends Seeder
                 'status' => 'active',
                 'workers' => $workerIds,
 
-                'available_visit_types' => [
-                    ['type' => 'single_visit', 'discount' => 0],
-                    ['type' => '3_days_per_week', 'discount' => 15]
-                ],
+                'available_visit_types' => ($isSecondService || $isThirdService)
+                    ? [['type' => 'single_visit', 'discount' => 0]]
+                    : [
+                        ['type' => 'single_visit', 'discount' => 0],
+                        ['type' => '3_days_per_week', 'discount' => 15]
+                    ],
                 'base_price' => $data['price'],
                 'start_time' => '08:00',
-                'end_time' => '22:00',
+                'end_time' => ($isSecondService || $isThirdService) ? '20:00' : '22:00',
                 'duration_unit' => 'Hours',
-                'default_duration' => $data['period'],
-                'has_duration_range' => true,
-                'min_duration' => 1,
-                'max_duration' => 4,
-                'min_workers' => 1,
-                'max_workers' => 3,
+                'default_duration' => ($isSecondService || $isThirdService) ? 4 : $data['period'],
+                'has_duration_range' => ($isSecondService || $isThirdService),
+                'min_duration' => ($isSecondService || $isThirdService) ? 4 : null,
+                'max_duration' => ($isSecondService || $isThirdService) ? 6 : null,
+                'min_workers' => ($isSecondService || $isThirdService) ? 2 : 1,
+                'max_workers' => ($isSecondService || $isThirdService) ? 5 : 1,
 
                 'coverages' => $coverages,
 
-                'working_days' => ['sunday', 'monday', 'tuesday'],
-                'shifts' => [
+                'working_days' => ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'saturday'],
+                'shifts' => ($isSecondService || $isThirdService) ? [] : [
                     ['start_time' => '09:00'],
-                    ['start_time' => '14:00']
+                    ['start_time' => '12:00'],
+                    ['start_time' => '14:00'],
+                    ['start_time' => '16:00']
                 ],
 
                 'terms_ar' => 'الشروط والأحكام الخاصة بالخدمة...',
@@ -172,6 +177,14 @@ class CategoryAndServiceSeeder extends Seeder
                     'late_arrival_grace_minutes' => 15,
                 ]
             ];
+
+            if ($isSecondService || $isThirdService) {
+                $payload['worker_gender_options'] = ['Female', 'Male'];
+                $payload['pricing_type'] = 'per_hour';
+            } else {
+                $payload['worker_gender_options'] = [];
+                $payload['pricing_type'] = 'per_service';
+            }
 
             // Write service and sync its relations using the ServiceWriter class
             $service = Service::where('name_en', $data['en'])->first();

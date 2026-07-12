@@ -33,6 +33,7 @@ class StoreEmployeeRequest extends FormRequest
             'status'       => 'required|in:active,inactive,suspended',
             'roles'        => 'required|array|min:1', // BR-02: يجب إعطاء دور واحد على الأقل
             'roles.*'      => 'exists:roles,name', // التأكد أن الدور موجود في قاعدة البيانات
+            'image'        => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ];
     }
 

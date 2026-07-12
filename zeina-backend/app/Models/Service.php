@@ -12,7 +12,7 @@ class Service extends Model implements Auditable
     use HasFactory, \OwenIt\Auditing\Auditable;
 
     protected $fillable = [
-        'category_id', 'type', 'name_ar', 'name_en',
+        'category_id', 'type', 'worker_gender_options', 'pricing_type', 'name_ar', 'name_en',
         'description_ar', 'description_en', 'status', 'avg_rating', 'features',
         'service_code', 'available_visit_types', 'discount_value', 'terms_ar',
         'terms_en', 'acceptance_required', 'start_time', 'end_time',
@@ -23,6 +23,7 @@ class Service extends Model implements Auditable
     protected $casts = [
         'features' => 'array',
         'available_visit_types' => 'array',
+        'worker_gender_options' => 'array',
         'acceptance_required' => 'boolean',
         'has_duration_range' => 'boolean',
         'discount_value' => 'decimal:2',

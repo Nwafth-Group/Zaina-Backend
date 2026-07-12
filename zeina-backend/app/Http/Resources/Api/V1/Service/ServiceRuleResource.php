@@ -25,7 +25,7 @@ class ServiceRuleResource extends JsonResource
             // 'late_cancel_fee_value' => $this->late_cancel_fee_value,
             // 'no_show_policy' => $this->no_show_policy,
             // 'max_changes_per_booking' => $this->max_changes_per_booking,
-            
+
             // New Config Rules
             'allow_cancel' => (bool) $this->allow_cancel, //
             'allow_reschedule' => (bool) $this->allow_reschedule, //

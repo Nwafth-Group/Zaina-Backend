@@ -66,6 +66,10 @@ class BannerManagementTest extends TestCase
         $this->actingAsAdmin();
 
         $response = $this->postJson(self::ENDPOINT, [
+            'title_en' => 'Test Banner',
+            'title_ar' => 'بانر تجريبي',
+            'type' => 'general',
+            'link_type' => 'external',
             'link' => 'https://zaina.test/offer',
             'status' => 'active',
             'image' => UploadedFile::fake()->image('banner.jpg', 800, 400),
@@ -88,6 +92,10 @@ class BannerManagementTest extends TestCase
         $this->actingAsAdmin();
 
         $response = $this->postJson(self::ENDPOINT, [
+            'title_en' => 'Test Banner',
+            'title_ar' => 'بانر تجريبي',
+            'type' => 'general',
+            'link_type' => 'none',
             'image' => UploadedFile::fake()->image('banner.jpg', 800, 400),
         ]);
 
@@ -105,6 +113,10 @@ class BannerManagementTest extends TestCase
         $this->actingAsAdmin();
 
         $response = $this->postJson(self::ENDPOINT, [
+            'title_en' => 'Test Banner',
+            'title_ar' => 'بانر تجريبي',
+            'type' => 'general',
+            'link_type' => 'external',
             'link' => 'https://zaina.test/offer',
         ]);
 
@@ -138,6 +150,10 @@ class BannerManagementTest extends TestCase
         $ad = Ad::factory()->create(['link' => 'old', 'status' => 'active']);
 
         $this->putJson(self::ENDPOINT.'/'.$ad->id, [
+            'title_en' => 'Updated Banner',
+            'title_ar' => 'بانر معدل',
+            'type' => 'general',
+            'link_type' => 'external',
             'link' => 'new',
             'status' => 'inactive',
         ])
@@ -153,7 +169,13 @@ class BannerManagementTest extends TestCase
         $this->actingAsAdmin();
         $ad = Ad::factory()->create();
 
-        $this->putJson(self::ENDPOINT.'/'.$ad->id, ['status' => 'archived'])
+        $this->putJson(self::ENDPOINT.'/'.$ad->id, [
+            'title_en' => 'Test Banner',
+            'title_ar' => 'بانر تجريبي',
+            'type' => 'general',
+            'link_type' => 'external',
+            'status' => 'archived',
+        ])
             ->assertStatus(422)
             ->assertJsonStructure(['params' => ['status']]);
     }
@@ -175,5 +197,61 @@ class BannerManagementTest extends TestCase
         $this->actingAsAdmin();
 
         $this->patchJson(self::ENDPOINT.'/99999/toggle-status')->assertStatus(404);
+    }
+
+    public function test_admin_can_search_banners_multilingually(): void
+    {
+        $this->actingAsAdmin();
+        $match = Ad::factory()->create(['title_en' => 'UniqueEnglishTitle', 'title_ar' => 'عربي']);
+        $other = Ad::factory()->create(['title_en' => 'Other', 'title_ar' => 'عربي']);
+
+        $response = $this->getJson(self::ENDPOINT.'?search=UniqueEnglishTitle');
+        $response->assertStatus(200);
+        $ids = collect($response->json('data.items'))->pluck('id')->toArray();
+        $this->assertContains($match->id, $ids);
+        $this->assertNotContains($other->id, $ids);
+    }
+
+    public function test_admin_can_filter_banners_by_type_and_status(): void
+    {
+        $this->actingAsAdmin();
+        $coupon = Ad::factory()->create(['type' => 'coupon', 'status' => 'active']);
+        $general = Ad::factory()->create(['type' => 'general', 'status' => 'inactive']);
+
+        // Filter by type=coupon
+        $response = $this->getJson(self::ENDPOINT.'?type=coupon');
+        $response->assertStatus(200);
+        $ids = collect($response->json('data.items'))->pluck('id')->toArray();
+        $this->assertContains($coupon->id, $ids);
+        $this->assertNotContains($general->id, $ids);
+
+        // Filter by status=inactive
+        $response = $this->getJson(self::ENDPOINT.'?status=inactive');
+        $response->assertStatus(200);
+        $ids = collect($response->json('data.items'))->pluck('id')->toArray();
+        $this->assertContains($general->id, $ids);
+        $this->assertNotContains($coupon->id, $ids);
+    }
+
+    public function test_admin_can_sort_banners_by_status(): void
+    {
+        $this->actingAsAdmin();
+        $active = Ad::factory()->create(['status' => 'active']);
+        $inactive = Ad::factory()->create(['status' => 'inactive']);
+
+        // Sort by status desc (inactive first because i > a)
+        $response = $this->getJson(self::ENDPOINT.'?sort_by=status&sort_dir=desc');
+        $response->assertStatus(200);
+        $items = $response->json('data.items');
+        $this->assertEquals('inactive', $items[0]['status']);
+    }
+
+    public function test_admin_can_delete_banner(): void
+    {
+        $this->actingAsAdmin();
+        $ad = Ad::factory()->create();
+
+        $this->deleteJson(self::ENDPOINT.'/'.$ad->id)->assertStatus(200);
+        $this->assertSoftDeleted('ads', ['id' => $ad->id]);
     }
 }

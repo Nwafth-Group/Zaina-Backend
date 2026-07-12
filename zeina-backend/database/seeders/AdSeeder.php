@@ -31,15 +31,33 @@ class AdSeeder extends Seeder
         // 2. داتا الـ Ads التجريبية (روابط متنوعة واختيارية)
         $ads = [
             [
-                'link' => 'null', // رابط عرض خاص
+                'title_ar' => 'عرض الصيف الرائع',
+                'title_en' => 'Awesome Summer Offer',
+                'type' => 'general',
+                'text_ar' => 'احصل على أفضل الخدمات المنزلية بأسعار منافسة جداً',
+                'text_en' => 'Get the best home services at highly competitive prices',
+                'link_type' => 'external',
+                'link' => 'https://zeina.app/summer-offer',
                 'status' => 'active',
             ],
             [
-                'link' => null, // بدون رابط (فقط صورة للعرض والتجميل بالـ UI)
+                'title_ar' => 'كوبون خصم زينة المميز',
+                'title_en' => 'Special Zeina Coupon',
+                'type' => 'coupon',
+                'text_ar' => 'استخدم الكوبون ZEINA20 للحصول على خصم فوري',
+                'text_en' => 'Use coupon ZEINA20 to get an instant discount',
+                'link_type' => 'internal',
+                'link' => 'coupons',
                 'status' => 'active',
             ],
             [
-                'link' => 'null', // رابط داخلي لقسم التجميل
+                'title_ar' => 'خدمات تنظيف منازل احترافية',
+                'title_en' => 'Professional Home Cleaning Services',
+                'type' => 'general',
+                'text_ar' => 'نقدم خدمات تنظيف متكاملة ومضمونة الجودة بأيدي خبيرات مدربات',
+                'text_en' => 'We offer full-service cleaning with guaranteed quality by trained experts',
+                'link_type' => 'none',
+                'link' => null,
                 'status' => 'active',
             ],
         ];

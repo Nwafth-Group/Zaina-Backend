@@ -21,7 +21,7 @@ class ServiceWriter
      * @var list<string>
      */
     private const BASE_FIELDS = [
-        'category_id', 'type', 'name_ar', 'name_en',
+        'category_id', 'type', 'worker_gender_options', 'pricing_type', 'name_ar', 'name_en',
         'description_ar', 'description_en', 'status', 'features',
         'service_code', 'available_visit_types', 'discount_value', 'terms_ar',
         'terms_en', 'acceptance_required', 'start_time', 'end_time',
@@ -159,6 +159,17 @@ class ServiceWriter
                         'end_time' => $s->end_time ? \Carbon\Carbon::parse($s->end_time)->format('H:i') : null,
                     ];
                 })->unique('start_time')->values()->toArray();
+
+            if (empty($shifts)) {
+                $startTime = $data['start_time'] ?? $service->start_time ?? '08:00';
+                $endTime = $data['end_time'] ?? $service->end_time ?? '20:00';
+                // Trim seconds if present
+                $startTime = substr($startTime, 0, 5);
+                $endTime = substr($endTime, 0, 5);
+                $shifts = [
+                    ['start_time' => $startTime, 'end_time' => $endTime]
+                ];
+            }
 
             $service->schedules()->delete();
             $schedulesToCreate = [];

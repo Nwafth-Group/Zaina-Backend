@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api\V1\Customer;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Customer\ListServicesRequest;
+use App\Http\Requests\Api\V1\Customer\GetAvailableDatesRequest;
+use App\Http\Requests\Api\V1\Customer\ValidateHospitalityBookingRequest;
 use App\Http\Resources\Api\V1\Service\ServiceResource;
 use App\Http\Resources\Api\V1\Service\ServiceListResource;
 use App\Models\Service;
@@ -15,7 +17,10 @@ class ServiceController extends Controller
 {
     use ApiResponseTrait;
 
-    public function __construct(private CustomerService $customerService) {}
+    public function __construct(
+        private CustomerService $customerService,
+        private \App\Service\Customer\CustomerBookingService $customerBookingService
+    ) {}
 
     /**
      * Get all active services filtered.
@@ -93,4 +98,5 @@ class ServiceController extends Controller
             'address'     => new \App\Http\Resources\Api\V1\Address\AddressResource($address),
         ], __('messages.coverage_check_completed'));
     }
+
 }

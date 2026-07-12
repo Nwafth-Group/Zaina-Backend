@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\V1\Admin\CountryController;
 use App\Http\Controllers\Api\V1\Admin\CouponController;
 use App\Http\Controllers\Api\V1\Admin\DashboardController;
 use App\Http\Controllers\Api\V1\Admin\EmployeeController;
+use App\Http\Controllers\Api\V1\Admin\MobileNotificationController;
 use App\Http\Controllers\Api\V1\Admin\GovrenrateController;
 use App\Http\Controllers\Api\V1\Admin\KysController;
 use App\Http\Controllers\Api\V1\Admin\ProfileController;
@@ -70,8 +71,13 @@ Route::prefix('admin')->group(function () {
             Route::patch('{employee}/toggle-status', [EmployeeController::class, 'toggleStatus'])->middleware('permission:employees.edit');
         });
 
-        Route::apiResource('roles', RoleController::class);
-        Route::post('roles/{role}/duplicate', [RoleController::class, 'duplicate']);
+        Route::get('roles', [RoleController::class, 'index'])->middleware('permission:roles.view');
+        Route::post('roles', [RoleController::class, 'store'])->middleware('permission:roles.create');
+        Route::get('roles/permissions', [RoleController::class, 'permissions'])->middleware('permission:roles.view');
+        Route::get('roles/{role}', [RoleController::class, 'show'])->middleware('permission:roles.view');
+        Route::match(['put', 'patch'], 'roles/{role}', [RoleController::class, 'update'])->middleware('permission:roles.edit');
+        Route::delete('roles/{role}', [RoleController::class, 'destroy'])->middleware('permission:roles.delete');
+        Route::post('roles/{role}/duplicate', [RoleController::class, 'duplicate'])->middleware('permission:roles.create');
 
         // Read-only location lookups feed admin form dropdowns (service coverage &
         // pricing, worker assignment). Available to any admin: reading reference
@@ -130,6 +136,10 @@ Route::prefix('admin')->group(function () {
 
         // Announcements shown in the customer app notifications tab.
         Route::apiResource('announcements', AnnouncementController::class);
+
+        // Mobile Push Notifications
+        Route::apiResource('mobile-notifications', MobileNotificationController::class);
+        Route::patch('mobile-notifications/{mobile_notification}/cancel', [MobileNotificationController::class, 'cancel']);
 
         // Coupons management
         Route::apiResource('coupons', CouponController::class);

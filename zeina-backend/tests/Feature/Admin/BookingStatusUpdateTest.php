@@ -96,7 +96,7 @@ class BookingStatusUpdateTest extends TestCase
         $this->assertDatabaseHas('booking_histories', [
             'booking_id' => $booking->id,
             'new_status' => 'cancelled',
-            'note' => 'Customer requested cancellation',
+            'note' => 'Cancelled by admin. Reason: Customer requested cancellation',
         ]);
     }
 

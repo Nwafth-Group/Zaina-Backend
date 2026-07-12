@@ -257,4 +257,19 @@ return [
     'coupon_shift_ineligible' => 'This coupon cannot be applied to the selected shift or service time.',
     'coupon_updated_successfully' => 'Coupon updated successfully.',
     'coupon_deleted_successfully' => 'Coupon deleted successfully.',
+
+    // Mobile Notifications
+    'notification_list_fetch_success' => 'Notification list retrieved successfully.',
+    'notification_create_success' => 'Notification created and scheduled successfully.',
+    'notification_show_success' => 'Notification details retrieved successfully.',
+    'notification_update_success' => 'Notification updated successfully.',
+    'notification_delete_success' => 'Notification deleted successfully.',
+    'notification_cancel_success' => 'Notification scheduled delivery cancelled.',
+    'notification_edit_forbidden' => 'Cannot edit sent or cancelled notifications.',
+    'notification_delete_forbidden' => 'Cannot delete notifications that have already been sent.',
+    'notification_cancel_forbidden' => 'Only scheduled notifications can be cancelled.',
+    'notification_arabic_required' => 'Arabic title and content are required when Arabic language is selected.',
+    'notification_english_required' => 'English title and content are required when English language is selected.',
+    'notification_invalid_schedule' => 'The send date and time cannot be in the past.',
+    'notification_invalid_format' => 'Invalid date or time format.',
 ];

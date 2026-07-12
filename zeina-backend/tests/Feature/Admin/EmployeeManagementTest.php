@@ -434,4 +434,27 @@ class EmployeeManagementTest extends TestCase
 
         $this->assertDatabaseHas('users', ['id' => $employee->id]);
     }
+
+    public function test_admin_can_filter_employees_by_registration_date_range(): void
+    {
+        $this->actingAsEmployeeManager();
+
+        // Create employees with different registration dates
+        $oldEmployee = User::factory()->operation()->create(['created_at' => '2026-01-01 10:00:00']);
+        $newEmployee = User::factory()->operation()->create(['created_at' => '2026-07-10 12:00:00']);
+
+        // Filter by created_from = '2026-07-01'
+        $response = $this->getJson(self::ENDPOINT.'?created_from=2026-07-01');
+        $response->assertStatus(200);
+        $ids = collect($response->json('data.items'))->pluck('id')->toArray();
+        $this->assertContains($newEmployee->id, $ids);
+        $this->assertNotContains($oldEmployee->id, $ids);
+
+        // Filter by created_to = '2026-02-01'
+        $response = $this->getJson(self::ENDPOINT.'?created_to=2026-02-01');
+        $response->assertStatus(200);
+        $ids = collect($response->json('data.items'))->pluck('id')->toArray();
+        $this->assertContains($oldEmployee->id, $ids);
+        $this->assertNotContains($newEmployee->id, $ids);
+    }
 }

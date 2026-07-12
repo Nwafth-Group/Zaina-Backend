@@ -35,16 +35,18 @@ class RoleController extends Controller
                 'code'        => $request->code,
                 'description' => $request->description,
                 'status'      => $request->status,
-                'guard_name'  => 'web', 
+                'guard_name'  => 'sanctum', 
             ]);
 
             $role->syncPermissions($request->permissions);
             DB::commit();
-            return $this->successResponse(null,__('messages.role_create'));
+
+            Log::info("Role created successfully: {$role->name} (ID: {$role->id}) by user ID " . auth()->id());
+
+            return $this->successResponse(new RoleResource($role), __('messages.role_create'), 201);
         } catch (\Exception $e) {
             DB::rollBack();
-            dd($e->getMessage());
-            Log::error($e->getMessage());
+            Log::error("Role creation failed: " . $e->getMessage());
             return $this->errorResponse(__('messages.role_create_failed'), 500);
         }
     }
@@ -52,9 +54,10 @@ class RoleController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
+    public function show($id)
     {
-        //
+        $role = Role::with('permissions')->findOrFail($id);
+        return $this->successResponse(new RoleResource($role), __('messages.role_retrieved'));
     }
 
     /**
@@ -62,41 +65,92 @@ class RoleController extends Controller
      */
     public function update(StoreRoleRequest $request, $role)
     {    
-        $rolee = Role::findById($role, 'web');       
+        if (!auth()->user()->hasRole('Super Admin')) {
+            return $this->errorResponse(__('messages.unauthorized') ?? 'غير مصرح لك.', 403);
+        }
+
+        $rolee = Role::findById($role, 'sanctum');       
         $rolee->update($request->only(['name', 'code', 'description', 'status']));
         $rolee->syncPermissions($request->permissions);
 
-        return $this->successResponse(null,__('messages.role_update'));
+        Log::info("Role updated successfully: {$rolee->name} (ID: {$rolee->id}) by user ID " . auth()->id());
+
+        return $this->successResponse(new RoleResource($rolee), __('messages.role_update'));
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Role $role)
+    public function destroy($role)
     { 
-        if ($role->name === 'Super Admin') {
+        if (!auth()->user()->hasRole('Super Admin')) {
+            return $this->errorResponse(__('messages.unauthorized') ?? 'غير مصرح لك.', 403);
+        }
+
+        $roleModel = $role instanceof Role ? $role : Role::findById($role, 'sanctum');
+
+        if ($roleModel->name === 'Super Admin') {
             return $this->errorResponse(__('messages.cannot_delete_super_admin_role'), 403);
         }
+
         // BR-05: منع حذف دور مرتبط بمستخدمين
-        if ($role->users()->count() > 0) {
+        if ($roleModel->users()->count() > 0) {
             return $this->errorResponse(__('messages.cannot_delete_role_with_users'), 403);
         }
-        $role->delete();
+
+        $roleName = $roleModel->name;
+        $roleId = $roleModel->id;
+        $roleModel->delete();
+
+        Log::info("Role deleted successfully: {$roleName} (ID: {$roleId}) by user ID " . auth()->id());
+
         return $this->successResponse(null, __('messages.role_deleted'));
     }
 
-    public function duplicate(Role $role)
+    public function duplicate($role)
     {
+        if (!auth()->user()->hasRole('Super Admin')) {
+            return $this->errorResponse(__('messages.unauthorized') ?? 'غير مصرح لك.', 403);
+        }
+
+        $roleModel = $role instanceof Role ? $role : Role::findById($role, 'sanctum');
+
         $newRole = Role::create([
-            'name'        => $role->name . ' - Copy',
-            'code'        => $role->code . '_COPY',
-            'description' => $role->description,
+            'name'        => $roleModel->name . ' - Copy',
+            'code'        => $roleModel->code . '_COPY',
+            'description' => $roleModel->description,
             'status'      => 'inactive',
-            'guard_name'  => $role->guard_name,
+            'guard_name'  => 'sanctum',
         ]);
 
-        $newRole->syncPermissions($role->permissions);
+        $newRole->syncPermissions($roleModel->permissions);
 
-        return $this->successResponse(null, __('messages.role_duplicated'));
+        Log::info("Role duplicated: {$roleModel->name} cloned to {$newRole->name} (ID: {$newRole->id}) by user ID " . auth()->id());
+
+        return $this->successResponse(new RoleResource($newRole), __('messages.role_duplicated'));
+    }
+
+    /**
+     * List all permissions grouped by module.
+     */
+    public function permissions()
+    {
+        $permissions = \Spatie\Permission\Models\Permission::all();
+        
+        $grouped = $permissions->groupBy(function ($permission) {
+            $parts = explode('.', $permission->name);
+            return $parts[0] ?? 'general';
+        })->map(function ($items) {
+            return $items->map(function ($item) {
+                $parts = explode('.', $item->name);
+                return [
+                    'id' => $item->id,
+                    'name' => $item->name,
+                    'action' => $parts[1] ?? $item->name,
+                ];
+            });
+        });
+
+        return $this->successResponse($grouped, __('messages.permissions_retrieved'));
     }
 }

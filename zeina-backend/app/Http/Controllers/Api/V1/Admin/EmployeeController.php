@@ -6,6 +6,8 @@ use App\Filters\Employee\RoleFilter;
 use App\Filters\Employee\SearchFilter;
 use App\Filters\Employee\StatusFilter;
 use App\Filters\Employee\TypeFilter;
+use App\Filters\Employee\CreatedFromFilter;
+use App\Filters\Employee\CreatedToFilter;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Admin\StoreEmployeeRequest;
 use App\Http\Requests\Api\V1\Admin\UpdateEmployeeRequest;
@@ -34,6 +36,8 @@ class EmployeeController extends Controller
                 TypeFilter::class,
                 StatusFilter::class,
                 RoleFilter::class,
+                CreatedFromFilter::class,
+                CreatedToFilter::class,
             ])
             ->thenReturn();
 
@@ -62,7 +66,18 @@ class EmployeeController extends Controller
             // إسناد الصلاحيات (Roles)
             $employee->assignRole($request->roles);
 
+            if ($request->hasFile('image')) {
+                app(\App\Service\MediaService::class)->upload(
+                    $request->file('image'),
+                    $employee,
+                    'user/profilePhoto',
+                    'public'
+                );
+            }
+
             DB::commit();
+
+            \Illuminate\Support\Facades\Log::info("Employee created successfully: User ID {$employee->id} by user ID " . auth()->id());
 
             return $this->successResponse(new UserResource($employee->load('roles')), __('messages.employee_created_successfully'), 201);
 
@@ -100,7 +115,22 @@ class EmployeeController extends Controller
             // تحديث الصلاحيات
             $employee->syncRoles($request->roles);
 
+            if ($request->hasFile('image')) {
+                if ($employee->media()->where('collection', 'user/profilePhoto')->exists()) {
+                    $oldMedia = $employee->media()->where('collection', 'user/profilePhoto')->first();
+                    app(\App\Service\MediaService::class)->delete($oldMedia);
+                }
+                app(\App\Service\MediaService::class)->upload(
+                    $request->file('image'),
+                    $employee,
+                    'user/profilePhoto',
+                    'public'
+                );
+            }
+
             DB::commit();
+
+            \Illuminate\Support\Facades\Log::info("Employee updated successfully: User ID {$employee->id} by user ID " . auth()->id());
 
             return $this->successResponse(null, __('messages.employee_updated_successfully'));
 
@@ -116,8 +146,12 @@ class EmployeeController extends Controller
      */
     public function toggleStatus(User $employee)
     {
-        // Scenario 4: منع إيقاف آخر Super Admin
+        // Super Admin cannot be deactivated by regular admins (operations staff)
+        if ($employee->hasRole('Super Admin') && auth()->user()->type !== 'super_admin') {
+            return $this->errorResponse(__('messages.unauthorized') ?? 'غير مصرح لك بتعديل حالة مدير عام.', 403);
+        }
 
+        // Scenario 4: منع إيقاف آخر Super Admin
         if ($employee->hasRole('Super Admin') && $employee->status === 'active') {
             $superAdminsCount = User::role('Super Admin')->where('status', 'active')->count();
             if ($superAdminsCount <= 1) {
@@ -127,6 +161,8 @@ class EmployeeController extends Controller
 
         $employee->status = $employee->status === 'active' ? 'inactive' : 'active';
         $employee->save();
+
+        \Illuminate\Support\Facades\Log::info("Employee status toggled: User ID {$employee->id} status set to {$employee->status} by user ID " . auth()->id());
 
         $msg = $employee->status === 'inactive' ? __('messages.employee_deactivated') : __('messages.employee_activated');
 

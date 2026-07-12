@@ -23,9 +23,15 @@ class StoreAdRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'], // حد أقصى 2 ميجا بايت
-            'link' => ['nullable', 'string', 'max:255'],
-            'status' => ['nullable', 'in:active,inactive'],
+            'title_en'  => ['required', 'string', 'max:255'],
+            'title_ar'  => ['required', 'string', 'max:255'],
+            'type'      => ['required', 'in:general,coupon'],
+            'text_en'   => ['nullable', 'string'],
+            'text_ar'   => ['nullable', 'string'],
+            'link_type' => ['required', 'in:internal,external,none'],
+            'link'      => ['nullable', 'string', 'max:255'],
+            'status'    => ['nullable', 'in:active,inactive'],
+            'image'     => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
         ];
     }
 }

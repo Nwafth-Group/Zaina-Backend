@@ -32,6 +32,7 @@ class UserFactory extends Factory
             'password' => Hash::make('password'),
             'verification_status' => fake()->randomElement(['pending', 'approved', 'rejected']),
             'status' => fake()->randomElement(['active', 'active', 'inactive']), // نسبة الـ active أعلى
+            'gender' => fake()->randomElement(['Male', 'Female']),
             'preferred_language' => fake()->randomElement(['ar', 'en']),
             'remember_token' => Str::random(10),
         ];

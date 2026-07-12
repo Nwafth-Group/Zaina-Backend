@@ -23,9 +23,34 @@ class AdsController extends Controller
 
     public function index(Request $request)
     {
-        // Admin management view: list every banner (active and inactive), newest first.
+        $query = Ad::query()->with('media');
+
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('title_en', 'like', "%{$search}%")
+                  ->orWhere('title_ar', 'like', "%{$search}%")
+                  ->orWhere('text_en', 'like', "%{$search}%")
+                  ->orWhere('text_ar', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+
+        if ($request->filled('type')) {
+            $query->where('type', $request->input('type'));
+        }
+
+        // Sorting
+        $allowedSorts = ['status', 'created_at', 'id'];
+        $sortBy = in_array($request->input('sort_by'), $allowedSorts, true) ? $request->input('sort_by') : 'created_at';
+        $sortDir = strtolower($request->input('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
+        $query->orderBy($sortBy, $sortDir);
+
         $perPage = $request->integer('per_page', 12);
-        $ads = Ad::query()->with('media')->latest()->paginate($perPage);
+        $ads = $query->paginate($perPage)->withQueryString();
 
         return $this->successResponse(AdminAdResource::collection($ads), __('messages.ads_fetch_success'));
     }

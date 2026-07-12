@@ -26,6 +26,7 @@ class ServiceConfigurationValidationTest extends TestCase
         return array_merge([
             'category_id' => Category::factory()->create(['status' => 'active'])->id,
             'type' => 'hourly',
+            'worker_gender_options' => ['Female'],
             'name_ar' => 'تنظيف جديد',
             'name_en' => 'New Cleaning Service',
             'description_ar' => 'وصف تفصيلي للخدمة الجديدة.',
@@ -207,5 +208,146 @@ class ServiceConfigurationValidationTest extends TestCase
             'start_time' => '13:00:00',
             'end_time' => '16:00:00',
         ]);
+    }
+
+    public function test_hospitality_service_minimum_workers_must_be_two(): void
+    {
+        $this->actingAsAdmin();
+        $city = City::factory()->create();
+        $hospCategory = Category::factory()->create(['name_en' => 'Hospitality Services', 'status' => 'active']);
+
+        $payload = $this->servicePayload($city->id, [], [
+            'category_id' => $hospCategory->id,
+            'worker_gender_options' => ['Female'],
+            'min_workers' => 1,
+            'max_workers' => 5,
+            'min_duration' => 4,
+            'max_duration' => 6,
+            'start_time' => '08:00',
+            'end_time' => '20:00',
+            'available_visit_types' => [['type' => 'single_visit']]
+        ]);
+
+        $this->postJson(self::ADMIN_ENDPOINT, $payload)
+            ->assertStatus(422)
+            ->assertJsonStructure(['params' => ['min_workers']]);
+    }
+
+    public function test_hospitality_service_maximum_workers_must_be_twelve(): void
+    {
+        $this->actingAsAdmin();
+        $city = City::factory()->create();
+        $hospCategory = Category::factory()->create(['name_en' => 'Hospitality Services', 'status' => 'active']);
+
+        $payload = $this->servicePayload($city->id, [], [
+            'category_id' => $hospCategory->id,
+            'worker_gender_options' => ['Female'],
+            'min_workers' => 2,
+            'max_workers' => 13,
+            'min_duration' => 4,
+            'max_duration' => 6,
+            'start_time' => '08:00',
+            'end_time' => '20:00',
+            'available_visit_types' => [['type' => 'single_visit']]
+        ]);
+
+        $this->postJson(self::ADMIN_ENDPOINT, $payload)
+            ->assertStatus(422)
+            ->assertJsonStructure(['params' => ['max_workers']]);
+    }
+
+    public function test_hospitality_service_minimum_duration_must_be_four(): void
+    {
+        $this->actingAsAdmin();
+        $city = City::factory()->create();
+        $hospCategory = Category::factory()->create(['name_en' => 'Hospitality Services', 'status' => 'active']);
+
+        $payload = $this->servicePayload($city->id, [], [
+            'category_id' => $hospCategory->id,
+            'worker_gender_options' => ['Female'],
+            'min_workers' => 2,
+            'max_workers' => 5,
+            'min_duration' => 3,
+            'max_duration' => 6,
+            'start_time' => '08:00',
+            'end_time' => '20:00',
+            'available_visit_types' => [['type' => 'single_visit']]
+        ]);
+
+        $this->postJson(self::ADMIN_ENDPOINT, $payload)
+            ->assertStatus(422)
+            ->assertJsonStructure(['params' => ['min_duration']]);
+    }
+
+    public function test_hospitality_service_maximum_duration_must_be_six(): void
+    {
+        $this->actingAsAdmin();
+        $city = City::factory()->create();
+        $hospCategory = Category::factory()->create(['name_en' => 'Hospitality Services', 'status' => 'active']);
+
+        $payload = $this->servicePayload($city->id, [], [
+            'category_id' => $hospCategory->id,
+            'worker_gender_options' => ['Female'],
+            'min_workers' => 2,
+            'max_workers' => 5,
+            'min_duration' => 4,
+            'max_duration' => 7,
+            'start_time' => '08:00',
+            'end_time' => '20:00',
+            'available_visit_types' => [['type' => 'single_visit']]
+        ]);
+
+        $this->postJson(self::ADMIN_ENDPOINT, $payload)
+            ->assertStatus(422)
+            ->assertJsonStructure(['params' => ['max_duration']]);
+    }
+
+    public function test_hospitality_service_start_time_limitations(): void
+    {
+        $this->actingAsAdmin();
+        $city = City::factory()->create();
+        $hospCategory = Category::factory()->create(['name_en' => 'Hospitality Services', 'status' => 'active']);
+
+        $payload = $this->servicePayload($city->id, [], [
+            'category_id' => $hospCategory->id,
+            'worker_gender_options' => ['Female'],
+            'min_workers' => 2,
+            'max_workers' => 5,
+            'min_duration' => 4,
+            'max_duration' => 6,
+            'start_time' => '07:30',
+            'end_time' => '20:00',
+            'available_visit_types' => [['type' => 'single_visit']]
+        ]);
+
+        $this->postJson(self::ADMIN_ENDPOINT, $payload)
+            ->assertStatus(422)
+            ->assertJsonStructure(['params' => ['start_time']]);
+    }
+
+    public function test_hospitality_service_cannot_have_multiple_visit_types(): void
+    {
+        $this->actingAsAdmin();
+        $city = City::factory()->create();
+        $hospCategory = Category::factory()->create(['name_en' => 'Hospitality Services', 'status' => 'active']);
+
+        $payload = $this->servicePayload($city->id, [], [
+            'category_id' => $hospCategory->id,
+            'worker_gender_options' => ['Female'],
+            'min_workers' => 2,
+            'max_workers' => 5,
+            'min_duration' => 4,
+            'max_duration' => 6,
+            'start_time' => '08:00',
+            'end_time' => '20:00',
+            'available_visit_types' => [
+                ['type' => 'single_visit'],
+                ['type' => '3_days_per_week']
+            ]
+        ]);
+
+        $this->postJson(self::ADMIN_ENDPOINT, $payload)
+            ->assertStatus(422)
+            ->assertJsonStructure(['params' => ['available_visit_types']]);
     }
 }

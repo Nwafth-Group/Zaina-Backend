@@ -37,7 +37,7 @@ class CustomerBookingService
         $startTime = $data['start_time'];
 
         // 3. Compute duration and start/end datetimes
-        $times = $this->calculateBookingTimes($service, $dates[0], $startTime);
+        $times = $this->calculateBookingTimes($service, $dates[0], $startTime, $data['duration'] ?? null);
 
         // Check if customer already has an active booking at the same date and overlapping shift
         if ($this->hasOverlappingCustomerBooking($user->id, $dates, $times['start_str'], $times['end_str'])) {
@@ -55,10 +55,16 @@ class CustomerBookingService
         $busyWorkerIds = $this->getBusyWorkerIdsForDates($service, $dates, $times['start_str'], $times['end_str']);
 
         // 6. Get active, non-busy workers
-        $availableWorkers = $service->workers()
+        $gender = $data['worker_gender'] ?? null;
+        $availableWorkersQuery = $service->workers()
             ->where('status', 'active')
-            ->whereNotIn('workers.id', $busyWorkerIds)
-            ->get();
+            ->whereNotIn('workers.id', $busyWorkerIds);
+
+        if ($gender) {
+            $availableWorkersQuery->where('gender', strtolower($gender));
+        }
+
+        $availableWorkers = $availableWorkersQuery->get();
 
         // 7. Allocate preferred workers first, then randomly fill slots up to workers_count
         $allocatedWorkers = $this->allocateWorkers($availableWorkers, (int) $data['workers_count'], $data['preferred_worker_ids'] ?? []);
@@ -103,7 +109,7 @@ class CustomerBookingService
         $startTime = $data['start_time'];
 
         // 3. Compute times
-        $times = $this->calculateBookingTimes($service, $dates[0], $startTime);
+        $times = $this->calculateBookingTimes($service, $dates[0], $startTime, $data['duration'] ?? null);
 
         // Check if customer already has an active booking at the same date and overlapping shift
         if ($this->hasOverlappingCustomerBooking($user->id, $dates, $times['start_str'], $times['end_str'])) {
@@ -121,10 +127,16 @@ class CustomerBookingService
 
         // 5. Ensure allocated workers are active and not double-booked (overlap check) across all dates
         foreach ($workerIds as $workerId) {
-            $workerExists = $service->workers()
+            $workerQuery = $service->workers()
                 ->where('workers.id', $workerId)
-                ->where('workers.status', 'active')
-                ->exists();
+                ->where('workers.status', 'active');
+
+            $gender = $data['worker_gender'] ?? null;
+            if ($gender) {
+                $workerQuery->where('gender', strtolower($gender));
+            }
+
+            $workerExists = $workerQuery->exists();
 
             if (!$workerExists) {
                 throw new \Exception(__('messages.invalid_worker_for_service'), 422);
@@ -194,6 +206,8 @@ class CustomerBookingService
                 'start_time'             => $times['start_str'],
                 'end_time'               => $times['end_str'],
                 'duration_minutes'       => $times['duration_minutes'],
+                'worker_gender'          => $data['worker_gender'] ?? null,
+                'number_of_workers'      => count($workerIds),
                 'price_subtotal'         => $pricing['pricing']['subtotal'],
                 'tax_amount'             => $pricing['pricing']['tax'],
                 'discount_amount'        => $pricing['pricing']['discount'],
@@ -306,9 +320,9 @@ class CustomerBookingService
         return [$address, $service];
     }
 
-    private function calculateBookingTimes(Service $service, string $date, string $startTime): array
+    private function calculateBookingTimes(Service $service, string $date, string $startTime, ?int $customDuration = null): array
     {
-        $periodHours = $service->duration->service_period_hours ?? 2;
+        $periodHours = $customDuration ?? ($service->duration->service_period_hours ?? 2);
         $durationMinutes = $periodHours * 60;
 
         $start = Carbon::parse($startTime);
@@ -432,7 +446,17 @@ class CustomerBookingService
     private function calculatePricing(Service $service, CustomerAddress $address, int $workersCount, int $visitsCount, string $visitType, ?string $couponCode = null, $user = null, $startTime = null, $endTime = null): array
     {
         $pricePerPeriod = (float) ($service->base_price ?? 0);
-        $subtotal = $pricePerPeriod * $visitsCount * $workersCount;
+        if ($service->pricing_type === 'per_hour' && $startTime && $endTime) {
+            $start = Carbon::parse($startTime);
+            $end = Carbon::parse($endTime);
+            if ($end->lt($start)) {
+                $end->addDay();
+            }
+            $hours = $start->diffInHours($end);
+            $subtotal = $pricePerPeriod * $hours * $visitsCount * $workersCount;
+        } else {
+            $subtotal = $pricePerPeriod * $visitsCount * $workersCount;
+        }
 
         // Resolve Service Discount (from service->available_visit_types)
         $discountPercent = 0;

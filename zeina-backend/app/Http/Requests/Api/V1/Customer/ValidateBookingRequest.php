@@ -22,16 +22,18 @@ class ValidateBookingRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'service_id'             => ['required', 'exists:services,id'],
-            'address_id'             => ['nullable', 'exists:customer_addresses,id'],
-            'visit_type'             => ['nullable', 'string', 'in:single_visit,three_visits_per_week'],
-            'dates'                  => ['required', 'array'],
-            'dates.*'                => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
-            'start_time'             => ['required', 'date_format:H:i'],
-            'workers_count'          => ['required', 'integer', 'min:1'],
-            'preferred_worker_ids'   => ['nullable', 'array'],
+            'service_id' => ['required', 'exists:services,id'],
+            'address_id' => ['nullable', 'exists:customer_addresses,id'],
+            'visit_type' => ['nullable', 'string', 'in:single_visit,three_visits_per_week'],
+            'dates' => ['required', 'array'],
+            'dates.*' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
+            'start_time' => ['required', 'date_format:H:i'],
+            'workers_count' => ['required', 'integer', 'min:1'],
+            'preferred_worker_ids' => ['nullable', 'array'],
             'preferred_worker_ids.*' => ['exists:workers,id'],
-            'coupon_code'            => ['nullable', 'string'],
+            'coupon_code' => ['nullable', 'string'],
+            'duration' => ['nullable', 'integer'],
+            'worker_gender' => ['nullable', 'string', 'in:Male,Female'],
         ];
     }
 
@@ -41,19 +43,19 @@ class ValidateBookingRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'service_id.required'    => __('validation.create_booking.service_id_required'),
-            'service_id.exists'      => __('validation.create_booking.service_id_exists'),
-            'address_id.required'    => __('validation.create_booking.address_id_required'),
-            'address_id.exists'      => __('validation.create_booking.address_id_exists'),
-            'dates.required'         => __('validation.create_booking.date_required'),
-            'dates.array'            => 'Dates must be an array of dates.',
-            'dates.*.date_format'    => __('validation.create_booking.date_date_format'),
+            'service_id.required' => __('validation.create_booking.service_id_required'),
+            'service_id.exists' => __('validation.create_booking.service_id_exists'),
+            'address_id.required' => __('validation.create_booking.address_id_required'),
+            'address_id.exists' => __('validation.create_booking.address_id_exists'),
+            'dates.required' => __('validation.create_booking.date_required'),
+            'dates.array' => 'Dates must be an array of dates.',
+            'dates.*.date_format' => __('validation.create_booking.date_date_format'),
             'dates.*.after_or_equal' => __('validation.create_booking.date_after_or_equal'),
-            'start_time.required'    => __('validation.create_booking.start_time_required'),
+            'start_time.required' => __('validation.create_booking.start_time_required'),
             'start_time.date_format' => __('validation.create_booking.start_time_date_format'),
             'workers_count.required' => __('validation.create_booking.workers_count_required'),
-            'workers_count.integer'  => __('validation.create_booking.workers_count_integer'),
-            'workers_count.min'      => __('validation.create_booking.workers_count_min'),
+            'workers_count.integer' => __('validation.create_booking.workers_count_integer'),
+            'workers_count.min' => __('validation.create_booking.workers_count_min'),
         ];
     }
 
@@ -139,6 +141,21 @@ class ValidateBookingRequest extends FormRequest
                         'workers_count',
                         __('validation.create_booking.workers_count_between', ['min' => $minWorkers, 'max' => $maxWorkers])
                     );
+                }
+
+                if ($service->pricing_type === 'per_hour') {
+                    $duration = (int) $this->input('duration');
+                    $minDuration = $service->min_duration ?? 4;
+                    $maxDuration = $service->max_duration ?? 6;
+                    if ($duration < $minDuration || $duration > $maxDuration) {
+                        $validator->errors()->add('duration', "Duration must be between {$minDuration} and {$maxDuration} hours.");
+                    }
+
+                    $gender = $this->input('worker_gender');
+                    $genderOptions = $service->worker_gender_options ?? [];
+                    if (!$gender || !in_array($gender, $genderOptions)) {
+                        $validator->errors()->add('worker_gender', "The selected gender is not available for this service.");
+                    }
                 }
             }
         ];

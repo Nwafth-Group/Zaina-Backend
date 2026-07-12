@@ -39,6 +39,7 @@ class DatabaseSeeder extends Seeder
             LegalDocumentsSeeder::class,
             ReviewServcieAndWorkerSeeder::class,
             AnnouncementSeeder::class,
+            MobileNotificationSeeder::class,
         ]);
     }
 }

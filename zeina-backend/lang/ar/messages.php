@@ -251,4 +251,19 @@ return [
     'coupon_shift_ineligible' => 'هذا الكوبون غير متاح لفترة الخدمة أو الشفت المحدد.',
     'coupon_updated_successfully' => 'تم تحديث الكوبون بنجاح.',
     'coupon_deleted_successfully' => 'تم حذف الكوبون بنجاح.',
+
+    // Mobile Notifications
+    'notification_list_fetch_success' => 'تم جلب قائمة الإشعارات بنجاح.',
+    'notification_create_success' => 'تم إنشاء وجدولة الإشعار بنجاح.',
+    'notification_show_success' => 'تم جلب بيانات الإشعار بنجاح.',
+    'notification_update_success' => 'تم تحديث الإشعار بنجاح.',
+    'notification_delete_success' => 'تم حذف الإشعار بنجاح.',
+    'notification_cancel_success' => 'تم إلغاء الإشعار بنجاح.',
+    'notification_edit_forbidden' => 'لا يمكن تعديل الإشعارات المرسلة أو الملغاة.',
+    'notification_delete_forbidden' => 'لا يمكن حذف الإشعارات التي تم إرسالها بالفعل.',
+    'notification_cancel_forbidden' => 'يمكن إلغاء الإشعارات المجدولة فقط.',
+    'notification_arabic_required' => 'العنوان والمحتوى باللغة العربية مطلوبان عند اختيار اللغة العربية.',
+    'notification_english_required' => 'العنوان والمحتوى باللغة الإنجليزية مطلوبان عند اختيار اللغة الإنجليزية.',
+    'notification_invalid_schedule' => 'لا يمكن جدولة الإرسال في وقت ماضٍ.',
+    'notification_invalid_format' => 'صيغة تاريخ أو وقت غير صالحة.',
 ];

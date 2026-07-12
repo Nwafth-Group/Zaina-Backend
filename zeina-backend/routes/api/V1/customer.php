@@ -83,6 +83,7 @@ Route::prefix('customer')->group(function () {
         Route::get('/services/{service}/check-coverage', [ServiceController::class, 'checkCoverage']);
 
         // Bookings
+        Route::get('/bookings/available-dates', [BookingController::class, 'availableDates']);
         Route::post('/bookings/validate', [BookingController::class, 'validateBooking']);
         Route::get('/reports', [BookingController::class, 'myReports']);
         Route::get('/reports/{report}', [BookingController::class, 'showReport']);

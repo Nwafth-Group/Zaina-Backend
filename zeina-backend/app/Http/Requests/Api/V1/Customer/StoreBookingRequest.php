@@ -32,6 +32,8 @@ class StoreBookingRequest extends FormRequest
             'worker_ids.*'   => ['required', 'exists:workers,id'],
             'payment_method' => ['required', 'string', 'in:points,wallet,card'],
             'coupon_code'    => ['nullable', 'string'],
+            'duration'       => ['nullable', 'integer'],
+            'worker_gender'  => ['nullable', 'string', 'in:Male,Female'],
         ];
     }
 
@@ -128,6 +130,30 @@ class StoreBookingRequest extends FormRequest
                                 __('validation.create_booking.dates_max_advance', ['date' => $dateStr, 'days' => $rules->max_advance_booking_days])
                             );
                         }
+                    }
+                }
+
+                $isSecondService = ($service->service_code === 'HOSPITALITY_WORKER_HOURLY');
+                $isThirdService = ($service->service_code === 'BABYSITTER_HOURLY');
+                $isSecondOrThird = ($isSecondService || $isThirdService);
+
+                if ($isSecondOrThird) {
+                    $workerGender = $this->input('worker_gender');
+                    $genderOptions = $service->worker_gender_options ?? [];
+                    if (empty($workerGender)) {
+                        $validator->errors()->add('worker_gender', 'Please select a worker gender.');
+                    } elseif (!in_array($workerGender, $genderOptions)) {
+                        $validator->errors()->add('worker_gender', 'The selected worker gender is invalid for this service.');
+                    }
+
+                    $duration = $this->input('duration');
+                    $minDuration = $service->min_duration ?? 4;
+                    $maxDuration = $service->max_duration ?? 6;
+
+                    if ($duration === null) {
+                        $validator->errors()->add('duration', 'Please specify a service duration.');
+                    } elseif ($duration < $minDuration || $duration > $maxDuration) {
+                        $validator->errors()->add('duration', "The service duration must be between {$minDuration} and {$maxDuration} hours.");
                     }
                 }
             }
