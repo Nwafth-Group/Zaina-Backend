@@ -21,6 +21,9 @@ use App\Http\Controllers\Api\V1\Admin\ServiceController;
 use App\Http\Controllers\Api\V1\Admin\ServicePriceController;
 use App\Http\Controllers\Api\V1\Admin\UserController;
 use App\Http\Controllers\Api\V1\Admin\WorkerController;
+use App\Http\Controllers\Api\V1\Admin\ReviewController;
+use App\Http\Controllers\Api\V1\Admin\ReportController;
+use App\Http\Controllers\Api\V1\Admin\LegalDocumentController;
 use App\Http\Middleware\IsAdmin;
 use Illuminate\Support\Facades\Route;
 
@@ -143,6 +146,19 @@ Route::prefix('admin')->group(function () {
 
         // Coupons management
         Route::apiResource('coupons', CouponController::class);
+
+        // Legal documents
+        Route::apiResource('legal-documents', LegalDocumentController::class);
+
+        // Reviews
+        Route::get('reviews', [ReviewController::class, 'index']);
+
+        // Reports
+        Route::get('reports', [ReportController::class, 'index']);
+        Route::get('reports/{report}', [ReportController::class, 'show']);
+        Route::post('reports/{report}/assign', [ReportController::class, 'assign']);
+        Route::patch('reports/{report}/status', [ReportController::class, 'updateStatus']);
+        Route::post('reports/{report}/notes', [ReportController::class, 'addNote']);
 
         //  Route::middleware('permission:providers.view')->prefix('providers')->group(function () {
         //         Route::get('/', [ProviderController::class, 'index']);

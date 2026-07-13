@@ -50,6 +50,7 @@ Route::prefix('customer')->group(function () {
     Route::prefix('legal')->group(function () {
         Route::get('terms-conditions', [LegalDocumentController::class, 'getTerms']);
         Route::get('privacy', [LegalDocumentController::class, 'getPrivacy']);
+        Route::get('about-us', [LegalDocumentController::class, 'getAboutUs']);
     });
 
     // fetch counttries and govrenrates and citites and areas ..

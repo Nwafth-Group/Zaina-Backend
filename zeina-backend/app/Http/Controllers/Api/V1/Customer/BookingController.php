@@ -77,21 +77,96 @@ class BookingController extends Controller
     public function availableDates(GetAvailableDatesRequest $request)
     {
         $data = $request->validated();
-        $service = \App\Models\Service::with(['rules', 'schedules'])->findOrFail($data['service_id']);
+        $service = \App\Models\Service::with(['rules', 'schedules', 'childAgeGroups'])->findOrFail($data['service_id']);
 
         $data['duration'] = (int) $data['duration'];
-        $data['workers_count'] = (int) $data['workers_count'];
+
+        if ($service->service_code === 'BABYSITTER_HOURLY' || $service->service_code === 'DOMESTIC_HELPER_HOURLY') {
+            $data['worker_gender'] = 'Female';
+        }
+
+        if ($service->service_code === 'BABYSITTER_HOURLY') {
+            $childAgeGroups = $data['child_age_groups'] ?? [];
+            $validGroups = $service->childAgeGroups()->where('status', 'active')->get();
+            $calculatedMinWorkers = 0;
+            $groupedCounts = array_count_values($childAgeGroups);
+
+            foreach ($groupedCounts as $groupId => $count) {
+                $group = $validGroups->firstWhere('id', $groupId);
+                if (!$group) {
+                    return $this->errorResponse("Babysitter calculation rule is not configured.", 422);
+                }
+
+                $childrenCountRule = $group->children_count ?? 1;
+                $requiredWorkerCountRule = $group->required_worker_count ?? 1;
+
+                if ($group->calculation_type === 'per_child') {
+                    $calculatedMinWorkers += $count * $requiredWorkerCountRule;
+                } else {
+                    $calculatedMinWorkers += (int) ceil($count / $childrenCountRule) * $requiredWorkerCountRule;
+                }
+            }
+
+            $maxWorkers = $service->max_workers ?? 5;
+            if ($calculatedMinWorkers > $maxWorkers) {
+                return $this->errorResponse("The required number of babysitters exceeds the service limit.", 422);
+            }
+
+            if (empty($data['workers_count'])) {
+                $data['workers_count'] = $calculatedMinWorkers;
+            } else {
+                $data['workers_count'] = (int) $data['workers_count'];
+                if ($data['workers_count'] < $calculatedMinWorkers) {
+                    $breakdown = [];
+                    $isArabic = app()->getLocale() === 'ar';
+                    foreach ($groupedCounts as $groupId => $count) {
+                        $group = $validGroups->firstWhere('id', $groupId);
+                        if (!$group) continue;
+                        $childrenCountRule = $group->children_count ?? 1;
+                        $requiredWorkerCountRule = $group->required_worker_count ?? 1;
+                        if ($group->calculation_type === 'per_child') {
+                            $needed = $count * $requiredWorkerCountRule;
+                            if ($isArabic) {
+                                $breakdown[] = "{$group->name_ar} ({$count} أطفال) يحتاج {$needed} مربيات";
+                            } else {
+                                $breakdown[] = "{$group->name_en} ({$count} children) requires {$needed} workers";
+                            }
+                        } else {
+                            $needed = (int) ceil($count / $childrenCountRule) * $requiredWorkerCountRule;
+                            if ($isArabic) {
+                                $breakdown[] = "{$group->name_ar} ({$count} أطفال) يحتاج {$needed} مربيات (بمعدل مربية لكل {$childrenCountRule} أطفال)";
+                            } else {
+                                $breakdown[] = "{$group->name_en} ({$count} children) requires {$needed} workers (ratio: {$requiredWorkerCountRule} per {$childrenCountRule} children)";
+                            }
+                        }
+                    }
+                    $breakdownText = implode($isArabic ? ' ، ' : ', ', $breakdown);
+                    $msg = $isArabic 
+                        ? "لا يمكن أن يقل عدد جليسات الأطفال عن الحد الأدنى المحسوب وهو {$calculatedMinWorkers}. التفاصيل: ({$breakdownText})"
+                        : "The number of babysitters cannot be less than the calculated minimum of {$calculatedMinWorkers}. Breakdown: ({$breakdownText})";
+                    return $this->errorResponse($msg, 422);
+                }
+                if ($data['workers_count'] > $maxWorkers) {
+                    return $this->errorResponse("The required number of babysitters exceeds the service limit.", 422);
+                }
+            }
+
+            if (empty($data['worker_gender'])) {
+                $data['worker_gender'] = 'Female';
+            }
+        } else {
+            $data['workers_count'] = (int) $data['workers_count'];
+            $minWorkers = $service->min_workers ?? 2;
+            $maxWorkers = $service->max_workers ?? 12;
+            if ($data['workers_count'] < $minWorkers || $data['workers_count'] > $maxWorkers) {
+                return $this->errorResponse("Workers count must be between {$minWorkers} and {$maxWorkers} workers.", 422);
+            }
+        }
 
         $minDuration = $service->min_duration ?? 4;
         $maxDuration = $service->max_duration ?? 6;
         if ($data['duration'] < $minDuration || $data['duration'] > $maxDuration) {
             return $this->errorResponse("Duration must be between {$minDuration} and {$maxDuration} hours.", 422);
-        }
-
-        $minWorkers = $service->min_workers ?? 2;
-        $maxWorkers = $service->max_workers ?? 12;
-        if ($data['workers_count'] < $minWorkers || $data['workers_count'] > $maxWorkers) {
-            return $this->errorResponse("Workers count must be between {$minWorkers} and {$maxWorkers} workers.", 422);
         }
 
         $genderOptions = $service->worker_gender_options ?? [];
@@ -105,8 +180,8 @@ class BookingController extends Controller
         $serviceStart = \Carbon\Carbon::parse($service->start_time ?? '08:00');
         $serviceEnd = \Carbon\Carbon::parse($service->end_time ?? '20:00');
         
-        if ($startTime->lt($serviceStart) || $endTime->gt($serviceEnd)) {
-            return $this->errorResponse("Selected hours must be within the service window ({$service->start_time} to {$service->end_time}).", 422);
+        if ($startTime->lt($serviceStart) || $startTime->gt($serviceEnd)) {
+            return $this->errorResponse("Selected start time must be within the service window ({$service->start_time} to {$service->end_time}).", 422);
         }
 
         $dates = [];
@@ -304,7 +379,7 @@ class BookingController extends Controller
             $fixedBlocks = [];
             $currentBlockStart = $shiftStart->copy();
 
-            while ($currentBlockStart->copy()->addMinutes($periodMinutes)->lte($shiftEnd)) {
+            while ($currentBlockStart->lte($shiftEnd)) {
                 $blockEnd = $currentBlockStart->copy()->addMinutes($periodMinutes);
 
                 if ($isToday) {
@@ -580,6 +655,12 @@ class BookingController extends Controller
 
     public function showReport(Report $report)
     {
-        return $this->successResponse(new ReportsResource($report), __('messages.report_details_retrieved_successfully'));
+        if ($report->customer_id !== auth()->id()) {
+            return response()->json([
+                'success' => false,
+                'message' => __('messages.unauthorized') ?? 'Unauthorized',
+            ], 403);
+        }
+        return $this->successResponse(new ReportsResource($report->load(['booking', 'service', 'worker'])), __('messages.report_details_retrieved_successfully'));
     }
 }

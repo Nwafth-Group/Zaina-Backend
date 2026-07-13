@@ -21,6 +21,30 @@ class AdminBookingDetailResource extends JsonResource
         $lang = app()->getLocale();
         $address = $this->whenLoaded('address') instanceof \App\Models\CustomerAddress ? $this->address : null;
 
+        $childGroupsData = [];
+        if ($this->child_age_groups && $this->service) {
+            if (!$this->service->relationLoaded('childAgeGroups')) {
+                $this->service->load('childAgeGroups');
+            }
+            $serviceGroups = $this->service->childAgeGroups;
+            foreach ($this->child_age_groups as $groupId) {
+                $group = $serviceGroups->firstWhere('id', $groupId);
+                if ($group) {
+                    $childGroupsData[] = [
+                        'id' => $group->id,
+                        'name_ar' => $group->name_ar,
+                        'name_en' => $group->name_en,
+                    ];
+                } else {
+                    $childGroupsData[] = [
+                        'id' => $groupId,
+                        'name_ar' => 'فئة عمرية غير معروفة',
+                        'name_en' => 'Unknown Age Group',
+                    ];
+                }
+            }
+        }
+
         $pricePerPeriod = (float) ($this->service->base_price ?? 0);
         $visitsCount = (int) ($this->visit_number ?? 1);
         $workersCount = $this->relationLoaded('workers') && $this->workers ? $this->workers->count() : 1;
@@ -111,6 +135,12 @@ class AdminBookingDetailResource extends JsonResource
 
             'contract_id' => $this->contract_id ?? 1,
             'customer_notes' => $this->customer_notes,
+            'number_of_children' => $this->number_of_children ? (int) $this->number_of_children : null,
+            'child_age_groups' => $childGroupsData,
+            'number_of_workers' => (int) ($this->number_of_workers ?? 1),
+            'worker_gender' => $this->worker_gender,
+            'is_reviewed' => \App\Models\Review::where('booking_id', $this->id)->exists(),
+            'is_reported' => \App\Models\Report::where('booking_id', $this->id)->exists(),
 
             'activity' => $this->relationLoaded('histories')
                 ? $this->histories->map(fn ($h) => [
@@ -135,6 +165,29 @@ class AdminBookingDetailResource extends JsonResource
             'cancelled_at'           => $this->cancelled_at ? Carbon::parse($this->cancelled_at)->toIso8601String() : null,
             'cancellation_reason'    => $this->cancellation_reason,
             'created_at' => $this->created_at?->toDateTimeString(),
+
+            'reviews' => [
+                'service' => ($serviceReview = \App\Models\Review::where('booking_id', $this->id)
+                    ->where('reviewable_type', \App\Models\Service::class)
+                    ->first()) ? [
+                        'rating' => (int) $serviceReview->rating,
+                        'comment' => $serviceReview->comment,
+                        'percentage' => (float) $serviceReview->rating_percentage,
+                    ] : null,
+                'workers' => \App\Models\Review::where('booking_id', $this->id)
+                    ->where('reviewable_type', \App\Models\Worker::class)
+                    ->get()
+                    ->map(function ($wReview) {
+                        $workerName = \App\Models\Worker::find($wReview->reviewable_id)?->name ?? 'Unknown Worker';
+                        return [
+                            'worker_id' => $wReview->reviewable_id,
+                            'worker_name' => $workerName,
+                            'rating' => (int) $wReview->rating,
+                            'comment' => $wReview->comment,
+                            'percentage' => (float) $wReview->rating_percentage,
+                        ];
+                    })->toArray(),
+            ],
         ];
     }
 }

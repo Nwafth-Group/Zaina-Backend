@@ -56,10 +56,13 @@ class ServiceResource extends JsonResource
             'max_duration' => $this->max_duration,
             'min_workers' => $this->min_workers,
             'max_workers' => $this->max_workers,
+            'min_children' => $this->min_children,
+            'max_children' => $this->max_children,
             'base_price' => $this->base_price,
 
             'duration' => ServiceDurationResource::make($this->whenLoaded('duration')),
             'rules' => ServiceRuleResource::make($this->whenLoaded('rules')),
+            'child_age_groups' => ServiceChildAgeGroupResource::collection($this->childAgeGroups),
             'coverages' => ServiceCoverageResource::collection($this->whenLoaded('coverages')),
             'prices' => ServicePriceResource::collection($this->whenLoaded('priceRules')),
             'image' => $media ? MediaResource::make($media)->getFileUrl() : null,
@@ -128,6 +131,7 @@ class ServiceResource extends JsonResource
 
         return $this->workers()
             ->where('status', 'active')
+            ->whereBetween('avg_rating', [4.0, 5.0])
             ->whereIn('workers.id', $preferredIds)
             ->get();
     }

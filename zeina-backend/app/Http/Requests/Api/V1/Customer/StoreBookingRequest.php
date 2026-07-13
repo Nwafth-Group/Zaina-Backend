@@ -21,6 +21,10 @@ class StoreBookingRequest extends FormRequest
      */
     public function rules(): array
     {
+        $serviceId = $this->input('service_id');
+        $service = $serviceId ? \App\Models\Service::find($serviceId) : null;
+        $isBabysitter = $service && $service->service_code === 'BABYSITTER_HOURLY';
+
         return [
             'service_id'     => ['required', 'exists:services,id'],
             'address_id'     => ['required', 'exists:customer_addresses,id'],
@@ -34,6 +38,10 @@ class StoreBookingRequest extends FormRequest
             'coupon_code'    => ['nullable', 'string'],
             'duration'       => ['nullable', 'integer'],
             'worker_gender'  => ['nullable', 'string', 'in:Male,Female'],
+            'number_of_children' => [$isBabysitter ? 'required' : 'nullable', 'integer', 'min:1'],
+            'child_age_groups' => [$isBabysitter ? 'required' : 'nullable', 'array', 'min:1'],
+            'child_age_groups.*' => ['integer', 'exists:service_child_age_groups,id'],
+            'note' => ['nullable', 'string'],
         ];
     }
 
@@ -137,13 +145,68 @@ class StoreBookingRequest extends FormRequest
                 $isThirdService = ($service->service_code === 'BABYSITTER_HOURLY');
                 $isSecondOrThird = ($isSecondService || $isThirdService);
 
+                if ($isThirdService) {
+                    $childAgeGroups = $this->input('child_age_groups') ?? [];
+                    $numberOfChildren = (int) $this->input('number_of_children');
+
+                    if (count($childAgeGroups) !== $numberOfChildren) {
+                        $validator->errors()->add('child_age_groups', __('validation.create_booking.child_age_groups_count_mismatch'));
+                    }
+
+                    $minChildren = $service->min_children ?? 1;
+                    $maxChildren = $service->max_children ?? 6;
+                    if ($numberOfChildren < $minChildren || $numberOfChildren > $maxChildren) {
+                        $validator->errors()->add('number_of_children', __('validation.create_booking.children_count_between', ['min' => $minChildren, 'max' => $maxChildren]));
+                    }
+
+                    $validGroups = $service->childAgeGroups()->where('status', 'active')->get();
+                    $validGroupIds = $validGroups->pluck('id')->toArray();
+
+                    $calculatedMinWorkers = 0;
+                    $groupedCounts = array_count_values($childAgeGroups);
+
+                    foreach ($groupedCounts as $groupId => $count) {
+                        $group = $validGroups->firstWhere('id', $groupId);
+                        if (!$group) {
+                            $validator->errors()->add('child_age_groups', __('validation.create_booking.child_age_groups_invalid'));
+                            continue;
+                        }
+
+                        $childrenCountRule = $group->children_count ?? 1;
+                        $requiredWorkerCountRule = $group->required_worker_count ?? 1;
+
+                        if ($group->calculation_type === 'per_child') {
+                            $calculatedMinWorkers += $count * $requiredWorkerCountRule;
+                        } else {
+                            $calculatedMinWorkers += ceil($count / $childrenCountRule) * $requiredWorkerCountRule;
+                        }
+                    }
+
+                    $maxWorkers = $service->max_workers ?? 5;
+                    if ($calculatedMinWorkers > $maxWorkers) {
+                        $validator->errors()->add('child_age_groups', __('validation.create_booking.babysitters_count_max', ['max' => $maxWorkers]));
+                    }
+
+                    $workerIds = $this->input('worker_ids') ?? [];
+                    $workersCount = count($workerIds);
+                    if ($workersCount < $calculatedMinWorkers) {
+                        $validator->errors()->add('worker_ids', __('validation.create_booking.babysitters_count_min', ['min' => $calculatedMinWorkers]));
+                    }
+                    if ($workersCount > $maxWorkers) {
+                        $validator->errors()->add('worker_ids', __('validation.create_booking.babysitters_count_max', ['max' => $maxWorkers]));
+                    }
+                }
+
                 if ($isSecondOrThird) {
                     $workerGender = $this->input('worker_gender');
+                    if (empty($workerGender) && $service->service_code === 'BABYSITTER_HOURLY') {
+                        $workerGender = 'Female';
+                    }
                     $genderOptions = $service->worker_gender_options ?? [];
                     if (empty($workerGender)) {
                         $validator->errors()->add('worker_gender', 'Please select a worker gender.');
                     } elseif (!in_array($workerGender, $genderOptions)) {
-                        $validator->errors()->add('worker_gender', 'The selected worker gender is invalid for this service.');
+                        $validator->errors()->add('worker_gender', __('validation.create_booking.worker_gender_invalid'));
                     }
 
                     $duration = $this->input('duration');

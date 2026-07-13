@@ -18,6 +18,8 @@ return new class extends Migration
             $table->time('start_time');
             $table->time('end_time');
             $table->enum('status', ['Upcoming', 'inService', 'completed', 'cancelled'])->default('Upcoming');
+            $table->timestamp('cancelled_at')->nullable();
+            $table->text('cancellation_reason')->nullable();
             $table->timestamps();
         });
     }

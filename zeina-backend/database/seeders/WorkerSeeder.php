@@ -21,6 +21,9 @@ class WorkerSeeder extends Seeder
         if ($serviceCount > 0) {
             foreach ($workers as $worker) {
                 $randomService = $services->random();
+                if ($randomService->service_code === 'DOMESTIC_HELPER_HOURLY' || $randomService->service_code === 'BABYSITTER_HOURLY') {
+                    $worker->update(['gender' => 'female']);
+                }
                 $worker->services()->attach([$randomService->id]);
             }
             $this->command->info('تم إنشاء 30 عاملاً وربط كل منهم بخدمة واحدة بنجاح.');

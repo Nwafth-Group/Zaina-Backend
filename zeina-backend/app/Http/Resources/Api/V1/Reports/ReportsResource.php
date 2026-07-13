@@ -22,6 +22,9 @@ class ReportsResource extends JsonResource
             'reason' => $this->reason,
             'description' => $this->description,
             'status' => $this->status,
+            'service_name' => app()->getLocale() === 'ar'
+                ? ($this->service->name_ar ?? ($this->booking->service->name_ar ?? null))
+                : ($this->service->name_en ?? ($this->booking->service->name_en ?? null)),
             'created_at' => $this->created_at->toDateTimeString(),
             'updated_at' => $this->updated_at->toDateTimeString(),
         ];

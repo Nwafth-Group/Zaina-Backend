@@ -148,6 +148,8 @@ return [
     'unauthorized_review' => 'غير مصرح لك بتقييم هذا الحجز.',
     'invalid_booking_status_for_review' => 'عذراً، لا يمكنك التقييم إلا بعد اكتمال الخدمة.',
     'review_submitted_successfully' => 'تم إرسال التقييم بنجاح. شكراً لك!',
+    'booking_already_reviewed' => 'لقد تم تقييم هذا الحجز بالفعل.',
+    'open_report_exists' => 'لديك بالفعل بلاغ مفتوح لنفس السبب على هذا الحجز.',
     'wallet_tranasction_fetch' => 'تم إسترجاع حركات المحفظة للمستخدم بنجاح.',
     'wallet_topup_success' => 'تم شحن المحفظة بنجاح.',
     'wallet_topup_failed' => 'فشل في شحن المحفظة. يرجى المحاولة مرة أخرى.',

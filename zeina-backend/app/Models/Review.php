@@ -16,8 +16,16 @@ class Review extends Model
         'reviewable_type',
         'reviewable_id',
         'rating',
+        'rating_percentage',
         'comment',
     ];
+
+    protected static function booted()
+    {
+        static::saving(function ($review) {
+            $review->rating_percentage = ($review->rating / 5) * 100;
+        });
+    }
 
     public function booking()
     {

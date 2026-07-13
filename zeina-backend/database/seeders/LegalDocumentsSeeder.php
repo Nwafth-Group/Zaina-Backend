@@ -41,8 +41,20 @@ class LegalDocumentsSeeder extends Seeder
             ]
         ];
 
+        // 3. بيانات من نحن (About Us)
+        $aboutUs = [
+            [
+                'type'     => 'about_us',
+                'title_ar' => 'من نحن ومهمتنا',
+                'title_en' => 'About Us & Our Mission',
+                'content_ar' => 'تطبيق زينة يوفر خدمات منزلية متميزة تشمل خدمات العاملة المنزلية، الضيافة، ورعاية الأطفال بأعلى مستويات الجودة والاحترافية.',
+                'content_en' => 'Zaina application provides premium home services including domestic helper, hospitality, and babysitting services with the highest levels of quality and professionalism.',
+                'sort_order'=> 1
+            ]
+        ];
+
         // إدخال البيانات بأمان ومقاومة التكرار بناءً على العنوان المفتاحي
-        foreach (array_merge($terms, $privacy) as $doc) {
+        foreach (array_merge($terms, $privacy, $aboutUs) as $doc) {
             DB::table('legal_documents')->updateOrInsert(
                 ['type' => $doc['type'], 'title_en' => $doc['title_en']],
                 array_merge($doc, ['created_at' => now(), 'updated_at' => now()])

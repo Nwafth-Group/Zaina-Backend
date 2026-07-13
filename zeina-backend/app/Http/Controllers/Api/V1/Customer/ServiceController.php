@@ -48,13 +48,17 @@ class ServiceController extends Controller
         );
     }
 
-    /**
-     * Retrieve available visit types for a service.
-     */
     public function getAvailableVisitTypes(Service $service)
     {
+        $visitTypes = collect($service->available_visit_types ?? [])->map(function ($item) {
+            return [
+                'type'     => $item['type'] ?? '',
+                'discount' => isset($item['discount']) ? (float) $item['discount'] : 0.0,
+            ];
+        });
+
         return $this->successResponse(
-            $service->available_visit_types ?? [],
+            $visitTypes,
             __('messages.available_visit_types_retrieved') ?? 'Available visit types retrieved successfully.'
         );
     }

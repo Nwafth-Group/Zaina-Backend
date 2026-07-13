@@ -16,6 +16,8 @@ return new class extends Migration
             $table->foreignId('category_id')->nullable()->constrained('categories')->nullOnDelete();
             $table->string('service_code')->nullable()->unique();
             $table->enum('type', ['hourly', 'other'])->default('hourly');
+            $table->json('worker_gender_options')->nullable();
+            $table->string('pricing_type', 50)->default('per_service');
             $table->string('name_ar', 100);
             $table->string('name_en', 100);
             $table->text('description_ar')->nullable();
@@ -39,6 +41,8 @@ return new class extends Migration
             $table->integer('max_duration')->nullable();
             $table->integer('min_workers')->default(1);
             $table->integer('max_workers')->default(1);
+            $table->integer('min_children')->nullable();
+            $table->integer('max_children')->nullable();
             $table->decimal('base_price', 10, 2)->default(0.00);
             
             $table->timestamps();

@@ -21,6 +21,30 @@ class BookingResource extends JsonResource
         $lang = app()->getLocale();
         $serviceName = $this->service ? ($lang == 'ar' ? $this->service->name_ar : $this->service->name_en) : '';
 
+        $childGroupsData = [];
+        if ($this->child_age_groups && $this->service) {
+            if (!$this->service->relationLoaded('childAgeGroups')) {
+                $this->service->load('childAgeGroups');
+            }
+            $serviceGroups = $this->service->childAgeGroups;
+            foreach ($this->child_age_groups as $groupId) {
+                $group = $serviceGroups->firstWhere('id', $groupId);
+                if ($group) {
+                    $childGroupsData[] = [
+                        'id' => $group->id,
+                        'name_ar' => $group->name_ar,
+                        'name_en' => $group->name_en,
+                    ];
+                } else {
+                    $childGroupsData[] = [
+                        'id' => $groupId,
+                        'name_ar' => 'فئة عمرية غير معروفة',
+                        'name_en' => 'Unknown Age Group',
+                    ];
+                }
+            }
+        }
+
         $pricePerPeriod = (float) ($this->service->base_price ?? 0);
         $visitsCount = (int) ($this->visit_number ?? 1);
         $workersCount = $this->relationLoaded('workers') && $this->workers ? $this->workers->count() : 1;
@@ -107,6 +131,8 @@ class BookingResource extends JsonResource
             'duration'               => (int) ceil($this->duration_minutes / 60),
             'number_of_workers'      => (int) ($this->number_of_workers ?? ($this->relationLoaded('workers') && $this->workers ? $this->workers->count() : 1)),
             'worker_gender'          => $this->worker_gender,
+            'number_of_children'     => $this->number_of_children ? (int) $this->number_of_children : null,
+            'child_age_groups'       => $childGroupsData,
             'assigned_worker_ids'    => $this->relationLoaded('workers') && $this->workers ? $this->workers->pluck('id')->toArray() : [],
             'payment_transaction_id' => $this->payment_transaction_id ?? '',
             'payment_status'         => $this->payment_status,
@@ -125,6 +151,13 @@ class BookingResource extends JsonResource
             'cancellation_reason'    => $this->cancellation_reason,
             'created_at'             => $this->created_at ? $this->created_at->toIso8601String() : null,
             'updated_at'             => $this->updated_at ? $this->updated_at->toIso8601String() : null,
+
+            'is_reviewed'            => \App\Models\Review::where('booking_id', $this->id)
+                ->where('customer_id', $this->customer_id ?? auth()->id())
+                ->exists(),
+            'is_reported'            => \App\Models\Report::where('booking_id', $this->id)
+                ->where('customer_id', $this->customer_id ?? auth()->id())
+                ->exists(),
 
             // Formatting/UI fields
             'image'                  => $media ? (new MediaResource($media))->getFileUrl() : null,

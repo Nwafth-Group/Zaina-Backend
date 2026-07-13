@@ -22,8 +22,9 @@ class RportBookingRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'reason' => 'required|string|in:worker_absent,late_arrival,poor_quality,wrong_charges,other',
+            'reason' => 'required|string|in:worker_didnt_show_up,late_arrival,poor_service_quality,wrong_charges,other',
             'description' => 'nullable|string|required_if:reason,other',
+            'worker_id' => 'nullable|exists:workers,id',
         ];
     }
 

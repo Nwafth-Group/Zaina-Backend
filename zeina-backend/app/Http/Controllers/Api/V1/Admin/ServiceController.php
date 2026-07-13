@@ -51,7 +51,7 @@ class ServiceController extends Controller
 
     public function show($id)
     {
-        $service = Service::with(['category', 'duration', 'rules', 'coverages', 'coverages.city', 'coverages.area', 'priceRules', 'priceRules.city', 'priceRules.area', 'workers', 'schedules'])->findOrFail($id);
+        $service = Service::with(['category', 'duration', 'rules', 'coverages', 'coverages.city', 'coverages.area', 'priceRules', 'priceRules.city', 'priceRules.area', 'workers', 'schedules', 'childAgeGroups'])->findOrFail($id);
 
         return $this->successResponse(new ServiceResource($service), __('messages.service_retrieved_successfully'));
     }
@@ -62,7 +62,7 @@ class ServiceController extends Controller
      */
     public function details(Service $service)
     {
-        $service->load(['category', 'workers']);
+        $service->load(['category', 'workers', 'childAgeGroups']);
 
         $latestBookings = $service->bookings()
             ->with(['customer', 'service'])

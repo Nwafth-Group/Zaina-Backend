@@ -114,13 +114,18 @@ class CategoryAndServiceSeeder extends Seeder
                 }
             }
 
-            // Sync workers to this service
-            $newWorkers = \App\Models\Worker::factory(3)->create(['status' => 'active']);
-            $workerIds = $newWorkers->pluck('id')->toArray();
-
             $isFirstService = ($data['code'] === 'DOMESTIC_HELPER_HOURLY');
             $isSecondService = ($data['code'] === 'HOSPITALITY_WORKER_HOURLY');
             $isThirdService = ($data['code'] === 'BABYSITTER_HOURLY');
+
+            $genderAttr = ($isFirstService || $isThirdService) ? 'female' : fake()->randomElement(['male', 'female']);
+
+            // Sync workers to this service
+            $newWorkers = \App\Models\Worker::factory(3)->create([
+                'status' => 'active',
+                'gender' => $genderAttr
+            ]);
+            $workerIds = $newWorkers->pluck('id')->toArray();
 
             // Construct payload matching StoreServiceRequest structure exactly
             $payload = [
@@ -149,8 +154,10 @@ class CategoryAndServiceSeeder extends Seeder
                 'has_duration_range' => ($isSecondService || $isThirdService),
                 'min_duration' => ($isSecondService || $isThirdService) ? 4 : null,
                 'max_duration' => ($isSecondService || $isThirdService) ? 6 : null,
-                'min_workers' => ($isSecondService || $isThirdService) ? 2 : 1,
-                'max_workers' => ($isSecondService || $isThirdService) ? 5 : 1,
+                'min_workers' => 1,
+                'max_workers' => 6,
+                'min_children' => $isThirdService ? 1 : null,
+                'max_children' => $isThirdService ? 6 : null,
 
                 'coverages' => $coverages,
 
@@ -178,12 +185,40 @@ class CategoryAndServiceSeeder extends Seeder
                 ]
             ];
 
-            if ($isSecondService || $isThirdService) {
+            if ($isFirstService || $isThirdService) {
+                $payload['worker_gender_options'] = ['Female'];
+                $payload['pricing_type'] = 'per_hour';
+            } elseif ($isSecondService) {
                 $payload['worker_gender_options'] = ['Female', 'Male'];
                 $payload['pricing_type'] = 'per_hour';
             } else {
                 $payload['worker_gender_options'] = [];
                 $payload['pricing_type'] = 'per_service';
+            }
+
+            if ($isThirdService) {
+                $payload['child_age_groups'] = [
+                    [
+                        'name_ar' => 'حديثي الولادة إلى سنتين',
+                        'name_en' => 'Newborn to 2 Years',
+                        'age_from' => 0,
+                        'age_to' => 24,
+                        'calculation_type' => 'per_child',
+                        'children_count' => 1,
+                        'required_worker_count' => 1,
+                        'status' => 'active',
+                    ],
+                    [
+                        'name_ar' => 'من 2 إلى 7 سنوات',
+                        'name_en' => '2 to 7 Years',
+                        'age_from' => 25,
+                        'age_to' => 84,
+                        'calculation_type' => 'ratio_based',
+                        'children_count' => 2,
+                        'required_worker_count' => 1,
+                        'status' => 'active',
+                    ]
+                ];
             }
 
             // Write service and sync its relations using the ServiceWriter class
@@ -195,8 +230,12 @@ class CategoryAndServiceSeeder extends Seeder
             }
 
             // Sync media icon
-            $selectedIcon = Arr::random($dummyIconsList);
-            $dummyIconPath = public_path('dummy/' . $selectedIcon);
+            $dummyIconPath = public_path("assist/services/{$service->id}.webp");
+            if (!file_exists($dummyIconPath)) {
+                $selectedIcon = Arr::random($dummyIconsList);
+                $dummyIconPath = public_path('dummy/' . $selectedIcon);
+            }
+
             if (file_exists($dummyIconPath)) {
                 $extension = pathinfo($dummyIconPath, PATHINFO_EXTENSION);
                 $iconName = 'service_' . $service->id . '_icon.' . $extension;

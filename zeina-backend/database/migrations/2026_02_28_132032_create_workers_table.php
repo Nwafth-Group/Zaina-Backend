@@ -15,8 +15,12 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('nationality')->nullable();
-            $table->decimal('avg_rating', 2, 1)->default(0.0); 
-            $table->enum('status', ['active', 'inactive'])->default('active'); // متاح أو غير متاح
+            $table->string('phone_number')->nullable()->unique();
+            $table->string('id_number')->nullable()->unique();
+            $table->text('address')->nullable();
+            $table->enum('gender', ['male', 'female'])->nullable();
+            $table->decimal('avg_rating', 3, 2)->default(0.00); 
+            $table->enum('status', ['active', 'inactive', 'suspended'])->default('active'); // متاح أو غير متاح
             $table->timestamps();
         });
     }

@@ -89,6 +89,17 @@ class StoreServiceRequest extends CustomFormRequest
             'max_duration' => 'nullable|integer|min:1|gte:min_duration',
             'min_workers' => 'required|integer|min:1',
             'max_workers' => 'required|integer|min:1|gte:min_workers',
+            'min_children' => 'nullable|integer|min:1',
+            'max_children' => 'nullable|integer|min:1|gte:min_children',
+            'child_age_groups' => 'nullable|array',
+            'child_age_groups.*.name_ar' => 'required_with:child_age_groups|string|max:100',
+            'child_age_groups.*.name_en' => 'required_with:child_age_groups|string|max:100',
+            'child_age_groups.*.age_from' => 'required_with:child_age_groups|integer|min:0',
+            'child_age_groups.*.age_to' => 'required_with:child_age_groups|integer|min:0',
+            'child_age_groups.*.calculation_type' => 'required_with:child_age_groups|in:per_child,ratio_based',
+            'child_age_groups.*.children_count' => 'required_with:child_age_groups|integer|min:1',
+            'child_age_groups.*.required_worker_count' => 'required_with:child_age_groups|integer|min:1',
+            'child_age_groups.*.status' => 'required_with:child_age_groups|in:active,inactive',
 
             // Durations array for backward compatibility
             'durations' => 'nullable|array',
@@ -241,11 +252,17 @@ class StoreServiceRequest extends CustomFormRequest
                 if ($isSecondService || $isThirdService) {
                     $minWorkers = $this->input('min_workers');
                     $maxWorkers = $this->input('max_workers');
-                    if ($minWorkers !== null && $minWorkers < 2) {
-                        $validator->errors()->add('min_workers', 'The minimum number of workers for this service must be 2.');
-                    }
-                    if ($maxWorkers !== null && $maxWorkers > 12) {
-                        $validator->errors()->add('max_workers', 'The maximum number of workers for this service must be 12.');
+                    if ($isSecondService) {
+                        if ($minWorkers !== null && $minWorkers < 2) {
+                            $validator->errors()->add('min_workers', 'The minimum number of workers for this service must be 2.');
+                        }
+                        if ($maxWorkers !== null && $maxWorkers > 12) {
+                            $validator->errors()->add('max_workers', 'The maximum number of workers for this service must be 12.');
+                        }
+                    } else { // $isThirdService
+                        if ($minWorkers !== null && $minWorkers < 1) {
+                            $validator->errors()->add('min_workers', 'Minimum worker count must be greater than 0.');
+                        }
                     }
                     if ($minWorkers !== null && $maxWorkers !== null && $minWorkers > $maxWorkers) {
                         $validator->errors()->add('min_workers', 'Minimum worker count cannot be greater than maximum worker count.');
@@ -274,6 +291,47 @@ class StoreServiceRequest extends CustomFormRequest
                     foreach ($visitTypes as $index => $vt) {
                         if (isset($vt['type']) && $vt['type'] !== 'single_visit') {
                             $validator->errors()->add('available_visit_types', 'Only Single Visit is allowed for this service.');
+                        }
+                    }
+                }
+
+                if ($isThirdService) {
+                    $minChildren = $this->input('min_children');
+                    $maxChildren = $this->input('max_children');
+
+                    if ($minChildren === null || $minChildren < 1) {
+                        $validator->errors()->add('min_children', 'Minimum number of children must be at least 1.');
+                    }
+                    if ($minChildren !== null && $maxChildren !== null && $minChildren > $maxChildren) {
+                        $validator->errors()->add('max_children', 'Maximum number of children must be greater than or equal to minimum.');
+                    }
+
+                    $ageGroups = $this->input('child_age_groups', []);
+                    $activeGroups = array_filter($ageGroups, fn($g) => ($g['status'] ?? '') === 'active');
+
+                    if (empty($activeGroups)) {
+                        $validator->errors()->add('child_age_groups', 'At least one active child age group must be configured before publishing.');
+                    } else {
+                        // Check for overlaps: sort active groups by age_from
+                        usort($activeGroups, fn($a, $b) => ($a['age_from'] ?? 0) <=> ($b['age_from'] ?? 0));
+
+                        for ($i = 0; $i < count($activeGroups); $i++) {
+                            $current = $activeGroups[$i];
+                            $from = (int) ($current['age_from'] ?? 0);
+                            $to = (int) ($current['age_to'] ?? 0);
+
+                            if ($from > $to) {
+                                $validator->errors()->add("child_age_groups.{$i}.age_from", 'Age From must be less than or equal to Age To.');
+                            }
+
+                            // Overlap check with previous active group
+                            if ($i > 0) {
+                                $prev = $activeGroups[$i - 1];
+                                $prevTo = (int) ($prev['age_to'] ?? 0);
+                                if ($from <= $prevTo) {
+                                    $validator->errors()->add('child_age_groups', 'Child age groups cannot overlap.');
+                                }
+                            }
                         }
                     }
                 }

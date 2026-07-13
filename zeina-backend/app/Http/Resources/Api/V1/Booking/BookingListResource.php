@@ -67,6 +67,12 @@ class BookingListResource extends JsonResource
             ])->values()->toArray() : [],
             'total_amount' => (float) $this->total_amount,
             'currency_code' => $this->currency_code ?? 'EGP',
+            'is_reviewed' => \App\Models\Review::where('booking_id', $this->id)
+                ->where('customer_id', $this->customer_id ?? auth()->id())
+                ->exists(),
+            'is_reported' => \App\Models\Report::where('booking_id', $this->id)
+                ->where('customer_id', $this->customer_id ?? auth()->id())
+                ->exists(),
 
             // Pre-formatted card details
             'card_details' => [
@@ -75,6 +81,12 @@ class BookingListResource extends JsonResource
                 'duration' => (int) ceil($this->duration_minutes / 60),
                 'status' => $this->status,
                 'visit_type' => $this->visit_type ?? 'single_visit',
+                'is_reviewed' => \App\Models\Review::where('booking_id', $this->id)
+                    ->where('customer_id', $this->customer_id ?? auth()->id())
+                    ->exists(),
+                'is_reported' => \App\Models\Report::where('booking_id', $this->id)
+                    ->where('customer_id', $this->customer_id ?? auth()->id())
+                    ->exists(),
                 'price_and_currency' => [
                     'amount' => (float) $this->total_amount,
                     'currency' => $this->currency_code ?? 'EGP',

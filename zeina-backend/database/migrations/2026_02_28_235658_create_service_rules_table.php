@@ -32,6 +32,8 @@ return new class extends Migration
             $table->boolean('allow_reschedule')->default(true);
             $table->boolean('allow_same_day')->default(false);
             $table->integer('max_advance_booking_days')->default(0);
+            $table->integer('arrival_buffer_minutes')->default(0);
+            $table->integer('late_arrival_grace_minutes')->default(0);
             
             $table->timestamps();
         });

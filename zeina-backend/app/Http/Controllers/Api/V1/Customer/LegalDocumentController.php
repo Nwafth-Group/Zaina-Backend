@@ -44,6 +44,19 @@ class LegalDocumentController extends Controller
         );
     }
 
+    /**
+     * شاشة من نحن (About Us)
+     */
+    public function getAboutUs()
+    {
+        $documents = $this->legalService->getDocumentsByType('about_us');
+        
+        return $this->successResponse(
+            LegalDocumentResource::collection($documents),
+            'About us retrieved successfully.'
+        );
+    }
+
 
    
 }

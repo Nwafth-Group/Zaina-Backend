@@ -24,13 +24,35 @@ return new class extends Migration
             $table->time('start_time');   // وقت بداية الحجز
             $table->time('end_time');     // وقت نهاية الحجز
             $table->integer('duration_minutes'); // نخليها كمعلومة مفيدة
-            // $table->integer('number_of_workers')->default(1);
+            
+            // New merged fields
+            $table->string('visit_type')->default('single_visit');
+            $table->integer('visit_number')->default(1);
+            $table->string('payment_transaction_id')->nullable();
+            $table->string('currency_code', 3)->default('EGP');
+            $table->unsignedBigInteger('contract_id')->nullable();
+            $table->string('worker_gender', 50)->nullable();
+            $table->integer('number_of_workers')->default(1);
+            $table->integer('number_of_children')->nullable();
+            $table->json('child_age_groups')->nullable();
+            $table->string('payment_method')->nullable();
+            $table->integer('paid_points')->default(0);
+            $table->decimal('refund_amount', 10, 2)->default(0.00);
+            $table->integer('refund_points')->default(0);
+            $table->string('refund_destination')->nullable();
+            $table->string('refund_status')->nullable();
+
             // الأمور المالية (نسخة من السعر وقت الحجز لحمايته من تغيرات الأسعار مستقبلاً)
             $table->decimal('price_subtotal', 10, 2);
             $table->decimal('tax_amount', 10, 2)->default(0);
             $table->decimal('discount_amount', 10, 2)->default(0);
             $table->decimal('total_amount', 10, 2);
             $table->enum('status', ['Upcoming','inService','completed','cancelled'])->default('Upcoming');
+            
+            $table->string('cancelled_by')->nullable();
+            $table->timestamp('cancelled_at')->nullable();
+            $table->text('cancellation_reason')->nullable();
+
             $table->enum('payment_status', ['unpaid', 'paid', 'refunded'])->default('unpaid');
             $table->text('customer_notes')->nullable();
             $table->timestamps();

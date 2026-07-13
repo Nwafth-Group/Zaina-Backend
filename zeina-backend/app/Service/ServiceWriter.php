@@ -27,6 +27,7 @@ class ServiceWriter
         'terms_en', 'acceptance_required', 'start_time', 'end_time',
         'default_duration', 'duration_unit', 'has_duration_range',
         'min_duration', 'max_duration', 'min_workers', 'max_workers', 'base_price',
+        'min_children', 'max_children',
     ];
 
     /**
@@ -37,6 +38,7 @@ class ServiceWriter
     private const RESPONSE_RELATIONS = [
         'category', 'duration', 'rules', 'coverages', 'coverages.city', 'coverages.area',
         'priceRules', 'priceRules.city', 'priceRules.area', 'workers', 'media', 'schedules',
+        'childAgeGroups',
     ];
 
     public function __construct(private MediaService $mediaService) {}
@@ -198,6 +200,13 @@ class ServiceWriter
         } elseif (array_key_exists('schedules', $data)) {
             $service->schedules()->delete();
             $service->schedules()->createMany($data['schedules']);
+        }
+
+        if (array_key_exists('child_age_groups', $data)) {
+            $service->childAgeGroups()->delete();
+            if (!empty($data['child_age_groups'])) {
+                $service->childAgeGroups()->createMany($data['child_age_groups']);
+            }
         }
     }
 

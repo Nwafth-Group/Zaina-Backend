@@ -517,6 +517,13 @@ return [
         'shift_invalid'              => 'The selected start time and duration must fit entirely within the service shift hours for all dates.',
         'dates_unique'               => 'Duplicate dates are not allowed in the schedule.',
         'customer_overlap'           => 'You already have an active booking scheduled at this date and time.',
+        'worker_gender_invalid' => 'The selected gender is not available for this service.',
+        'babysitters_count_min' => 'The number of babysitters cannot be less than the calculated minimum of :min.',
+        'babysitters_count_max' => 'The required number of babysitters exceeds the service limit of :max.',
+        'child_age_groups_count_mismatch' => 'The number of child age groups must match the number of children.',
+        'children_count_between' => 'The number of children must be between :min and :max.',
+        'child_age_groups_invalid' => 'One or more selected child age groups are invalid or inactive.',
+        'babysitter_calculation_not_configured' => 'Babysitter calculation rule is not configured.',
     ],
 
 'report' => [

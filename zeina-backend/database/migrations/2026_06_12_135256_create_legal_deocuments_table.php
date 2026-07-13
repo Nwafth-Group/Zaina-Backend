@@ -14,7 +14,7 @@ return new class extends Migration
         
         Schema::create('legal_documents', function (Blueprint $table) {
            $table->id();
-            $table->enum('type', ['terms', 'privacy']); // تحديد نوع المستند
+            $table->enum('type', ['terms', 'privacy', 'about_us']); // تحديد نوع المستند
             $table->string('title_ar');
             $table->string('title_en');
             $table->text('content_ar');

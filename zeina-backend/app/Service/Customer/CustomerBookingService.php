@@ -28,6 +28,32 @@ class CustomerBookingService
         // 1. Fetch address and service models
         [$address, $service] = $this->validateAddressAndService($user, $data);
 
+        $workersCount = $data['workers_count'] ?? null;
+        if ($service->service_code === 'BABYSITTER_HOURLY' || $service->service_code === 'DOMESTIC_HELPER_HOURLY') {
+            $data['worker_gender'] = 'Female';
+        }
+        if ($service->service_code === 'BABYSITTER_HOURLY') {
+            $calculatedMinWorkers = $this->calculateMinimumBabysitters($service, $data['child_age_groups'] ?? []);
+            $maxWorkers = $service->max_workers ?? 5;
+            if ($calculatedMinWorkers > $maxWorkers) {
+                throw new \Exception(__('validation.create_booking.babysitters_count_max', ['max' => $maxWorkers]), 422);
+            }
+            if ($workersCount === null) {
+                $workersCount = $calculatedMinWorkers;
+            } else {
+                $workersCount = (int) $workersCount;
+                if ($workersCount < $calculatedMinWorkers) {
+                    $breakdown = $this->getBabysitterBreakdown($service, $data['child_age_groups'] ?? []);
+                    $msg = __('validation.create_booking.babysitters_count_min', ['min' => $calculatedMinWorkers]) . " (" . $breakdown . ")";
+                    throw new \Exception($msg, 422);
+                }
+                if ($workersCount > $maxWorkers) {
+                    throw new \Exception(__('validation.create_booking.babysitters_count_max', ['max' => $maxWorkers]), 422);
+                }
+            }
+            $data['workers_count'] = $workersCount;
+        }
+
         // 2. Perform wallet checks (user cannot have negative balance penalties)
         if ($user->wallet_balance < 0) {
             throw new \Exception(__('messages.unpaid_penalties', ['amount' => abs($user->wallet_balance)]), 402);
@@ -99,6 +125,26 @@ class CustomerBookingService
 
         // 1. Fetch address and service models
         [$address, $service] = $this->validateAddressAndService($user, $data);
+
+        if ($service->service_code === 'BABYSITTER_HOURLY') {
+            $calculatedMinWorkers = $this->calculateMinimumBabysitters($service, $data['child_age_groups'] ?? []);
+            $maxWorkers = $service->max_workers ?? 5;
+            $workerIdsCount = count($data['worker_ids'] ?? []);
+            if ($calculatedMinWorkers > $maxWorkers) {
+                throw new \Exception(__('validation.create_booking.babysitters_count_max', ['max' => $maxWorkers]), 422);
+            }
+            if ($workerIdsCount < $calculatedMinWorkers) {
+                $breakdown = $this->getBabysitterBreakdown($service, $data['child_age_groups'] ?? []);
+                $msg = __('validation.create_booking.babysitters_count_min', ['min' => $calculatedMinWorkers]) . " (" . $breakdown . ")";
+                throw new \Exception($msg, 422);
+            }
+            if ($workerIdsCount > $maxWorkers) {
+                throw new \Exception(__('validation.create_booking.babysitters_count_max', ['max' => $maxWorkers]), 422);
+            }
+            if (empty($data['worker_gender'])) {
+                $data['worker_gender'] = 'Female';
+            }
+        }
 
         // 2. Enforce wallet checks
         if ($user->wallet_balance < 0) {
@@ -208,6 +254,9 @@ class CustomerBookingService
                 'duration_minutes'       => $times['duration_minutes'],
                 'worker_gender'          => $data['worker_gender'] ?? null,
                 'number_of_workers'      => count($workerIds),
+                'number_of_children'     => $service->service_code === 'BABYSITTER_HOURLY' ? ($data['number_of_children'] ?? null) : null,
+                'child_age_groups'       => $service->service_code === 'BABYSITTER_HOURLY' ? ($data['child_age_groups'] ?? null) : null,
+                'customer_notes'         => $data['note'] ?? null,
                 'price_subtotal'         => $pricing['pricing']['subtotal'],
                 'tax_amount'             => $pricing['pricing']['tax'],
                 'discount_amount'        => $pricing['pricing']['discount'],
@@ -344,7 +393,7 @@ class CustomerBookingService
             ->where('day', $dayName)
             ->where('is_active', true)
             ->where('start_time', '<=', $startStr)
-            ->where('end_time', '>=', $endStr)
+            ->where('end_time', '>=', $startStr)
             ->exists();
 
         if (!$hasValidShift) {
@@ -615,5 +664,64 @@ class CustomerBookingService
                 });
             })
             ->exists();
+    }
+
+    public function calculateMinimumBabysitters(Service $service, array $ageGroupIds): int
+    {
+        $validGroups = $service->childAgeGroups()->where('status', 'active')->get();
+        $calculatedMinWorkers = 0;
+        $groupedCounts = array_count_values($ageGroupIds);
+
+        foreach ($groupedCounts as $groupId => $count) {
+            $group = $validGroups->firstWhere('id', $groupId);
+            if (!$group) {
+                throw new \Exception(__('validation.create_booking.babysitter_calculation_not_configured'), 422);
+            }
+
+            $childrenCountRule = $group->children_count ?? 1;
+            $requiredWorkerCountRule = $group->required_worker_count ?? 1;
+
+            if ($group->calculation_type === 'per_child') {
+                $calculatedMinWorkers += $count * $requiredWorkerCountRule;
+            } else {
+                $calculatedMinWorkers += (int) ceil($count / $childrenCountRule) * $requiredWorkerCountRule;
+            }
+        }
+
+        return $calculatedMinWorkers;
+    }
+
+    public function getBabysitterBreakdown(Service $service, array $ageGroupIds): string
+    {
+        $validGroups = $service->childAgeGroups()->where('status', 'active')->get();
+        $groupedCounts = array_count_values($ageGroupIds);
+        $breakdownParts = [];
+        $isArabic = app()->getLocale() === 'ar';
+
+        foreach ($groupedCounts as $groupId => $count) {
+            $group = $validGroups->firstWhere('id', $groupId);
+            if (!$group) continue;
+
+            $childrenCountRule = $group->children_count ?? 1;
+            $requiredWorkerCountRule = $group->required_worker_count ?? 1;
+
+            if ($group->calculation_type === 'per_child') {
+                $needed = $count * $requiredWorkerCountRule;
+                if ($isArabic) {
+                    $breakdownParts[] = "{$group->name_ar} ({$count} أطفال) يحتاج {$needed} مربيات";
+                } else {
+                    $breakdownParts[] = "{$group->name_en} ({$count} children) requires {$needed} workers";
+                }
+            } else {
+                $needed = (int) ceil($count / $childrenCountRule) * $requiredWorkerCountRule;
+                if ($isArabic) {
+                    $breakdownParts[] = "{$group->name_ar} ({$count} أطفال) يحتاج {$needed} مربيات (بمعدل مربية لكل {$childrenCountRule} أطفال)";
+                } else {
+                    $breakdownParts[] = "{$group->name_en} ({$count} children) requires {$needed} workers (ratio: {$requiredWorkerCountRule} per {$childrenCountRule} children)";
+                }
+            }
+        }
+
+        return implode($isArabic ? ' ، ' : ', ', $breakdownParts);
     }
 }

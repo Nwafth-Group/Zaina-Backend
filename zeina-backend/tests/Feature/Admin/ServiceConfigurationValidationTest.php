@@ -350,4 +350,150 @@ class ServiceConfigurationValidationTest extends TestCase
             ->assertStatus(422)
             ->assertJsonStructure(['params' => ['available_visit_types']]);
     }
+
+    public function test_babysitter_service_configuration_successful_creation(): void
+    {
+        $this->actingAsAdmin();
+        $city = City::factory()->create();
+        $babysitterCategory = Category::factory()->create(['name_en' => 'Babysitting Services', 'status' => 'active']);
+
+        $payload = $this->servicePayload($city->id, [], [
+            'category_id' => $babysitterCategory->id,
+            'service_code' => 'BABYSITTER_HOURLY',
+            'pricing_type' => 'per_hour',
+            'min_workers' => 1,
+            'max_workers' => 3,
+            'min_children' => 1,
+            'max_children' => 4,
+            'min_duration' => 4,
+            'max_duration' => 6,
+            'start_time' => '08:00',
+            'end_time' => '20:00',
+            'available_visit_types' => [['type' => 'single_visit']],
+            'child_age_groups' => [
+                [
+                    'name_ar' => 'حديثي الولادة',
+                    'name_en' => 'Newborns',
+                    'age_from' => 0,
+                    'age_to' => 12,
+                    'calculation_type' => 'per_child',
+                    'children_count' => 1,
+                    'required_worker_count' => 1,
+                    'status' => 'active'
+                ],
+                [
+                    'name_ar' => 'أطفال أكبر سنًا',
+                    'name_en' => 'Toddlers',
+                    'age_from' => 13,
+                    'age_to' => 36,
+                    'calculation_type' => 'ratio_based',
+                    'children_count' => 2,
+                    'required_worker_count' => 1,
+                    'status' => 'active'
+                ]
+            ]
+        ]);
+
+        $response = $this->postJson(self::ADMIN_ENDPOINT, $payload);
+        $response->assertStatus(201);
+
+        $this->assertDatabaseHas('services', [
+            'min_children' => 1,
+            'max_children' => 4
+        ]);
+
+        $this->assertDatabaseHas('service_child_age_groups', [
+            'name_en' => 'Newborns',
+            'age_from' => 0,
+            'age_to' => 12
+        ]);
+        $this->assertDatabaseHas('service_child_age_groups', [
+            'name_en' => 'Toddlers',
+            'age_from' => 13,
+            'age_to' => 36,
+            'calculation_type' => 'ratio_based',
+            'children_count' => 2,
+            'required_worker_count' => 1
+        ]);
+    }
+
+    public function test_babysitter_service_validation_requires_active_age_group(): void
+    {
+        $this->actingAsAdmin();
+        $city = City::factory()->create();
+        $babysitterCategory = Category::factory()->create(['name_en' => 'Babysitting Services', 'status' => 'active']);
+
+        $payload = $this->servicePayload($city->id, [], [
+            'category_id' => $babysitterCategory->id,
+            'service_code' => 'BABYSITTER_HOURLY',
+            'min_children' => 1,
+            'max_children' => 4,
+            'min_duration' => 4,
+            'max_duration' => 6,
+            'start_time' => '08:00',
+            'end_time' => '20:00',
+            'available_visit_types' => [['type' => 'single_visit']],
+            'child_age_groups' => [
+                [
+                    'name_ar' => 'حديثي الولادة',
+                    'name_en' => 'Newborns',
+                    'age_from' => 0,
+                    'age_to' => 12,
+                    'calculation_type' => 'per_child',
+                    'children_count' => 1,
+                    'required_worker_count' => 1,
+                    'status' => 'inactive'
+                ]
+            ]
+        ]);
+
+        $this->postJson(self::ADMIN_ENDPOINT, $payload)
+            ->assertStatus(422)
+            ->assertJsonStructure(['params' => ['child_age_groups']]);
+    }
+
+    public function test_babysitter_service_validation_fails_on_overlapping_age_groups(): void
+    {
+        $this->actingAsAdmin();
+        $city = City::factory()->create();
+        $babysitterCategory = Category::factory()->create(['name_en' => 'Babysitting Services', 'status' => 'active']);
+
+        $payload = $this->servicePayload($city->id, [], [
+            'category_id' => $babysitterCategory->id,
+            'service_code' => 'BABYSITTER_HOURLY',
+            'min_children' => 1,
+            'max_children' => 4,
+            'min_duration' => 4,
+            'max_duration' => 6,
+            'start_time' => '08:00',
+            'end_time' => '20:00',
+            'available_visit_types' => [['type' => 'single_visit']],
+            'child_age_groups' => [
+                [
+                    'name_ar' => 'حديثي الولادة',
+                    'name_en' => 'Newborns',
+                    'age_from' => 0,
+                    'age_to' => 12,
+                    'calculation_type' => 'per_child',
+                    'children_count' => 1,
+                    'required_worker_count' => 1,
+                    'status' => 'active'
+                ],
+                [
+                    'name_ar' => 'متداخلة',
+                    'name_en' => 'Overlapping',
+                    'age_from' => 10,
+                    'age_to' => 24,
+                    'calculation_type' => 'per_child',
+                    'children_count' => 1,
+                    'required_worker_count' => 1,
+                    'status' => 'active'
+                ]
+            ]
+        ]);
+
+        $this->postJson(self::ADMIN_ENDPOINT, $payload)
+            ->assertStatus(422)
+            ->assertJsonStructure(['params' => ['child_age_groups']]);
+    }
 }

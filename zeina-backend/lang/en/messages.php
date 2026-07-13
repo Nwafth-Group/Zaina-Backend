@@ -148,6 +148,8 @@ return [
     'unauthorized_review' => 'You are not authorized to review this booking.',
     'invalid_booking_status_for_review' => 'Sorry, you can only review after the service is completed.',
     'review_submitted_successfully' => 'Review submitted successfully. Thank you!',
+    'booking_already_reviewed' => 'This booking has already been rated.',
+    'open_report_exists' => 'You already have an open report for this reason on this booking.',
     'wallet_tranasction_fetch' => 'Wallet Tranaction for user fetch successfully.',
     'wallet_topup_success' => 'Wallet topped up successfully.',
     'wallet_topup_failed' => 'Failed to top up wallet. Please try again.',

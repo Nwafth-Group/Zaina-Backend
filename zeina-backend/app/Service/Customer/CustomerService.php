@@ -35,10 +35,13 @@ class CustomerService
             abort(404, __('messages.service_not_available'));
         }
 
-        $service->load(['rules', 'media', 'schedules']);
+        $service->load(['rules', 'media', 'schedules', 'childAgeGroups']);
 
         $userId = auth('sanctum')->id();
-        $activeWorkers = $service->workers()->where('status', 'active')->get();
+        $activeWorkers = $service->workers()
+            ->where('status', 'active')
+            ->whereBetween('avg_rating', [4.0, 5.0])
+            ->get();
 
         $preferredIds = [];
         if ($userId) {

@@ -40,6 +40,7 @@ class DatabaseSeeder extends Seeder
             ReviewServcieAndWorkerSeeder::class,
             AnnouncementSeeder::class,
             MobileNotificationSeeder::class,
+            KhaledTestUserSeeder::class,
         ]);
     }
 }

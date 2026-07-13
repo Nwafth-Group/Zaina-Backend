@@ -18,6 +18,7 @@ class Service extends Model implements Auditable
         'terms_en', 'acceptance_required', 'start_time', 'end_time',
         'default_duration', 'duration_unit', 'has_duration_range',
         'min_duration', 'max_duration', 'min_workers', 'max_workers', 'base_price',
+        'min_children', 'max_children',
     ];
 
     protected $casts = [
@@ -28,6 +29,8 @@ class Service extends Model implements Auditable
         'has_duration_range' => 'boolean',
         'discount_value' => 'decimal:2',
         'base_price' => 'decimal:2',
+        'min_children' => 'integer',
+        'max_children' => 'integer',
     ];
 
     protected static function booted()
@@ -141,6 +144,11 @@ class Service extends Model implements Auditable
         }
 
         return $fallbackPrice;
+    }
+
+    public function childAgeGroups()
+    {
+        return $this->hasMany(ServiceChildAgeGroup::class, 'service_id');
     }
 
     public function media()

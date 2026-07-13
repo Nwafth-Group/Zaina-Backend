@@ -8,9 +8,11 @@ use App\Models\BookingHistory;
 use App\Models\Coupon;
 use App\Models\CustomerAddress;
 use App\Models\Report;
+use App\Models\ReportHistory;
 use App\Models\Review;
 use App\Models\Service;
 use App\Models\ServicePrice;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -396,7 +398,7 @@ class BookingService
             foreach ($schedules as $schedule) {
                 $shiftStart = Carbon::parse($schedule->start_time)->format('H:i:s');
                 $shiftEnd = Carbon::parse($schedule->end_time)->format('H:i:s');
-                if ($newStartStr >= $shiftStart && $newEndStr <= $shiftEnd) {
+                if ($newStartStr >= $shiftStart && $newStartStr <= $shiftEnd) {
                     $isValidShift = true;
                     break;
                 }
@@ -412,50 +414,22 @@ class BookingService
         if ($requiredCount === 0) {
             $requiredCount = 1;
         }
-        $availableCurrentWorkers = [];
+        $finalWorkers = [];
 
         foreach ($booking->workers as $worker) {
-            $isAvailable = true;
+            if ($worker->status !== 'active') {
+                throw new \Exception('Cannot reschedule: one of the assigned workers is inactive.', 422);
+            }
             foreach ($dates as $date) {
                 if ($this->isWorkerBusyOnDateSlot($worker->id, $date, $newStartStr, $newEndStr, $booking->id)) {
-                    $isAvailable = false;
-                    break;
+                    throw new \Exception('Cannot reschedule: the assigned workers are not available during the selected times.', 422);
                 }
             }
-            if ($isAvailable && $worker->status === 'active') {
-                $availableCurrentWorkers[] = $worker;
-            }
+            $finalWorkers[] = $worker;
         }
 
-        $gap = $requiredCount - count($availableCurrentWorkers);
-        $finalWorkers = $availableCurrentWorkers;
-
-        if ($gap > 0) {
-            $allEligibleWorkers = $booking->service->workers()->where('workers.status', 'active')->get();
-            $availableNewWorkers = [];
-
-            foreach ($allEligibleWorkers as $worker) {
-                if (collect($availableCurrentWorkers)->contains('id', $worker->id)) {
-                    continue;
-                }
-                $isAvailable = true;
-                foreach ($dates as $date) {
-                    if ($this->isWorkerBusyOnDateSlot($worker->id, $date, $newStartStr, $newEndStr, $booking->id)) {
-                        $isAvailable = false;
-                        break;
-                    }
-                }
-                if ($isAvailable) {
-                    $availableNewWorkers[] = $worker;
-                }
-            }
-
-            if (count($availableNewWorkers) < $gap) {
-                throw new \Exception('Cannot reschedule: not enough available workers during the selected times.', 422);
-            }
-
-            $randomSelections = collect($availableNewWorkers)->random($gap);
-            $finalWorkers = array_merge($finalWorkers, $randomSelections->all());
+        if (count($finalWorkers) === 0) {
+            throw new \Exception('Cannot reschedule: no workers assigned to this booking.', 422);
         }
 
         return [
@@ -633,24 +607,50 @@ public function reportBooking($bookingId, $userId, array $data)
         throw new \Exception(__('messages.unauthorized_report'), 403);
     }
 
-    // البلاغ يقبل فقط لو كانت الخدمة بدأت أو انتهت فعلياً
-    if (!in_array($booking->status, ['inService', 'completed'])) {
-        throw new \Exception(__('messages.invalid_booking_status_for_report'), 400);
+    // البلاغ يقبل فقط لو كانت الخدمة مكتملة
+    if (strtolower($booking->status) !== 'completed') {
+        throw new \Exception(__('messages.invalid_booking_status_for_report') ?? 'Reports are only allowed for completed bookings.', 400);
     }
 
-    // 2. منع تكرار البلاغ لنفس الحجز
-    $existingReport = Report::where('booking_id', $booking->id)->exists();
+    // 2. منع تكرار البلاغ المفتوح لنفس الحجز ونفس السبب
+    $existingReport = Report::where('booking_id', $booking->id)
+        ->where('reason', $data['reason'])
+        ->whereNotIn('status', ['resolved', 'rejected'])
+        ->exists();
     if ($existingReport) {
-        throw new \Exception(__('messages.existing_report'), 400);
+        throw new \Exception(__('messages.open_report_exists'), 400);
     }
 
-    // 3. إنشاء ريكورد البلاغ
+    // 3. إنشاء رقم تذكرة فريد
+    $reportNumber = 'REP-' . date('Ymd') . '-' . strtoupper(\Illuminate\Support\Str::random(4));
+
+    // 4. إنشاء ريكورد البلاغ
     $report = Report::create([
-        'booking_id'  => $booking->id,
-        'customer_id' => $userId,
-        'reason'      => $data['reason'],
-        'description' => $data['description'] ?? null,
+        'booking_id'    => $booking->id,
+        'customer_id'   => $userId,
+        'report_number' => $reportNumber,
+        'service_id'    => $booking->service_id,
+        'worker_id'     => $data['worker_id'] ?? null,
+        'reason'        => $data['reason'],
+        'description'   => $data['description'] ?? null,
+        'status'        => 'submitted',
     ]);
+
+    // 5. تسجيل حركة الحالة
+    ReportHistory::create([
+        'report_id' => $report->id,
+        'old_status' => null,
+        'new_status' => 'submitted',
+        'created_by' => $userId,
+    ]);
+
+    // 6. إرسال إشعار للمسؤولين
+    try {
+        $admins = User::whereIn('type', ['super_admin', 'operation'])->get();
+        \Illuminate\Support\Facades\Notification::send($admins, new \App\Notifications\ReportNotification($report, 'submitted'));
+    } catch (\Exception $ex) {
+        \Illuminate\Support\Facades\Log::error('Failed to send report notification to admins: ' . $ex->getMessage());
+    }
 
     return $report;
 }
@@ -670,42 +670,41 @@ public function reviewBooking($bookingId, $userId, array $data)
         throw new \Exception(__('messages.invalid_booking_status_for_review'), 400);
     }
 
+    // منع تكرار التقييم للحجز بأكمله
+    $alreadyReviewed = Review::where('booking_id', $booking->id)
+        ->where('customer_id', $userId)
+        ->exists();
+    if ($alreadyReviewed) {
+        throw new \Exception(__('messages.booking_already_reviewed'), 400);
+    }
+
     DB::beginTransaction();
     try {
-        // 2. تقييم الخدمة (Service) - يمنع التكرار عبر updateOrCreate
-        Review::updateOrCreate(
-            [
-                'booking_id'      => $booking->id,
-                'customer_id'     => $userId,
-                'reviewable_type' => \App\Models\Service::class,
-                'reviewable_id'   => $booking->service_id,
-            ],
-            [
-                'rating'  => $data['service_rating'],
-                'comment' => $data['service_comment'] ?? null,
-            ]
-        );
+        // 2. تقييم الخدمة (Service)
+        Review::create([
+            'booking_id'      => $booking->id,
+            'customer_id'     => $userId,
+            'reviewable_type' => \App\Models\Service::class,
+            'reviewable_id'   => $booking->service_id,
+            'rating'          => $data['service_rating'],
+            'comment'         => $data['service_comment'] ?? null,
+        ]);
 
         // 3. تقييم العمال (Workers) المخصصين فعلياً للحجز
         foreach ($data['workers'] as $workerData) {
-            // 🌟 تفعيل كود الحماية: نتحقق من جدول الـ BookingAssignment 🌟
             $isAssigned = BookingAssignment::where('booking_id', $booking->id)
                 ->where('worker_id', $workerData['worker_id'])
                 ->exists();
 
             if ($isAssigned) {
-                Review::updateOrCreate(
-                    [
-                        'booking_id'      => $booking->id,
-                        'customer_id'     => $userId,
-                        'reviewable_type' => \App\Models\Worker::class,
-                        'reviewable_id'   => $workerData['worker_id'],
-                    ],
-                    [
-                        'rating'  => $workerData['rating'],
-                        'comment' => $workerData['comment'] ?? null,
-                    ]
-                );
+                Review::create([
+                    'booking_id'      => $booking->id,
+                    'customer_id'     => $userId,
+                    'reviewable_type' => \App\Models\Worker::class,
+                    'reviewable_id'   => $workerData['worker_id'],
+                    'rating'          => $workerData['rating'],
+                    'comment'         => $workerData['comment'] ?? null,
+                ]);
             }
         }
 
@@ -735,7 +734,7 @@ private function updateAverageRating($modelClass, $modelId)
         ->avg('rating');
 
     $modelClass::where('id', $modelId)->update([
-        'avg_rating' => round($avgRating, 1) // مثال: 4.7
+        'avg_rating' => round($avgRating, 2)
     ]);
 }
 

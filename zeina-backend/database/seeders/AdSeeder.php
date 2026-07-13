@@ -63,26 +63,25 @@ class AdSeeder extends Seeder
         ];
 
         // 3. المسار الثابت والمضمون بداخل مجلد الـ public
-        $sourcePath = public_path('dummy/ad_banner.jpeg');
-
+        $index = 1;
         foreach ($ads as $data) {
             $ad = Ad::create($data);
 
+            $sourcePath = public_path("assist/banners/{$index}.webp");
             if (file_exists($sourcePath)) {
                 // 🌟 الحل السحري المأمن: عمل نسخة كاش مؤقتة لكل إعلان عشان الداتا تطلع 100% شغالة وما تطلع null
-                $tempPath = sys_get_temp_dir().'/temp_ad_'.uniqid().'.jpg';
+                $tempPath = sys_get_temp_dir().'/temp_ad_'.uniqid().'.webp';
                 copy($sourcePath, $tempPath);
 
                 $uploadedFile = new UploadedFile(
                     $tempPath,
-                    'ad_banner.jpeg',
-                    'image/jpeg',
+                    "{$index}.webp",
+                    'image/webp',
                     null,
                     true // وضع التست للنسخ المباشر
                 );
 
-                // رفع الميديا وربطها بـ الـ Polymorphic Table (جدول الـ media الخاص بك)
-                // غيرنا الـ collection_name ليكون 'ad/image' ليطابق السيناريو تبعه
+                // رفع الميديا وربطها بـ الـ Polymorphic Table
                 $this->mediaService->upload($uploadedFile, $ad, 'ads/image', 'public');
 
                 // حذف الملف المؤقت فوراً بعد النجاح
@@ -90,6 +89,7 @@ class AdSeeder extends Seeder
                     @unlink($tempPath);
                 }
             }
+            $index++;
         }
     }
 }
