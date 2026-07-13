@@ -14,6 +14,44 @@ class GetAvailableDatesRequest extends FormRequest
         return true;
     }
 
+    /**
+     * Prepare the data for validation.
+     */
+    protected function prepareForValidation()
+    {
+        $serviceId = $this->input('service_id');
+        $service = $serviceId ? \App\Models\Service::find($serviceId) : null;
+
+        $mergeData = [];
+
+        // Parse child_age_groups if passed as string representation
+        $childAgeGroups = $this->input('child_age_groups');
+        if (is_string($childAgeGroups)) {
+            $decoded = json_decode($childAgeGroups, true);
+            if (is_array($decoded)) {
+                $mergeData['child_age_groups'] = $decoded;
+            } else {
+                $trimmed = trim($childAgeGroups, '[]');
+                if ($trimmed !== '') {
+                    $mergeData['child_age_groups'] = array_map('intval', explode(',', $trimmed));
+                } else {
+                    $mergeData['child_age_groups'] = [];
+                }
+            }
+        }
+
+        if ($service) {
+            if (!$this->filled('worker_gender')) {
+                $genderOptions = $service->worker_gender_options ?? [];
+                $mergeData['worker_gender'] = count($genderOptions) > 0 ? $genderOptions[0] : 'Female';
+            }
+        }
+
+        if (!empty($mergeData)) {
+            $this->merge($mergeData);
+        }
+    }
+
     public function rules(): array
     {
         $serviceId = $this->input('service_id');
@@ -48,6 +86,9 @@ class GetAvailableDatesRequest extends FormRequest
                 }
 
                 $childAgeGroups = $this->input('child_age_groups') ?? [];
+                if (!is_array($childAgeGroups)) {
+                    $childAgeGroups = [];
+                }
                 $numberOfChildren = (int) $this->input('number_of_children');
 
                 if (count($childAgeGroups) !== $numberOfChildren) {
