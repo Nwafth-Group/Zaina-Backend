@@ -69,8 +69,8 @@ class ValidateBookingRequest extends FormRequest
             'duration' => ['nullable', 'integer'],
             'worker_gender' => ['nullable', 'string', 'in:Male,Female'],
             'number_of_children' => [$isBabysitter ? 'required' : 'nullable', 'integer', 'min:1'],
-            'child_age_groups' => [$isBabysitter ? 'required' : 'nullable', 'array', 'min:1'],
-            'child_age_groups.*' => ['integer', 'exists:service_child_age_groups,id'],
+            'child_age_groups' => ['nullable', 'array'],
+            // 'child_age_groups.*' => ['integer', 'exists:service_child_age_groups,id'],
             'note' => ['nullable', 'string'],
         ];
     }
@@ -182,9 +182,10 @@ class ValidateBookingRequest extends FormRequest
                 }
                 $numberOfChildren = (int) $this->input('number_of_children');
 
-                if (count($childAgeGroups) !== $numberOfChildren) {
-                    $validator->errors()->add('child_age_groups', __('validation.create_booking.child_age_groups_count_mismatch'));
-                }
+                // Commented: child age groups count must match number of children
+                // if (count($childAgeGroups) !== $numberOfChildren) {
+                //     $validator->errors()->add('child_age_groups', __('validation.create_booking.child_age_groups_count_mismatch'));
+                // }
 
                 $minChildren = $service->min_children ?? 1;
                 $maxChildren = $service->max_children ?? 6;
@@ -201,7 +202,8 @@ class ValidateBookingRequest extends FormRequest
                 foreach ($groupedCounts as $groupId => $count) {
                     $group = $validGroups->firstWhere('id', $groupId);
                     if (!$group) {
-                        $validator->errors()->add('child_age_groups', __('validation.create_booking.child_age_groups_invalid'));
+                        // Commented: validation error block
+                        // $validator->errors()->add('child_age_groups', __('validation.create_booking.child_age_groups_invalid'));
                         continue;
                     }
 

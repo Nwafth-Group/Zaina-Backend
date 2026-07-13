@@ -54,8 +54,8 @@ class GetAvailableDatesRequest extends FormRequest
             'worker_gender' => ($isBabysitter ? 'nullable' : 'required') . '|string|in:Male,Female',
             'workers_count' => ($isBabysitter ? 'nullable' : 'required') . '|integer|min:1',
             'number_of_children' => ($isBabysitter ? 'required' : 'nullable') . '|integer|min:1',
-            'child_age_groups' => ($isBabysitter ? 'required' : 'nullable') . '|array|min:1',
-            'child_age_groups.*' => 'integer|exists:service_child_age_groups,id',
+            'child_age_groups' => 'nullable|array',
+            // 'child_age_groups.*' => 'integer|exists:service_child_age_groups,id',
             'note' => 'nullable|string',
         ];
     }
@@ -79,9 +79,10 @@ class GetAvailableDatesRequest extends FormRequest
                 }
                 $numberOfChildren = (int) $this->input('number_of_children');
 
-                if (count($childAgeGroups) !== $numberOfChildren) {
-                    $validator->errors()->add('child_age_groups', 'The number of child age groups must match the number of children.');
-                }
+                // Commented: child age groups count must match number of children check
+                // if (count($childAgeGroups) !== $numberOfChildren) {
+                //     $validator->errors()->add('child_age_groups', 'The number of child age groups must match the number of children.');
+                // }
 
                 $minChildren = $service->min_children ?? 1;
                 $maxChildren = $service->max_children ?? 6;
@@ -89,12 +90,13 @@ class GetAvailableDatesRequest extends FormRequest
                     $validator->errors()->add('number_of_children', "The number of children must be between {$minChildren} and {$maxChildren}.");
                 }
 
-                $validGroupIds = $service->childAgeGroups->where('status', 'active')->pluck('id')->toArray();
-                foreach ($childAgeGroups as $index => $groupId) {
-                    if (!in_array($groupId, $validGroupIds)) {
-                        $validator->errors()->add("child_age_groups.{$index}", 'The selected age group is invalid or inactive for this service.');
-                    }
-                }
+                // Commented: valid age group check
+                // $validGroupIds = $service->childAgeGroups->where('status', 'active')->pluck('id')->toArray();
+                // foreach ($childAgeGroups as $index => $groupId) {
+                //     if (!in_array($groupId, $validGroupIds)) {
+                //         $validator->errors()->add("child_age_groups.{$index}", 'The selected age group is invalid or inactive for this service.');
+                //     }
+                // }
             }
         ];
     }
