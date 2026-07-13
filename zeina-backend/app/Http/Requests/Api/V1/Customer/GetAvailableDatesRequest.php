@@ -2,10 +2,13 @@
 
 namespace App\Http\Requests\Api\V1\Customer;
 
+use App\Traits\ParsesChildAgeGroups;
 use Illuminate\Foundation\Http\FormRequest;
 
 class GetAvailableDatesRequest extends FormRequest
 {
+    use ParsesChildAgeGroups;
+
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -23,22 +26,7 @@ class GetAvailableDatesRequest extends FormRequest
         $service = $serviceId ? \App\Models\Service::find($serviceId) : null;
 
         $mergeData = [];
-
-        // Parse child_age_groups if passed as string representation
-        $childAgeGroups = $this->input('child_age_groups');
-        if (is_string($childAgeGroups)) {
-            $decoded = json_decode($childAgeGroups, true);
-            if (is_array($decoded)) {
-                $mergeData['child_age_groups'] = $decoded;
-            } else {
-                $trimmed = trim($childAgeGroups, '[]');
-                if ($trimmed !== '') {
-                    $mergeData['child_age_groups'] = array_map('intval', explode(',', $trimmed));
-                } else {
-                    $mergeData['child_age_groups'] = [];
-                }
-            }
-        }
+        $mergeData['child_age_groups'] = $this->parseChildAgeGroups();
 
         if ($service) {
             if (!$this->filled('worker_gender')) {

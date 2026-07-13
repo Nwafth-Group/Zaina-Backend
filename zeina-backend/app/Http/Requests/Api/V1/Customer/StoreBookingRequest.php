@@ -3,11 +3,14 @@
 namespace App\Http\Requests\Api\V1\Customer;
 
 use App\Models\Service;
+use App\Traits\ParsesChildAgeGroups;
 use Carbon\Carbon;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreBookingRequest extends FormRequest
 {
+    use ParsesChildAgeGroups;
+
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -24,9 +27,10 @@ class StoreBookingRequest extends FormRequest
         $serviceId = $this->input('service_id');
         $service = $serviceId ? \App\Models\Service::find($serviceId) : null;
         
+        $mergeData = [];
+        $mergeData['child_age_groups'] = $this->parseChildAgeGroups();
+        
         if ($service) {
-            $mergeData = [];
-            
             if (!$this->filled('duration')) {
                 $mergeData['duration'] = $service->default_duration ?? 4;
             }
@@ -35,10 +39,10 @@ class StoreBookingRequest extends FormRequest
                 $genderOptions = $service->worker_gender_options ?? [];
                 $mergeData['worker_gender'] = count($genderOptions) > 0 ? $genderOptions[0] : 'Female';
             }
-            
-            if (!empty($mergeData)) {
-                $this->merge($mergeData);
-            }
+        }
+
+        if (!empty($mergeData)) {
+            $this->merge($mergeData);
         }
     }
 
@@ -173,6 +177,9 @@ class StoreBookingRequest extends FormRequest
 
                 if ($isThirdService) {
                     $childAgeGroups = $this->input('child_age_groups') ?? [];
+                    if (!is_array($childAgeGroups)) {
+                        $childAgeGroups = [];
+                    }
                     $numberOfChildren = (int) $this->input('number_of_children');
 
                     if (count($childAgeGroups) !== $numberOfChildren) {
