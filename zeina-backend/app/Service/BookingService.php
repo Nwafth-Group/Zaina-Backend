@@ -607,13 +607,14 @@ public function reportBooking($bookingId, $userId, array $data)
         throw new \Exception(__('messages.unauthorized_report'), 403);
     }
 
-    // البلاغ يقبل فقط لو كانت الخدمة مكتملة
-    // if (strtolower($booking->status) !== 'completed') {
-    //     throw new \Exception(__('messages.invalid_booking_status_for_report') ?? 'Reports are only allowed for completed bookings.', 400);
-    // }
+    // البلاغ يقبل فقط لو كانت الخدمة مكتملة أو قيد التنفيذ
+    $statusLower = strtolower($booking->status);
+    if ($statusLower !== 'completed' && $statusLower !== 'inservice') {
+        throw new \Exception(__('messages.invalid_booking_status_for_report') ?? 'Reports are only allowed for in-service or completed bookings.', 400);
+    }
 
     // 2. منع تكرار البلاغ المفتوح لنفس الحجز ونفس السبب
-    $existingReport = Report::where('booking_id', $booking->id)
+    $existingReport = Report::query()->where('booking_id', $booking->id)
         ->where('reason', $data['reason'])
         ->whereNotIn('status', ['resolved', 'rejected'])
         ->exists();
