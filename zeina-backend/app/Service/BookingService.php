@@ -608,9 +608,9 @@ public function reportBooking($bookingId, $userId, array $data)
     }
 
     // البلاغ يقبل فقط لو كانت الخدمة مكتملة
-    if (strtolower($booking->status) !== 'completed') {
-        throw new \Exception(__('messages.invalid_booking_status_for_report') ?? 'Reports are only allowed for completed bookings.', 400);
-    }
+    // if (strtolower($booking->status) !== 'completed') {
+    //     throw new \Exception(__('messages.invalid_booking_status_for_report') ?? 'Reports are only allowed for completed bookings.', 400);
+    // }
 
     // 2. منع تكرار البلاغ المفتوح لنفس الحجز ونفس السبب
     $existingReport = Report::where('booking_id', $booking->id)
