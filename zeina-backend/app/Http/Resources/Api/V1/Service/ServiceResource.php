@@ -47,7 +47,12 @@ class ServiceResource extends JsonResource
             'status' => $this->status,
 
             // New Configuration Parameters
-            'available_visit_types' => $this->available_visit_types ?? [],
+            'available_visit_types' => collect($this->available_visit_types ?? [])->map(function ($item) {
+                return [
+                    'type'     => $item['type'] ?? '',
+                    'discount' => isset($item['discount']) ? (float) $item['discount'] : 0.0,
+                ];
+            })->toArray(),
             'start_time' => $this->start_time,
             'end_time' => $this->end_time,
             'default_duration' => $this->default_duration,
