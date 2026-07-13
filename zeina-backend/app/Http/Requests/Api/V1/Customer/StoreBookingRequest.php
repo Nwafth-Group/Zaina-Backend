@@ -27,11 +27,11 @@ class StoreBookingRequest extends FormRequest
         if ($service) {
             $mergeData = [];
             
-            if (!$this->has('duration')) {
+            if (!$this->filled('duration')) {
                 $mergeData['duration'] = $service->default_duration ?? 4;
             }
             
-            if (!$this->has('worker_gender')) {
+            if (!$this->filled('worker_gender')) {
                 $genderOptions = $service->worker_gender_options ?? [];
                 $mergeData['worker_gender'] = count($genderOptions) > 0 ? $genderOptions[0] : 'Female';
             }
@@ -223,7 +223,7 @@ class StoreBookingRequest extends FormRequest
                     }
                 }
 
-                if ($isSecondOrThird) {
+                if ($service->pricing_type === 'per_hour') {
                     $workerGender = $this->input('worker_gender');
                     if (empty($workerGender) && $service->service_code === 'BABYSITTER_HOURLY') {
                         $workerGender = 'Female';
@@ -236,13 +236,22 @@ class StoreBookingRequest extends FormRequest
                     }
 
                     $duration = $this->input('duration');
-                    $minDuration = $service->min_duration ?? 4;
-                    $maxDuration = $service->max_duration ?? 6;
-
                     if ($duration === null) {
                         $validator->errors()->add('duration', 'Please specify a service duration.');
-                    } elseif ($duration < $minDuration || $duration > $maxDuration) {
-                        $validator->errors()->add('duration', "The service duration must be between {$minDuration} and {$maxDuration} hours.");
+                    } else {
+                        $duration = (int) $duration;
+                        if ($service->has_duration_range) {
+                            $minDuration = $service->min_duration ?? 4;
+                            $maxDuration = $service->max_duration ?? 6;
+                            if ($duration < $minDuration || $duration > $maxDuration) {
+                                $validator->errors()->add('duration', "The service duration must be between {$minDuration} and {$maxDuration} hours.");
+                            }
+                        } else {
+                            $defaultDuration = $service->default_duration ?? 2;
+                            if ($duration !== $defaultDuration) {
+                                $validator->errors()->add('duration', "The service duration must be exactly {$defaultDuration} hours.");
+                            }
+                        }
                     }
                 }
             }

@@ -27,11 +27,11 @@ class ValidateBookingRequest extends FormRequest
         if ($service) {
             $mergeData = [];
             
-            if (!$this->has('duration')) {
+            if (!$this->filled('duration')) {
                 $mergeData['duration'] = $service->default_duration ?? 4;
             }
             
-            if (!$this->has('worker_gender')) {
+            if (!$this->filled('worker_gender')) {
                 $genderOptions = $service->worker_gender_options ?? [];
                 $mergeData['worker_gender'] = count($genderOptions) > 0 ? $genderOptions[0] : 'Female';
             }
@@ -246,10 +246,17 @@ class ValidateBookingRequest extends FormRequest
 
                 if ($service->pricing_type === 'per_hour') {
                     $duration = (int) $this->input('duration');
-                    $minDuration = $service->min_duration ?? 4;
-                    $maxDuration = $service->max_duration ?? 6;
-                    if ($duration < $minDuration || $duration > $maxDuration) {
-                        $validator->errors()->add('duration', "Duration must be between {$minDuration} and {$maxDuration} hours.");
+                    if ($service->has_duration_range) {
+                        $minDuration = $service->min_duration ?? 4;
+                        $maxDuration = $service->max_duration ?? 6;
+                        if ($duration < $minDuration || $duration > $maxDuration) {
+                            $validator->errors()->add('duration', "Duration must be between {$minDuration} and {$maxDuration} hours.");
+                        }
+                    } else {
+                        $defaultDuration = $service->default_duration ?? 2;
+                        if ($duration !== $defaultDuration) {
+                            $validator->errors()->add('duration', "Duration must be exactly {$defaultDuration} hours.");
+                        }
                     }
 
                     $gender = $this->input('worker_gender');
