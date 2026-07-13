@@ -17,6 +17,32 @@ class ValidateBookingRequest extends FormRequest
     }
 
     /**
+     * Prepare the data for validation.
+     */
+    protected function prepareForValidation()
+    {
+        $serviceId = $this->input('service_id');
+        $service = $serviceId ? \App\Models\Service::find($serviceId) : null;
+        
+        if ($service) {
+            $mergeData = [];
+            
+            if (!$this->has('duration')) {
+                $mergeData['duration'] = $service->default_duration ?? 4;
+            }
+            
+            if (!$this->has('worker_gender')) {
+                $genderOptions = $service->worker_gender_options ?? [];
+                $mergeData['worker_gender'] = count($genderOptions) > 0 ? $genderOptions[0] : 'Female';
+            }
+            
+            if (!empty($mergeData)) {
+                $this->merge($mergeData);
+            }
+        }
+    }
+
+    /**
      * Get the validation rules that apply to the request.
      */
     public function rules(): array
