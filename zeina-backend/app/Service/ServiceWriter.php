@@ -4,8 +4,10 @@ namespace App\Service;
 
 use App\Models\Area;
 use App\Models\Service;
+use Carbon\Carbon;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Owns the transactional persistence of a Service and all of its related
@@ -84,7 +86,10 @@ class ServiceWriter
      */
     private function baseAttributes(array $data): array
     {
-        return array_intersect_key($data, array_flip(self::BASE_FIELDS));
+        $attributes = array_intersect_key($data, array_flip(self::BASE_FIELDS));
+        $attributes['acceptance_required'] = true;
+
+        return $attributes;
     }
 
     /**
@@ -111,7 +116,7 @@ class ServiceWriter
             $durationData['min_contract_months'] = $data['durations']['min_contract_months'];
         }
 
-        if (!empty($durationData)) {
+        if (! empty($durationData)) {
             $service->duration()->updateOrCreate(['service_id' => $service->id], $durationData);
         } elseif (array_key_exists('durations', $data)) {
             $service->duration()->updateOrCreate(['service_id' => $service->id], $data['durations']);
@@ -133,15 +138,15 @@ class ServiceWriter
 
         if (array_key_exists('workers', $data)) {
             $workerIds = $data['workers'] ?? [];
-            if (!empty($workerIds)) {
+            if (! empty($workerIds)) {
                 $alreadyAssigned = DB::table('service_workers')
                     ->whereIn('worker_id', $workerIds)
                     ->where('service_id', '!=', $service->id)
                     ->exists();
 
                 if ($alreadyAssigned) {
-                    throw \Illuminate\Validation\ValidationException::withMessages([
-                        'workers' => 'This worker is already assigned to a service. A worker can only be assigned to one service.'
+                    throw ValidationException::withMessages([
+                        'workers' => 'This worker is already assigned to a service. A worker can only be assigned to one service.',
                     ]);
                 }
             }
@@ -149,16 +154,16 @@ class ServiceWriter
         }
 
         if (array_key_exists('working_days', $data) || array_key_exists('shifts', $data)) {
-            $workingDays = array_key_exists('working_days', $data) 
-                ? $data['working_days'] 
+            $workingDays = array_key_exists('working_days', $data)
+                ? $data['working_days']
                 : $service->schedules()->pluck('day')->unique()->toArray();
-            
-            $shifts = array_key_exists('shifts', $data) 
-                ? $data['shifts'] 
-                : $service->schedules()->get()->map(function($s) {
+
+            $shifts = array_key_exists('shifts', $data)
+                ? $data['shifts']
+                : $service->schedules()->get()->map(function ($s) {
                     return [
-                        'start_time' => \Carbon\Carbon::parse($s->start_time)->format('H:i'),
-                        'end_time' => $s->end_time ? \Carbon\Carbon::parse($s->end_time)->format('H:i') : null,
+                        'start_time' => Carbon::parse($s->start_time)->format('H:i'),
+                        'end_time' => $s->end_time ? Carbon::parse($s->end_time)->format('H:i') : null,
                     ];
                 })->unique('start_time')->values()->toArray();
 
@@ -169,7 +174,7 @@ class ServiceWriter
                 $startTime = substr($startTime, 0, 5);
                 $endTime = substr($endTime, 0, 5);
                 $shifts = [
-                    ['start_time' => $startTime, 'end_time' => $endTime]
+                    ['start_time' => $startTime, 'end_time' => $endTime],
                 ];
             }
 
@@ -182,12 +187,12 @@ class ServiceWriter
                     if (empty($shift['start_time'])) {
                         continue;
                     }
-                    $start = \Carbon\Carbon::parse($shift['start_time']);
-                    
-                    $end = !empty($shift['end_time'])
-                        ? \Carbon\Carbon::parse($shift['end_time'])
+                    $start = Carbon::parse($shift['start_time']);
+
+                    $end = ! empty($shift['end_time'])
+                        ? Carbon::parse($shift['end_time'])
                         : $start->copy()->addHours($defaultDuration);
-                    
+
                     $schedulesToCreate[] = [
                         'day' => $day,
                         'start_time' => $start->format('H:i:s'),
@@ -204,7 +209,7 @@ class ServiceWriter
 
         if (array_key_exists('child_age_groups', $data)) {
             $service->childAgeGroups()->delete();
-            if (!empty($data['child_age_groups'])) {
+            if (! empty($data['child_age_groups'])) {
                 $service->childAgeGroups()->createMany($data['child_age_groups']);
             }
         }

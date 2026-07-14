@@ -171,15 +171,15 @@ class CategoryAndServiceSeeder extends Seeder
                     ['start_time' => '16:00'],
                 ],
 
-                'terms_ar' => 'الشروط والأحكام الخاصة بالخدمة...',
-                'terms_en' => 'Terms and conditions for the service...',
+                'terms_ar' => "1. يجب توفير بيئة عمل آمنة ومناسبة للعاملة.\n2. لا يحق للعميل تكليف العاملة بأي أعمال خارج نطاق الخدمة المتفق عليها.\n3. يجب إبلاغ الشركة بأي تغييرات في موعد الخدمة قبل 24 ساعة على الأقل.\n4. الشركة غير مسؤولة عن فقدان المقتنيات الثمينة غير المصرح عنها.",
+                'terms_en' => "1. A safe and suitable working environment must be provided for the worker.\n2. The client is not entitled to assign any tasks to the worker outside the scope of the agreed service.\n3. The company must be notified of any changes to the service schedule at least 24 hours in advance.\n4. The company is not responsible for the loss of undeclared valuable items.",
                 'acceptance_required' => true,
 
                 'rules' => [
                     'allow_cancel' => true,
                     'free_cancel_cutoff_hours' => 24,
                     'allow_reschedule' => true,
-                    'reschedule_cutoff_hours' => 48,
+                    'reschedule_cutoff_hours' => 24,
                     'allow_same_day' => false,
                     'max_advance_booking_days' => 30,
                     'arrival_buffer_minutes' => 15,
