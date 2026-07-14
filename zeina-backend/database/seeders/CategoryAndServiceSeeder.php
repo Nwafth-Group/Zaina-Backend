@@ -10,14 +10,14 @@ use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Arr; 
+use Illuminate\Support\Arr;
 
 class CategoryAndServiceSeeder extends Seeder
 {
     public function run(): void
     {
-        $admin = User::first(); 
-        
+        $admin = User::first();
+
         // 🌟 جلب جميع المدن والمناطق المتوفرة لبناء سيناريو توزيع جغرافي حقيقي ومضمون
         $cities = City::all();
         $areas = Area::all();
@@ -32,10 +32,10 @@ class CategoryAndServiceSeeder extends Seeder
 
         // 1. تعريف الأقسام الرئيسية (Categories)
         $categoriesData = [
-            'cleaning'    => ['en' => 'Cleaning Services', 'ar' => 'خدمات التنظيف', 'icon' => 'cleanCategory.webp'],
+            'cleaning' => ['en' => 'Cleaning Services', 'ar' => 'خدمات التنظيف', 'icon' => 'cleanCategory.webp'],
             'babysitting' => ['en' => 'Nanny & Babysitting', 'ar' => 'رعاية الأطفال', 'icon' => 'Babysitting.webp'],
             'hospitality' => ['en' => 'Hospitality Services', 'ar' => 'خدمات الضيافة', 'icon' => 'Babysitting.webp'],
-            'beauty'      => ['en' => 'Beauty & Care', 'ar' => 'التجميل والعناية', 'icon' => 'Beauty&Spa.avif'],
+            'beauty' => ['en' => 'Beauty & Care', 'ar' => 'التجميل والعناية', 'icon' => 'Beauty&Spa.avif'],
             'maintenance' => ['en' => 'Home Maintenance', 'ar' => 'الصيانة المنزلية', 'icon' => 'Maintenance.avif'],
         ];
 
@@ -52,18 +52,18 @@ class CategoryAndServiceSeeder extends Seeder
             if (file_exists($dummyIconPath)) {
                 $extension = pathinfo($dummyIconPath, PATHINFO_EXTENSION);
                 $iconName = 'category_' . $category->id . '_icon.' . $extension;
-                $iconPath = 'categories/icons/' . $iconName; 
-                
+                $iconPath = 'categories/icons/' . $iconName;
+
                 Storage::disk('public')->put($iconPath, file_get_contents($dummyIconPath));
-                
+
                 $category->media()->updateOrCreate(
                     ['collection' => 'category/icon'],
                     [
                         'file_name' => $iconName,
                         'mime_type' => mime_content_type($dummyIconPath),
-                        'disk'      => 'public',
-                        'path'      => $iconPath,
-                        'size'      => Storage::disk('public')->size($iconPath),
+                        'disk' => 'public',
+                        'path' => $iconPath,
+                        'size' => Storage::disk('public')->size($iconPath),
                     ]
                 );
             }
@@ -72,24 +72,24 @@ class CategoryAndServiceSeeder extends Seeder
         // 2. تعريف الخدمات الجديدة المحددة بالصورة (9 خدمات)
         $servicesData = [
             // خدمات بالساعة (3)
-            ['cat' => 'cleaning',    'type' => 'hourly', 'en' => 'Domestic Helper (Hourly)', 'ar' => 'عاملة منزلية بالساعة', 'price' => 80, 'period' => 2, 'code' => 'DOMESTIC_HELPER_HOURLY'],
+            ['cat' => 'cleaning', 'type' => 'hourly', 'en' => 'Domestic Helper (Hourly)', 'ar' => 'عاملة منزلية بالساعة', 'price' => 80, 'period' => 2, 'code' => 'DOMESTIC_HELPER_HOURLY'],
             ['cat' => 'hospitality', 'type' => 'hourly', 'en' => 'Hospitality Worker (Hourly)', 'ar' => 'عاملة ضيافة بالساعة', 'price' => 90, 'period' => 2, 'code' => 'HOSPITALITY_WORKER_HOURLY'],
             ['cat' => 'babysitting', 'type' => 'hourly', 'en' => 'Babysitter (Hourly)', 'ar' => 'جليسة اطفال بالساعة', 'price' => 100, 'period' => 3, 'code' => 'BABYSITTER_HOURLY'],
-            
+
             // خدمات أخرى (6)
-            ['cat' => 'beauty',      'type' => 'other',  'en' => 'Manicure & Pedicure', 'ar' => 'مناكير و بدكير', 'price' => 150, 'period' => 1, 'code' => 'MANICURE_PEDICURE'],
-            ['cat' => 'cleaning',    'type' => 'other',  'en' => 'Sofa Cleaning', 'ar' => 'تنظيف الكنب', 'price' => 130, 'period' => 2, 'code' => 'SOFA_CLEANING'],
-            ['cat' => 'maintenance', 'type' => 'other',  'en' => 'AC Cleaning', 'ar' => 'تنظيف المكيفات', 'price' => 200, 'period' => 2, 'code' => 'AC_CLEANING'],
-            ['cat' => 'maintenance', 'type' => 'other',  'en' => 'Pest Control', 'ar' => 'مكافحة الحشرات', 'price' => 180, 'period' => 2, 'code' => 'PEST_CONTROL'],
-            ['cat' => 'cleaning',    'type' => 'other',  'en' => 'Cleaning of Stairs, Roofs & Yards', 'ar' => 'تنظيف السلالم والاسطح والاحواش', 'price' => 250, 'period' => 3, 'code' => 'OUTDOOR_CLEANING'],
-            ['cat' => 'cleaning',    'type' => 'other',  'en' => 'Water Tank Cleaning', 'ar' => 'تنظيف خزانات المياه', 'price' => 300, 'period' => 4, 'code' => 'WATER_TANK_CLEANING'],
+            // ['cat' => 'beauty',      'type' => 'other',  'en' => 'Manicure & Pedicure', 'ar' => 'مناكير و بدكير', 'price' => 150, 'period' => 1, 'code' => 'MANICURE_PEDICURE'],
+            // ['cat' => 'cleaning',    'type' => 'other',  'en' => 'Sofa Cleaning', 'ar' => 'تنظيف الكنب', 'price' => 130, 'period' => 2, 'code' => 'SOFA_CLEANING'],
+            // ['cat' => 'maintenance', 'type' => 'other',  'en' => 'AC Cleaning', 'ar' => 'تنظيف المكيفات', 'price' => 200, 'period' => 2, 'code' => 'AC_CLEANING'],
+            // ['cat' => 'maintenance', 'type' => 'other',  'en' => 'Pest Control', 'ar' => 'مكافحة الحشرات', 'price' => 180, 'period' => 2, 'code' => 'PEST_CONTROL'],
+            // ['cat' => 'cleaning',    'type' => 'other',  'en' => 'Cleaning of Stairs, Roofs & Yards', 'ar' => 'تنظيف السلالم والاسطح والاحواش', 'price' => 250, 'period' => 3, 'code' => 'OUTDOOR_CLEANING'],
+            // ['cat' => 'cleaning',    'type' => 'other',  'en' => 'Water Tank Cleaning', 'ar' => 'تنظيف خزانات المياه', 'price' => 300, 'period' => 4, 'code' => 'WATER_TANK_CLEANING'],
         ];
 
         // 3. إدخال الخدمات وتركيب القواعد والأسعار والمناطق
         foreach ($servicesData as $index => $data) {
             $features = [
                 ['en' => 'Dusting All Surfaces', 'ar' => 'مسح جميع الأسطح'],
-                ['en' => 'Floor Cleaning',       'ar' => 'تنظيف الأرضيات'],
+                ['en' => 'Floor Cleaning', 'ar' => 'تنظيف الأرضيات'],
                 ['en' => 'High-quality equipment', 'ar' => 'معدات عالية الجودة'],
             ];
 
@@ -213,9 +213,19 @@ class CategoryAndServiceSeeder extends Seeder
                         'name_en' => '2 to 7 Years',
                         'age_from' => 25,
                         'age_to' => 84,
-                        'calculation_type' => 'ratio_based',
+                        'calculation_type' => 'per_child',
                         'children_count' => 2,
                         'required_worker_count' => 1,
+                        'status' => 'active',
+                    ],
+                    [
+                        'name_ar' => 'أكبر من 3 سنوات',
+                        'name_en' => 'Over 3 Years',
+                        'age_from' => 36,
+                        'age_to' => 1200,
+                        'calculation_type' => 'per_child',
+                        'children_count' => 3,
+                        'required_worker_count' => 2,
                         'status' => 'active',
                     ]
                 ];
@@ -240,17 +250,17 @@ class CategoryAndServiceSeeder extends Seeder
                 $extension = pathinfo($dummyIconPath, PATHINFO_EXTENSION);
                 $iconName = 'service_' . $service->id . '_icon.' . $extension;
                 $iconPath = 'services/icons/' . $iconName;
-                
+
                 Storage::disk('public')->put($iconPath, file_get_contents($dummyIconPath));
-                
+
                 $service->media()->updateOrCreate(
                     ['collection' => 'service/icon'],
                     [
                         'file_name' => $iconName,
                         'mime_type' => mime_content_type($dummyIconPath),
-                        'disk'      => 'public',
-                        'path'      => $iconPath,
-                        'size'      => Storage::disk('public')->size($iconPath),
+                        'disk' => 'public',
+                        'path' => $iconPath,
+                        'size' => Storage::disk('public')->size($iconPath),
                     ]
                 );
             }

@@ -525,6 +525,12 @@ return [
         'children_count_between' => 'يجب أن يكون عدد الأطفال بين :min و :max.',
         'child_age_groups_invalid' => 'واحدة أو أكثر من الفئات العمرية للأطفال المحددة غير صالحة أو غير نشطة.',
         'babysitter_calculation_not_configured' => 'قاعدة احتساب جليسة الأطفال غير مهيأة.',
+        'duration_required' => 'يرجى تحديد المدة.',
+        'duration_integer' => 'يجب أن تكون المدة رقماً صحيحاً.',
+        'number_of_children_integer' => 'يجب أن يكون عدد الأطفال رقماً صحيحاً.',
+        'number_of_children_min' => 'يجب اختيار طفل واحد على الأقل.',
+        'child_age_groups_min' => 'يرجى اختيار فئة عمرية واحدة على الأقل.',
+        'child_age_groups_integer' => 'يجب أن تكون الفئة العمرية رقماً صحيحاً.',
     ],
 
 'report' => [

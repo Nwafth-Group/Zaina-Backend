@@ -305,7 +305,6 @@ class BookingCouponTest extends TestCase
             'code' => 'COUPON50',
             'type' => 'fixed',
             'value' => 50.00,
-            'min_booking_amount' => 100.00,
             'start_date' => now()->subDay(),
             'end_date' => now()->addDay(),
             'status' => 'active',

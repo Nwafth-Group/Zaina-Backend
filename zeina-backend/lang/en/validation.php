@@ -524,6 +524,12 @@ return [
         'children_count_between' => 'The number of children must be between :min and :max.',
         'child_age_groups_invalid' => 'One or more selected child age groups are invalid or inactive.',
         'babysitter_calculation_not_configured' => 'Babysitter calculation rule is not configured.',
+        'duration_required' => 'Please specify the duration.',
+        'duration_integer' => 'Duration must be an integer.',
+        'number_of_children_integer' => 'The number of children must be an integer.',
+        'number_of_children_min' => 'The number of children must be at least 1.',
+        'child_age_groups_min' => 'Please select at least one age group.',
+        'child_age_groups_integer' => 'Age group must be an integer.',
     ],
 
 'report' => [

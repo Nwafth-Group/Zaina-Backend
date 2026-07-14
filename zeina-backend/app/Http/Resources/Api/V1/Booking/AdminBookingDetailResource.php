@@ -86,6 +86,7 @@ class AdminBookingDetailResource extends JsonResource
                 : null,
 
             'booking_date' => $this->booking_date ? Carbon::parse($this->booking_date)->format('d M, Y') : null,
+            'raw_booking_date' => $this->booking_date ? Carbon::parse($this->booking_date)->toDateString() : null,
             'time_slot' => ($this->start_time && $this->end_time)
                 ? Carbon::parse($this->start_time)->format('h:i A').' - '.Carbon::parse($this->end_time)->format('h:i A')
                 : null,

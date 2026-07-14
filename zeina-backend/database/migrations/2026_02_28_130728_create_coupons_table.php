@@ -16,8 +16,6 @@ return new class extends Migration
             $table->string('code')->unique(); // كود الكوبون مثل: ZAINAH20
             $table->string('type'); // 'fixed' (مبلغ ثابت) أو 'percentage' (نسبة مئوية)
             $table->decimal('value', 8, 2); // قيمة الخصم (مثلاً 50.00 جنيه أو 15%)
-            $table->decimal('max_discount', 8, 2)->nullable(); // أقصى مبلغ خصم ممكن في حال كان النوع نسبة مئوية
-            $table->decimal('min_booking_amount', 8, 2)->default(0); // الحد الأدنى لقيمة الحجز لتفعيل الكوبون
             $table->integer('usage_limit')->nullable(); // إجمالي عدد مرات استخدام الكوبون في النظام ككل (null يعني غير محدود)
             $table->integer('user_usage_limit')->default(1); // حد الاستخدام لكل مستخدم (الافتراضي: يستخدمه العميل مرة واحدة فقط)
             $table->integer('used_count')->default(0); // كم مرة استُخدم الكوبون فعلياً في النظام

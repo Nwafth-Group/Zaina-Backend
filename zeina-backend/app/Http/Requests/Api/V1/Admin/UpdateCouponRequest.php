@@ -35,14 +35,11 @@ class UpdateCouponRequest extends CustomFormRequest
                     if ($this->input('type') === 'percentage' && $value > 100) {
                         $fail(__('validation.percentage_max_value') ?: 'Percentage discount cannot exceed 100%.');
                     }
-                }
+                },
             ],
-            'max_discount' => ['nullable', 'numeric', 'min:0'],
-            'min_booking_amount' => ['nullable', 'numeric', 'min:0'],
-            
             'start_date' => ['required', 'date'], // Note: during update, we may allow editing a coupon that started in the past.
             'end_date' => ['required', 'date', 'after_or_equal:start_date'],
-            
+
             'usage_limit' => ['nullable', 'integer', 'min:1'],
             'user_usage_limit' => [
                 'required',
@@ -50,33 +47,33 @@ class UpdateCouponRequest extends CustomFormRequest
                 'min:1',
                 function ($attribute, $value, $fail) {
                     $usageLimit = $this->input('usage_limit');
-                    if (!is_null($usageLimit) && $value > $usageLimit) {
-                        $fail('The user usage limit field must not be greater than ' . $usageLimit . '.');
+                    if (! is_null($usageLimit) && $value > $usageLimit) {
+                        $fail('The user usage limit field must not be greater than '.$usageLimit.'.');
                     }
-                }
+                },
             ],
-            
+
             'is_for_all_users' => ['required', 'boolean'],
             'users' => ['required_if:is_for_all_users,false', 'array'],
             'users.*' => ['exists:users,id'],
-            
+
             'is_for_all_cities' => ['required', 'boolean'],
             'cities' => ['required_if:is_for_all_cities,false', 'array'],
             'cities.*' => ['exists:cities,id'],
-            
+
             'areas' => ['nullable', 'array'],
             'areas.*' => ['exists:areas,id'],
-            
+
             'completed_bookings_count' => ['nullable', 'integer', 'min:0'],
-            
+
             'is_for_all_services' => ['required', 'boolean'],
-            
+
             // Validation when all services are selected but restricted by visit type/shifts
             'allowed_visit_types' => ['nullable', 'array'],
             'allowed_shifts' => ['nullable', 'array'],
             'allowed_shifts.*.start_time' => ['required_with:allowed_shifts', 'date_format:H:i'],
             'allowed_shifts.*.end_time' => ['required_with:allowed_shifts', 'date_format:H:i'],
-            
+
             // Validation when specific services are selected
             'services' => ['required_if:is_for_all_services,false', 'array'],
             'services.*.id' => ['required_with:services', 'exists:services,id'],
@@ -84,7 +81,7 @@ class UpdateCouponRequest extends CustomFormRequest
             'services.*.allowed_shifts' => ['nullable', 'array'],
             'services.*.allowed_shifts.*.start_time' => ['required_with:services.*.allowed_shifts', 'date_format:H:i'],
             'services.*.allowed_shifts.*.end_time' => ['required_with:services.*.allowed_shifts', 'date_format:H:i'],
-            
+
             'status' => ['required', 'in:active,inactive'],
         ];
     }

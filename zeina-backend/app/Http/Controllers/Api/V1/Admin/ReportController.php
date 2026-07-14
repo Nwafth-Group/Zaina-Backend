@@ -113,6 +113,23 @@ class ReportController extends Controller
             ], 422);
         }
 
+        $validTransitions = [
+            'submitted'    => ['under_review', 'rejected'],
+            'under_review' => ['in_progress', 'rejected'],
+            'in_progress'  => ['resolved', 'rejected'],
+            'resolved'     => [], // Terminal
+            'rejected'     => [], // Terminal
+        ];
+
+        if (!in_array($newStatus, $validTransitions[$oldStatus] ?? [], true)) {
+            $msg = "Cannot change report status from '{$oldStatus}' to '{$newStatus}'. Status changes must follow a sequential flow: Submitted -> Under Review -> In Progress -> Resolved / Rejected.";
+            $msgAr = "لا يمكن تغيير حالة البلاغ من '{$oldStatus}' إلى '{$newStatus}'. يجب أن تتبع التحديثات تسلسلاً: مقدم -> قيد المراجعة -> قيد المعالجة -> تم الحل / مرفوض.";
+            return response()->json([
+                'success' => false,
+                'message' => app()->getLocale() === 'ar' ? $msgAr : $msg,
+            ], 422);
+        }
+
         DB::beginTransaction();
         try {
             $report->update([

@@ -9,10 +9,11 @@ use App\Models\BookingVisit;
 use App\Models\Coupon;
 use App\Models\CustomerAddress;
 use App\Models\Service;
-use App\Models\ServicePrice;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class CustomerBookingService
 {
@@ -21,7 +22,7 @@ class CustomerBookingService
      */
     public function allocateWorkersAndCalculatePrice($user, array $data): array
     {
-        if (!$user) {
+        if (! $user) {
             throw new \Exception('Unauthenticated', 401);
         }
 
@@ -44,7 +45,7 @@ class CustomerBookingService
                 $workersCount = (int) $workersCount;
                 if ($workersCount < $calculatedMinWorkers) {
                     $breakdown = $this->getBabysitterBreakdown($service, $data['child_age_groups'] ?? []);
-                    $msg = __('validation.create_booking.babysitters_count_min', ['min' => $calculatedMinWorkers]) . " (" . $breakdown . ")";
+                    $msg = __('validation.create_booking.babysitters_count_min', ['min' => $calculatedMinWorkers]).' ('.$breakdown.')';
                     throw new \Exception($msg, 422);
                 }
                 if ($workersCount > $maxWorkers) {
@@ -67,8 +68,8 @@ class CustomerBookingService
 
         // Check if customer already has an active booking at the same date and overlapping shift
         if ($this->hasOverlappingCustomerBooking($user->id, $dates, $times['start_str'], $times['end_str'])) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
-                'start_time' => __('validation.create_booking.customer_overlap')
+            throw ValidationException::withMessages([
+                'start_time' => __('validation.create_booking.customer_overlap'),
             ]);
         }
 
@@ -97,11 +98,11 @@ class CustomerBookingService
 
         // 8. Calculate subtotal, discount, VAT, and total
         $pricing = $this->calculatePricing(
-            $service, 
-            $address, 
-            $allocatedWorkers->count(), 
-            count($dates), 
-            $data['visit_type'] ?? 'single_visit', 
+            $service,
+            $address,
+            $allocatedWorkers->count(),
+            count($dates),
+            $data['visit_type'] ?? 'single_visit',
             $data['coupon_code'] ?? null,
             $user,
             $times['start_str'],
@@ -110,7 +111,7 @@ class CustomerBookingService
 
         return [
             'worker_ids' => $allocatedWorkers->pluck('id')->toArray(),
-            'pricing'    => $pricing['pricing'],
+            'pricing' => $pricing['pricing'],
         ];
     }
 
@@ -119,7 +120,7 @@ class CustomerBookingService
      */
     public function createBookingV2($user, array $data)
     {
-        if (!$user) {
+        if (! $user) {
             throw new \Exception('Unauthenticated', 401);
         }
 
@@ -135,7 +136,7 @@ class CustomerBookingService
             }
             if ($workerIdsCount < $calculatedMinWorkers) {
                 $breakdown = $this->getBabysitterBreakdown($service, $data['child_age_groups'] ?? []);
-                $msg = __('validation.create_booking.babysitters_count_min', ['min' => $calculatedMinWorkers]) . " (" . $breakdown . ")";
+                $msg = __('validation.create_booking.babysitters_count_min', ['min' => $calculatedMinWorkers]).' ('.$breakdown.')';
                 throw new \Exception($msg, 422);
             }
             if ($workerIdsCount > $maxWorkers) {
@@ -159,8 +160,8 @@ class CustomerBookingService
 
         // Check if customer already has an active booking at the same date and overlapping shift
         if ($this->hasOverlappingCustomerBooking($user->id, $dates, $times['start_str'], $times['end_str'])) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
-                'start_time' => __('validation.create_booking.customer_overlap')
+            throw ValidationException::withMessages([
+                'start_time' => __('validation.create_booking.customer_overlap'),
             ]);
         }
 
@@ -184,7 +185,7 @@ class CustomerBookingService
 
             $workerExists = $workerQuery->exists();
 
-            if (!$workerExists) {
+            if (! $workerExists) {
                 throw new \Exception(__('messages.invalid_worker_for_service'), 422);
             }
 
@@ -195,7 +196,7 @@ class CustomerBookingService
                         ->whereIn('status', ['Upcoming', 'inService'])
                         ->where(function ($timeQ) use ($times) {
                             $timeQ->where('start_time', '<', $times['end_str'])
-                                  ->where('end_time', '>', $times['start_str']);
+                                ->where('end_time', '>', $times['start_str']);
                         });
                 })
                 ->exists();
@@ -207,11 +208,11 @@ class CustomerBookingService
 
         // 6. Calculate prices
         $pricing = $this->calculatePricing(
-            $service, 
-            $address, 
-            count($workerIds), 
-            count($dates), 
-            $data['visit_type'] ?? 'single_visit', 
+            $service,
+            $address,
+            count($workerIds),
+            count($dates),
+            $data['visit_type'] ?? 'single_visit',
             $data['coupon_code'] ?? null,
             $user,
             $times['start_str'],
@@ -234,7 +235,7 @@ class CustomerBookingService
                         ->whereIn('status', ['Upcoming', 'inService'])
                         ->where(function ($timeQ) use ($times) {
                             $timeQ->where('start_time', '<', $times['end_str'])
-                                  ->where('end_time', '>', $times['start_str']);
+                                ->where('end_time', '>', $times['start_str']);
                         });
                 })
                 ->lockForUpdate()
@@ -242,33 +243,33 @@ class CustomerBookingService
 
             // Create Booking (using first date as parent reference)
             $booking = Booking::create([
-                'booking_ref'            => 'HC-' . rand(100000, 999999),
-                'customer_id'            => $user->id,
-                'service_id'             => $data['service_id'],
-                'address_id'             => $data['address_id'],
-                'worker_id'              => $workerIds[0],
-                'coupon_id'              => $pricing['coupon'] ? $pricing['coupon']->id : null,
-                'booking_date'           => $dates[0],
-                'start_time'             => $times['start_str'],
-                'end_time'               => $times['end_str'],
-                'duration_minutes'       => $times['duration_minutes'],
-                'worker_gender'          => $data['worker_gender'] ?? null,
-                'number_of_workers'      => count($workerIds),
-                'number_of_children'     => $service->service_code === 'BABYSITTER_HOURLY' ? ($data['number_of_children'] ?? null) : null,
-                'child_age_groups'       => $service->service_code === 'BABYSITTER_HOURLY' ? ($data['child_age_groups'] ?? null) : null,
-                'customer_notes'         => $data['note'] ?? null,
-                'price_subtotal'         => $pricing['pricing']['subtotal'],
-                'tax_amount'             => $pricing['pricing']['tax'],
-                'discount_amount'        => $pricing['pricing']['discount'],
-                'total_amount'           => $totalAmount,
-                'status'                 => 'Upcoming',
-                'payment_status'         => 'paid',
-                'payment_method'         => $paymentMethod,
-                'visit_type'             => $data['visit_type'] ?? 'single_visit',
-                'visit_number'           => count($dates),
-                'payment_transaction_id' => 'TXN-' . rand(10000000, 99999999),
-                'currency_code'          => 'EGP',
-                'contract_id'            => 1,
+                'booking_ref' => 'HC-'.rand(100000, 999999),
+                'customer_id' => $user->id,
+                'service_id' => $data['service_id'],
+                'address_id' => $data['address_id'],
+                'worker_id' => $workerIds[0],
+                'coupon_id' => $pricing['coupon'] ? $pricing['coupon']->id : null,
+                'booking_date' => $dates[0],
+                'start_time' => $times['start_str'],
+                'end_time' => $times['end_str'],
+                'duration_minutes' => $times['duration_minutes'],
+                'worker_gender' => $data['worker_gender'] ?? null,
+                'number_of_workers' => count($workerIds),
+                'number_of_children' => $service->service_code === 'BABYSITTER_HOURLY' ? ($data['number_of_children'] ?? null) : null,
+                'child_age_groups' => $service->service_code === 'BABYSITTER_HOURLY' ? ($data['child_age_groups'] ?? null) : null,
+                'customer_notes' => $data['note'] ?? null,
+                'price_subtotal' => $pricing['pricing']['subtotal'],
+                'tax_amount' => $pricing['pricing']['tax'],
+                'discount_amount' => $pricing['pricing']['discount'],
+                'total_amount' => $totalAmount,
+                'status' => 'Upcoming',
+                'payment_status' => 'paid',
+                'payment_method' => $paymentMethod,
+                'visit_type' => $data['visit_type'] ?? 'single_visit',
+                'visit_number' => count($dates),
+                'payment_transaction_id' => 'TXN-'.rand(10000000, 99999999),
+                'currency_code' => 'EGP',
+                'contract_id' => 1,
             ]);
 
             // Create Booking Visits (One row per scheduled date)
@@ -277,8 +278,8 @@ class CustomerBookingService
                     'booking_id' => $booking->id,
                     'visit_date' => $date,
                     'start_time' => $times['start_str'],
-                    'end_time'   => $times['end_str'],
-                    'status'     => 'Upcoming',
+                    'end_time' => $times['end_str'],
+                    'status' => 'Upcoming',
                 ]);
             }
 
@@ -287,8 +288,8 @@ class CustomerBookingService
                 $user->pointTransactions()->create([
                     'type' => 'redeem',
                     'amount' => (int) ceil($totalAmount),
-                    'title_ar' => 'دفع مقابل حجز برقم مرجعي: ' . $booking->booking_ref,
-                    'title_en' => 'Payment for Booking Ref: ' . $booking->booking_ref,
+                    'title_ar' => 'دفع مقابل حجز برقم مرجعي: '.$booking->booking_ref,
+                    'title_en' => 'Payment for Booking Ref: '.$booking->booking_ref,
                 ]);
             } elseif ($paymentMethod === 'wallet') {
                 $user->withdraw($totalAmount, 'Payment - Booking', $booking->booking_ref);
@@ -297,9 +298,9 @@ class CustomerBookingService
             // Create Worker Assignments
             foreach ($workerIds as $workerId) {
                 BookingAssignment::create([
-                    'booking_id'  => $booking->id,
-                    'worker_id'   => $workerId,
-                    'status'      => 'active',
+                    'booking_id' => $booking->id,
+                    'worker_id' => $workerId,
+                    'status' => 'active',
                     'assigned_at' => now(),
                 ]);
             }
@@ -311,7 +312,7 @@ class CustomerBookingService
             BookingHistory::create([
                 'booking_id' => $booking->id,
                 'new_status' => 'Upcoming',
-                'note'       => "تم إنشاء الحجز والدفع بنجاح عبر ({$paymentMethod}). إجمالي المبلغ: {$totalAmount} جنيه.",
+                'note' => "تم إنشاء الحجز والدفع بنجاح عبر ({$paymentMethod}). إجمالي المبلغ: {$totalAmount} جنيه.",
                 'created_by' => $user->id,
             ]);
 
@@ -332,15 +333,15 @@ class CustomerBookingService
     {
         $addressId = $data['address_id'] ?? null;
 
-        if (!$addressId) {
+        if (! $addressId) {
             $address = CustomerAddress::with('area')
                 ->where('user_id', $user->id)
                 ->where('is_active', true)
                 ->first();
 
-            if (!$address) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
-                    'address_id' => 'Please add or select a service address first.'
+            if (! $address) {
+                throw ValidationException::withMessages([
+                    'address_id' => 'Please add or select a service address first.',
                 ]);
             }
         } else {
@@ -360,9 +361,9 @@ class CustomerBookingService
             ->where('status', 'active')
             ->exists();
 
-        if (!$hasCoverage) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
-                'address_id' => __('messages.service_not_available_in_location') ?? 'هذه الخدمة غير متوفرة في موقعك الحالي.'
+        if (! $hasCoverage) {
+            throw ValidationException::withMessages([
+                'address_id' => __('messages.service_not_available_in_location') ?? 'هذه الخدمة غير متوفرة في موقعك الحالي.',
             ]);
         }
 
@@ -378,10 +379,10 @@ class CustomerBookingService
         $end = $start->copy()->addMinutes($durationMinutes);
 
         return [
-            'start'            => $start,
-            'end'              => $end,
-            'start_str'        => $start->format('H:i:s'),
-            'end_str'          => $end->format('H:i:s'),
+            'start' => $start,
+            'end' => $end,
+            'start_str' => $start->format('H:i:s'),
+            'end_str' => $end->format('H:i:s'),
             'duration_minutes' => $durationMinutes,
         ];
     }
@@ -396,9 +397,9 @@ class CustomerBookingService
             ->where('end_time', '>=', $startStr)
             ->exists();
 
-        if (!$hasValidShift) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
-                'start_time' => __('validation.create_booking.shift_invalid')
+        if (! $hasValidShift) {
+            throw ValidationException::withMessages([
+                'start_time' => __('validation.create_booking.shift_invalid'),
             ]);
         }
     }
@@ -413,6 +414,7 @@ class CustomerBookingService
             $busyIds = $this->getBusyWorkerIds($service, $date, $startStr, $endStr);
             $allBusyIds = array_merge($allBusyIds, $busyIds);
         }
+
         return array_values(array_unique($allBusyIds));
     }
 
@@ -427,7 +429,7 @@ class CustomerBookingService
                     ->whereIn('status', ['Upcoming', 'inService'])
                     ->where(function ($timeQ) use ($startStr, $endStr) {
                         $timeQ->where('start_time', '<', $endStr)
-                              ->where('end_time', '>', $startStr);
+                            ->where('end_time', '>', $startStr);
                     });
             })
             ->pluck('worker_id')
@@ -464,12 +466,12 @@ class CustomerBookingService
     /**
      * Allocate workers prioritising user's preferred list.
      */
-    private function allocateWorkers($availableWorkers, int $workersCount, array $preferredInput): \Illuminate\Support\Collection
+    private function allocateWorkers($availableWorkers, int $workersCount, array $preferredInput): Collection
     {
         $allocated = collect();
 
         // Match preferred workers first
-        if (!empty($preferredInput)) {
+        if (! empty($preferredInput)) {
             $preferredAvailable = $availableWorkers->whereIn('id', $preferredInput)->values();
             $allocated = $allocated->merge($preferredAvailable);
         }
@@ -478,8 +480,8 @@ class CustomerBookingService
         if ($needed > 0) {
             $remaining = $availableWorkers->whereNotIn('id', $allocated->pluck('id'))->values();
             if ($remaining->count() < $needed) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
-                    'workers_count' => 'No available worker was found for the selected service, date, and time.'
+                throw ValidationException::withMessages([
+                    'workers_count' => 'No available worker was found for the selected service, date, and time.',
                 ]);
             }
             $randomPicked = $remaining->random($needed)->values();
@@ -495,7 +497,9 @@ class CustomerBookingService
     private function calculatePricing(Service $service, CustomerAddress $address, int $workersCount, int $visitsCount, string $visitType, ?string $couponCode = null, $user = null, $startTime = null, $endTime = null): array
     {
         $pricePerPeriod = (float) ($service->base_price ?? 0);
-        if ($service->pricing_type === 'per_hour' && $startTime && $endTime) {
+        $isFirstService = ($service->service_code === 'DOMESTIC_HELPER_HOURLY');
+
+        if ($service->pricing_type === 'per_hour' && ! $isFirstService && $startTime && $endTime) {
             $start = Carbon::parse($startTime);
             $end = Carbon::parse($endTime);
             if ($end->lt($start)) {
@@ -512,7 +516,8 @@ class CustomerBookingService
         $availableTypes = $service->available_visit_types ?? [];
         foreach ($availableTypes as $vt) {
             $vtType = $vt['type'] ?? '';
-            if ($vtType === $visitType 
+            if (
+                $vtType === $visitType
                 || ($visitType === 'three_visits_per_week' && ($vtType === '3_days_per_week' || $vtType === '3_visits_per_week'))
                 || ($visitType === '3_days_per_week' && ($vtType === 'three_visits_per_week' || $vtType === '3_visits_per_week'))
             ) {
@@ -527,25 +532,22 @@ class CustomerBookingService
         $couponDiscountAmount = 0;
         $coupon = null;
 
-        if (!empty($couponCode)) {
+        if (! empty($couponCode)) {
             $coupon = Coupon::where('code', $couponCode)->first();
 
-            if (!$coupon) {
+            if (! $coupon) {
                 throw new \Exception(__('messages.coupon_not_found_or_expired'), 422);
             }
 
             $errCode = $coupon->checkEligibility($user, $service, $visitType, $startTime ?? '00:00', $endTime ?? '00:00', $address);
             if ($errCode) {
-                throw new \Exception(__('messages.' . $errCode), 422);
+                throw new \Exception(__('messages.'.$errCode), 422);
             }
 
             if ($coupon->type === 'fixed') {
                 $couponDiscountAmount = (float) $coupon->value;
             } elseif ($coupon->type === 'percentage') {
                 $couponDiscountAmount = $amountAfterServiceDiscount * ($coupon->value / 100);
-                if ($coupon->max_discount && $couponDiscountAmount > $coupon->max_discount) {
-                    $couponDiscountAmount = (float) $coupon->max_discount;
-                }
             }
             if ($couponDiscountAmount > $amountAfterServiceDiscount) {
                 $couponDiscountAmount = $amountAfterServiceDiscount;
@@ -557,19 +559,19 @@ class CustomerBookingService
         $total = ($subtotal - $totalDiscount) + $tax;
 
         return [
-            'coupon'     => $coupon,
-            'pricing'    => [
-                'price_per_period'        => $pricePerPeriod,
-                'workers_count'           => $workersCount,
-                'visits_count'            => $visitsCount,
-                'subtotal'                => $subtotal,
+            'coupon' => $coupon,
+            'pricing' => [
+                'price_per_period' => $pricePerPeriod,
+                'workers_count' => $workersCount,
+                'visits_count' => $visitsCount,
+                'subtotal' => $subtotal,
                 'service_discount_amount' => $serviceDiscountAmount,
-                'coupon_discount_amount'  => $couponDiscountAmount,
-                'discount'                => $totalDiscount,
-                'tax'                     => $tax,
-                'total'                   => $total,
-                'currency'                => 'EGP'
-            ]
+                'coupon_discount_amount' => $couponDiscountAmount,
+                'discount' => $totalDiscount,
+                'tax' => $tax,
+                'total' => $total,
+                'currency' => 'EGP',
+            ],
         ];
     }
 
@@ -604,14 +606,14 @@ class CustomerBookingService
         $customerId = auth()->id();
         foreach ($workerIds as $workerId) {
             $holds = Cache::get("temp_hold_worker_{$workerId}", []);
-            $holds = collect($holds)->filter(fn($h) => now()->timestamp < $h['expires_at'])->toArray();
+            $holds = collect($holds)->filter(fn ($h) => now()->timestamp < $h['expires_at'])->toArray();
 
             foreach ($dates as $date) {
                 $holds[] = [
-                    'date'        => $date,
-                    'start_time'  => $startStr,
-                    'end_time'    => $endStr,
-                    'expires_at'  => now()->addMinutes(5)->timestamp,
+                    'date' => $date,
+                    'start_time' => $startStr,
+                    'end_time' => $endStr,
+                    'expires_at' => now()->addMinutes(5)->timestamp,
                     'customer_id' => $customerId,
                 ];
             }
@@ -627,11 +629,11 @@ class CustomerBookingService
     {
         foreach ($workerIds as $workerId) {
             $holds = Cache::get("temp_hold_worker_{$workerId}", []);
-            
+
             // Exclude current booking holds and expired holds
             $holds = collect($holds)
-                ->filter(fn($h) => now()->timestamp < $h['expires_at'])
-                ->filter(fn($h) => !(in_array($h['date'], $dates) && $h['start_time'] === $startStr && $h['end_time'] === $endStr))
+                ->filter(fn ($h) => now()->timestamp < $h['expires_at'])
+                ->filter(fn ($h) => ! (in_array($h['date'], $dates) && $h['start_time'] === $startStr && $h['end_time'] === $endStr))
                 ->toArray();
 
             if (empty($holds)) {
@@ -647,7 +649,7 @@ class CustomerBookingService
      */
     private function hasOverlappingCustomerBooking(int $userId, array $dates, string $startStr, string $endStr): bool
     {
-        return \App\Models\Booking::where('customer_id', $userId)
+        return Booking::where('customer_id', $userId)
             ->whereIn('status', ['Upcoming', 'inService'])
             ->where(function ($q) use ($dates, $startStr, $endStr) {
                 // Check if any child booking visit overlaps
@@ -656,12 +658,12 @@ class CustomerBookingService
                         ->where('start_time', '<', $endStr)
                         ->where('end_time', '>', $startStr);
                 })
-                // Fallback compatibility check if visits are not populated yet
-                ->orWhere(function ($parentQ) use ($dates, $startStr, $endStr) {
-                    $parentQ->whereIn('booking_date', $dates)
-                        ->where('start_time', '<', $endStr)
-                        ->where('end_time', '>', $startStr);
-                });
+                    // Fallback compatibility check if visits are not populated yet
+                    ->orWhere(function ($parentQ) use ($dates, $startStr, $endStr) {
+                        $parentQ->whereIn('booking_date', $dates)
+                            ->where('start_time', '<', $endStr)
+                            ->where('end_time', '>', $startStr);
+                    });
             })
             ->exists();
     }
@@ -674,18 +676,22 @@ class CustomerBookingService
 
         foreach ($groupedCounts as $groupId => $count) {
             $group = $validGroups->firstWhere('id', $groupId);
-            if (!$group) {
+            if (! $group) {
                 throw new \Exception(__('validation.create_booking.babysitter_calculation_not_configured'), 422);
             }
 
             $childrenCountRule = $group->children_count ?? 1;
+            if ($childrenCountRule <= 0) {
+                $childrenCountRule = 1;
+            }
             $requiredWorkerCountRule = $group->required_worker_count ?? 1;
 
-            if ($group->calculation_type === 'per_child') {
-                $calculatedMinWorkers += $count * $requiredWorkerCountRule;
-            } else {
-                $calculatedMinWorkers += (int) ceil($count / $childrenCountRule) * $requiredWorkerCountRule;
-            }
+            $calculatedMinWorkers += (int) ceil($count / $childrenCountRule) * $requiredWorkerCountRule;
+        }
+
+        $totalChildren = count($ageGroupIds);
+        if ($totalChildren >= 3) {
+            $calculatedMinWorkers = max($calculatedMinWorkers, 2);
         }
 
         return $calculatedMinWorkers;
@@ -700,7 +706,9 @@ class CustomerBookingService
 
         foreach ($groupedCounts as $groupId => $count) {
             $group = $validGroups->firstWhere('id', $groupId);
-            if (!$group) continue;
+            if (! $group) {
+                continue;
+            }
 
             $childrenCountRule = $group->children_count ?? 1;
             $requiredWorkerCountRule = $group->required_worker_count ?? 1;

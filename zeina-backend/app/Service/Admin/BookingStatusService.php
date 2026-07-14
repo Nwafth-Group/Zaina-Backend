@@ -22,6 +22,14 @@ class BookingStatusService
      */
     public function change(Booking $booking, BookingStatus $status, ?string $note, User $actor): Booking
     {
+        if (in_array($status, [BookingStatus::InService, BookingStatus::Completed], true)) {
+            $today = \Carbon\Carbon::today()->toDateString();
+            $bookingDate = \Carbon\Carbon::parse($booking->booking_date)->toDateString();
+            if ($today !== $bookingDate) {
+                throw new \Exception('Cannot change status to In Service or Completed unless today is the scheduled booking date. / لا يمكن تغيير الحالة إلى قيد التنفيذ أو مكتمل إلا في يوم الخدمة المجدول.', 400);
+            }
+        }
+
         if ($status === BookingStatus::Cancelled) {
             $bookingService = app(\App\Service\BookingService::class);
             $bookingService->cancelBooking($booking->id, $actor->id, $note, true);

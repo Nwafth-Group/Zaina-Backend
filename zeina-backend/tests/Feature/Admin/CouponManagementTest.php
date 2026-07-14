@@ -35,8 +35,6 @@ class CouponManagementTest extends TestCase
             'code' => 'GEN10',
             'type' => 'percentage',
             'value' => 10,
-            'max_discount' => 50,
-            'min_booking_amount' => 100,
             'start_date' => now()->toDateString() . ' 00:00:00',
             'end_date' => now()->addDays(10)->toDateString() . ' 23:59:59',
             'usage_limit' => 100,

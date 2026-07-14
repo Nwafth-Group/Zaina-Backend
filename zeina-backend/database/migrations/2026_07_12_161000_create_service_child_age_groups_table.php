@@ -18,9 +18,10 @@ return new class extends Migration
             $table->string('name_en');
             $table->integer('age_from'); // in months
             $table->integer('age_to');   // in months
-            $table->string('calculation_type'); // per_child, ratio_based
+            $table->string('calculation_type')->nullable(); // per_child, ratio_based
             $table->integer('children_count')->default(1);
             $table->integer('required_worker_count')->default(1);
+            $table->string('note')->nullable();
             $table->string('status')->default('active'); // active, inactive
             $table->timestamps();
         });

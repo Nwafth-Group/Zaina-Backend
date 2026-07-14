@@ -69,8 +69,8 @@ class StoreBookingRequest extends FormRequest
             'duration'       => ['nullable', 'integer'],
             'worker_gender'  => ['nullable', 'string', 'in:Male,Female'],
             'number_of_children' => [$isBabysitter ? 'required' : 'nullable', 'integer', 'min:1'],
-            'child_age_groups' => ['nullable', 'array'],
-            // 'child_age_groups.*' => ['integer', 'exists:service_child_age_groups,id'],
+            'child_age_groups' => [$isBabysitter ? 'required' : 'nullable', 'array', 'min:1'],
+            'child_age_groups.*' => ['integer', 'exists:service_child_age_groups,id'],
             'note' => ['nullable', 'string'],
         ];
     }
@@ -86,9 +86,9 @@ class StoreBookingRequest extends FormRequest
             'address_id.required'     => __('validation.create_booking.address_id_required'),
             'address_id.exists'       => __('validation.create_booking.address_id_exists'),
             'dates.required'          => __('validation.create_booking.date_required'),
-            'dates.array'             => 'Dates must be an array of dates.',
+            'dates.array'             => __('validation.create_booking.dates_array'),
             'dates.*.date_format'     => __('validation.create_booking.date_date_format'),
-            'dates.*.after_or_equal'  => 'The date must be a date after or equal to today.',
+            'dates.*.after_or_equal'  => __('validation.create_booking.date_after_or_equal'),
             'start_time.required'     => __('validation.create_booking.start_time_required'),
             'start_time.date_format'  => __('validation.create_booking.start_time_date_format'),
             'payment_method.required' => __('validation.create_booking.payment_method_required'),
@@ -182,10 +182,9 @@ class StoreBookingRequest extends FormRequest
                     }
                     $numberOfChildren = (int) $this->input('number_of_children');
 
-                    // Commented: child age groups count must match number of children
-                    // if (count($childAgeGroups) !== $numberOfChildren) {
-                    //     $validator->errors()->add('child_age_groups', __('validation.create_booking.child_age_groups_count_mismatch'));
-                    // }
+                    if (count($childAgeGroups) !== $numberOfChildren) {
+                        $validator->errors()->add('child_age_groups', __('validation.create_booking.child_age_groups_count_mismatch'));
+                    }
 
                     $minChildren = $service->min_children ?? 1;
                     $maxChildren = $service->max_children ?? 6;
@@ -202,19 +201,21 @@ class StoreBookingRequest extends FormRequest
                     foreach ($groupedCounts as $groupId => $count) {
                         $group = $validGroups->firstWhere('id', $groupId);
                         if (!$group) {
-                            // Commented: validation error block
-                            // $validator->errors()->add('child_age_groups', __('validation.create_booking.child_age_groups_invalid'));
+                            $validator->errors()->add('child_age_groups', __('validation.create_booking.child_age_groups_invalid'));
                             continue;
                         }
 
                         $childrenCountRule = $group->children_count ?? 1;
+                        if ($childrenCountRule <= 0) {
+                            $childrenCountRule = 1;
+                        }
                         $requiredWorkerCountRule = $group->required_worker_count ?? 1;
 
-                        if ($group->calculation_type === 'per_child') {
-                            $calculatedMinWorkers += $count * $requiredWorkerCountRule;
-                        } else {
-                            $calculatedMinWorkers += ceil($count / $childrenCountRule) * $requiredWorkerCountRule;
-                        }
+                        $calculatedMinWorkers += (int) ceil($count / $childrenCountRule) * $requiredWorkerCountRule;
+                    }
+
+                    if ($numberOfChildren >= 3) {
+                        $calculatedMinWorkers = max($calculatedMinWorkers, 2);
                     }
 
                     $maxWorkers = $service->max_workers ?? 5;

@@ -62,7 +62,15 @@ class ServiceController extends Controller
      */
     public function details(Service $service)
     {
-        $service->load(['category', 'workers', 'childAgeGroups']);
+        $service->load([
+            'category',
+            'workers',
+            'childAgeGroups',
+            'coverages',
+            'coverages.city',
+            'coverages.area',
+            'schedules'
+        ]);
 
         $latestBookings = $service->bookings()
             ->with(['customer', 'service'])

@@ -20,8 +20,6 @@ class CouponResource extends JsonResource
             'code' => $this->code,
             'type' => $this->type, // fixed, percentage
             'value' => (float) $this->value,
-            'max_discount' => $this->max_discount ? (float) $this->max_discount : null,
-            'min_booking_amount' => $this->min_booking_amount ? (float) $this->min_booking_amount : 0.0,
             'usage_limit' => $this->usage_limit,
             'user_usage_limit' => $this->user_usage_limit,
             'used_count' => $this->used_count,
@@ -29,20 +27,20 @@ class CouponResource extends JsonResource
             'end_date' => $this->end_date ? $this->end_date->toDateTimeString() : null,
             'is_expired' => $this->end_date ? $this->end_date->isPast() : false,
             'status' => $this->status,
-            
+
             // Count summaries for admin table
             'users_count' => $this->users_count ?? ($this->relationLoaded('users') ? $this->users->count() : 0),
             'cities_count' => $this->cities_count ?? ($this->relationLoaded('cities') ? $this->cities->count() : 0),
             'areas_count' => $this->areas_count ?? ($this->relationLoaded('areas') ? $this->areas->count() : 0),
             'services_count' => $this->services_count ?? ($this->relationLoaded('services') ? $this->services->count() : 0),
-            
+
             // Audience
             'is_for_all_users' => (bool) $this->is_for_all_users,
-            'users' => $this->when($this->relationLoaded('users'), function() {
+            'users' => $this->when($this->relationLoaded('users'), function () {
                 return $this->users->map(function ($u) {
                     return [
                         'id' => $u->id,
-                        'name' => $u->first_name . ' ' . $u->last_name,
+                        'name' => $u->first_name.' '.$u->last_name,
                         'email' => $u->email,
                     ];
                 });
@@ -50,7 +48,7 @@ class CouponResource extends JsonResource
 
             // Locations
             'is_for_all_cities' => (bool) $this->is_for_all_cities,
-            'cities' => $this->when($this->relationLoaded('cities'), function() {
+            'cities' => $this->when($this->relationLoaded('cities'), function () {
                 return $this->cities->map(function ($c) {
                     return [
                         'id' => $c->id,
@@ -58,7 +56,7 @@ class CouponResource extends JsonResource
                     ];
                 });
             }),
-            'areas' => $this->when($this->relationLoaded('areas'), function() {
+            'areas' => $this->when($this->relationLoaded('areas'), function () {
                 return $this->areas->map(function ($a) {
                     return [
                         'id' => $a->id,
@@ -75,34 +73,34 @@ class CouponResource extends JsonResource
             'is_for_all_services' => (bool) $this->is_for_all_services,
             'allowed_visit_types' => $this->allowed_visit_types,
             'allowed_shifts' => $this->allowed_shifts,
-            
-            'services' => $this->when($this->relationLoaded('services'), function() {
-                return $this->services->map(function($service) {
+
+            'services' => $this->when($this->relationLoaded('services'), function () {
+                return $this->services->map(function ($service) {
                     return [
                         'id' => $service->id,
                         'name' => app()->getLocale() === 'ar' ? $service->name_ar : $service->name_en,
                         'pivot' => [
                             'allowed_visit_types' => isset($service->pivot->allowed_visit_types)
-                                ? (is_string($service->pivot->allowed_visit_types) 
-                                    ? json_decode($service->pivot->allowed_visit_types, true) 
+                                ? (is_string($service->pivot->allowed_visit_types)
+                                    ? json_decode($service->pivot->allowed_visit_types, true)
                                     : $service->pivot->allowed_visit_types)
                                 : null,
                             'allowed_shifts' => isset($service->pivot->allowed_shifts)
-                                ? (is_string($service->pivot->allowed_shifts) 
-                                    ? json_decode($service->pivot->allowed_shifts, true) 
+                                ? (is_string($service->pivot->allowed_shifts)
+                                    ? json_decode($service->pivot->allowed_shifts, true)
                                     : $service->pivot->allowed_shifts)
                                 : null,
                         ],
                     ];
                 });
             }),
-            
+
             // Backward-compatible field for V1 Customer API
-            'eligible_services' => $this->when($this->relationLoaded('services'), function() {
-                return $this->is_for_all_services ? [] : $this->services->map(function($service) {
+            'eligible_services' => $this->when($this->relationLoaded('services'), function () {
+                return $this->is_for_all_services ? [] : $this->services->map(function ($service) {
                     return [
                         'id' => $service->id,
-                        'name' => app()->getLocale() === 'ar' ? $service->name_ar : $service->name_en
+                        'name' => app()->getLocale() === 'ar' ? $service->name_ar : $service->name_en,
                     ];
                 });
             }),

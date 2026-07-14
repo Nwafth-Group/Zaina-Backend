@@ -2,22 +2,23 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
+use Database\Factories\CouponFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use OwenIt\Auditing\Contracts\Auditable;
-use Carbon\Carbon;
 
 class Coupon extends Model implements Auditable
 {
-    /** @use HasFactory<\Database\Factories\CouponFactory> */
+    /** @use HasFactory<CouponFactory> */
     use HasFactory, \OwenIt\Auditing\Auditable;
 
     protected $fillable = [
-        'name', 'code', 'type', 'value', 'max_discount', 'min_booking_amount',
+        'name', 'code', 'type', 'value',
         'usage_limit', 'user_usage_limit', 'used_count',
         'start_date', 'end_date', 'is_for_all_users', 'is_for_all_services',
         'is_for_all_cities', 'completed_bookings_count', 'allowed_visit_types',
-        'allowed_shifts', 'status'
+        'allowed_shifts', 'status',
     ];
 
     protected $casts = [
@@ -93,33 +94,33 @@ class Coupon extends Model implements Auditable
         }
 
         // 5. Check Audience (Specific Users)
-        if (!$this->is_for_all_users) {
-            if (!$user) {
+        if (! $this->is_for_all_users) {
+            if (! $user) {
                 return 'coupon_unauthenticated';
             }
             $isUserEligible = $this->users()->where('users.id', $user->id)->exists();
-            if (!$isUserEligible) {
+            if (! $isUserEligible) {
                 return 'coupon_not_for_user';
             }
         }
 
         // 6. Check Location Eligibility
-        if (!$this->is_for_all_cities) {
-            if (!$address) {
+        if (! $this->is_for_all_cities) {
+            if (! $address) {
                 return 'coupon_address_required';
             }
-            
+
             // Check area restrictions if any are set
             $hasAreaRestrictions = $this->areas()->exists();
             if ($hasAreaRestrictions) {
                 $isAreaEligible = $this->areas()->where('areas.id', $address->area_id)->exists();
-                if (!$isAreaEligible) {
+                if (! $isAreaEligible) {
                     return 'coupon_location_ineligible';
                 }
             } else {
                 // Otherwise check city restriction
                 $isCityEligible = $this->cities()->where('cities.id', $address->area->city_id)->exists();
-                if (!$isCityEligible) {
+                if (! $isCityEligible) {
                     return 'coupon_location_ineligible';
                 }
             }
@@ -127,10 +128,10 @@ class Coupon extends Model implements Auditable
 
         // 7. Check Completed Booking Count Condition (for any service, per user feedback)
         if ($this->completed_bookings_count > 0) {
-            if (!$user) {
+            if (! $user) {
                 return 'coupon_unauthenticated';
             }
-            
+
             $completedCount = Booking::where('customer_id', $user->id)
                 ->where('status', 'completed')
                 ->count();
@@ -141,29 +142,29 @@ class Coupon extends Model implements Auditable
         }
 
         // 8. Check Service and Service-Specific Rules (Visit Types, Shifts)
-        if (!$this->is_for_all_services) {
+        if (! $this->is_for_all_services) {
             $pivot = $this->services()->where('services.id', $service->id)->first()?->pivot;
-            if (!$pivot) {
+            if (! $pivot) {
                 return 'coupon_service_ineligible';
             }
 
             // Check Visit Type Eligibility
-            $allowedVisitTypes = is_string($pivot->allowed_visit_types) 
-                ? json_decode($pivot->allowed_visit_types, true) 
+            $allowedVisitTypes = is_string($pivot->allowed_visit_types)
+                ? json_decode($pivot->allowed_visit_types, true)
                 : $pivot->allowed_visit_types;
 
-            if (!empty($allowedVisitTypes)) {
-                if (!in_array($visitType, $allowedVisitTypes)) {
+            if (! empty($allowedVisitTypes)) {
+                if (! in_array($visitType, $allowedVisitTypes)) {
                     return 'coupon_visit_type_ineligible';
                 }
             }
 
             // Check Shift / Time Eligibility (Exact match per user feedback)
-            $allowedShifts = is_string($pivot->allowed_shifts) 
-                ? json_decode($pivot->allowed_shifts, true) 
+            $allowedShifts = is_string($pivot->allowed_shifts)
+                ? json_decode($pivot->allowed_shifts, true)
                 : $pivot->allowed_shifts;
 
-            if (!empty($allowedShifts)) {
+            if (! empty($allowedShifts)) {
                 $matchesShift = false;
                 $bookingStart = Carbon::parse($startTime)->format('H:i');
                 $bookingEnd = Carbon::parse($endTime)->format('H:i');
@@ -171,27 +172,27 @@ class Coupon extends Model implements Auditable
                 foreach ($allowedShifts as $shift) {
                     $shiftStart = Carbon::parse($shift['start_time'])->format('H:i');
                     $shiftEnd = Carbon::parse($shift['end_time'])->format('H:i');
-                    
+
                     if ($bookingStart === $shiftStart && $bookingEnd === $shiftEnd) {
                         $matchesShift = true;
                         break;
                     }
                 }
 
-                if (!$matchesShift) {
+                if (! $matchesShift) {
                     return 'coupon_shift_ineligible';
                 }
             }
         } else {
             // General rules for Coupon (if valid for all services but has visit type/shift limitations)
             $allowedVisitTypes = $this->allowed_visit_types;
-            if (!empty($allowedVisitTypes)) {
+            if (! empty($allowedVisitTypes)) {
                 // If Admin selected all services + a specific visit type, the service itself must support this visit type
                 $serviceSupportsVisitType = false;
                 $serviceTypes = $service->available_visit_types ?? [];
                 foreach ($serviceTypes as $vt) {
                     $vtType = $vt['type'] ?? '';
-                    if ($vtType === $visitType 
+                    if ($vtType === $visitType
                         || ($visitType === 'three_visits_per_week' && ($vtType === '3_days_per_week' || $vtType === '3_visits_per_week'))
                         || ($visitType === '3_days_per_week' && ($vtType === 'three_visits_per_week' || $vtType === '3_visits_per_week'))
                     ) {
@@ -200,13 +201,13 @@ class Coupon extends Model implements Auditable
                     }
                 }
 
-                if (!$serviceSupportsVisitType || !in_array($visitType, $allowedVisitTypes)) {
+                if (! $serviceSupportsVisitType || ! in_array($visitType, $allowedVisitTypes)) {
                     return 'coupon_visit_type_ineligible';
                 }
             }
 
             $allowedShifts = $this->allowed_shifts;
-            if (!empty($allowedShifts)) {
+            if (! empty($allowedShifts)) {
                 $matchesShift = false;
                 $bookingStart = Carbon::parse($startTime)->format('H:i');
                 $bookingEnd = Carbon::parse($endTime)->format('H:i');
@@ -221,7 +222,7 @@ class Coupon extends Model implements Auditable
                     }
                 }
 
-                if (!$matchesShift) {
+                if (! $matchesShift) {
                     return 'coupon_shift_ineligible';
                 }
             }
@@ -230,4 +231,3 @@ class Coupon extends Model implements Auditable
         return null;
     }
 }
-

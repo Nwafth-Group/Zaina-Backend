@@ -14,6 +14,20 @@ class UpdateEmployeeRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation()
+    {
+        $roles = $this->input('roles', []);
+        $type = 'operation';
+        if (in_array('Super Admin', $roles, true)) {
+            $type = 'super_admin';
+        } elseif (in_array('Driver', $roles, true)) {
+            $type = 'driver';
+        }
+        $this->merge([
+            'type' => $type,
+        ]);
+    }
+
     /**
      * Get the validation rules that apply to the request.
      *

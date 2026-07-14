@@ -27,7 +27,7 @@ class CouponController extends Controller
             $search = $request->input('search');
             $query->where(function ($q) use ($search) {
                 $q->where('code', 'like', "%{$search}%")
-                  ->orWhere('name', 'like', "%{$search}%");
+                    ->orWhere('name', 'like', "%{$search}%");
             });
         }
 
@@ -55,19 +55,19 @@ class CouponController extends Controller
         try {
             // 1. Create Coupon
             $coupon = Coupon::create($request->only([
-                'name', 'code', 'type', 'value', 'max_discount', 'min_booking_amount',
+                'name', 'code', 'type', 'value',
                 'usage_limit', 'user_usage_limit', 'start_date', 'end_date',
                 'is_for_all_users', 'is_for_all_services', 'is_for_all_cities',
-                'completed_bookings_count', 'allowed_visit_types', 'allowed_shifts', 'status'
+                'completed_bookings_count', 'allowed_visit_types', 'allowed_shifts', 'status',
             ]));
 
             // 2. Sync Users (Audience)
-            if (!$request->is_for_all_users && $request->has('users')) {
+            if (! $request->is_for_all_users && $request->has('users')) {
                 $coupon->users()->sync($request->users);
             }
 
             // 3. Sync Cities & Areas
-            if (!$request->is_for_all_cities) {
+            if (! $request->is_for_all_cities) {
                 if ($request->has('cities')) {
                     $coupon->cities()->sync($request->cities);
                 }
@@ -77,12 +77,12 @@ class CouponController extends Controller
             }
 
             // 4. Sync Services
-            if (!$request->is_for_all_services && $request->has('services')) {
+            if (! $request->is_for_all_services && $request->has('services')) {
                 $syncData = [];
                 foreach ($request->services as $svc) {
                     $syncData[$svc['id']] = [
                         'allowed_visit_types' => isset($svc['allowed_visit_types']) ? json_encode($svc['allowed_visit_types']) : null,
-                        'allowed_shifts'      => isset($svc['allowed_shifts']) ? json_encode($svc['allowed_shifts']) : null,
+                        'allowed_shifts' => isset($svc['allowed_shifts']) ? json_encode($svc['allowed_shifts']) : null,
                     ];
                 }
                 $coupon->services()->sync($syncData);
@@ -101,7 +101,8 @@ class CouponController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return $this->errorResponse('Error saving coupon: ' . $e->getMessage(), 500);
+
+            return $this->errorResponse('Error saving coupon: '.$e->getMessage(), 500);
         }
     }
 
@@ -129,16 +130,16 @@ class CouponController extends Controller
         try {
             // 1. Update Coupon
             $coupon->update($request->only([
-                'name', 'code', 'type', 'value', 'max_discount', 'min_booking_amount',
+                'name', 'code', 'type', 'value',
                 'usage_limit', 'user_usage_limit', 'start_date', 'end_date',
                 'is_for_all_users', 'is_for_all_services', 'is_for_all_cities',
-                'completed_bookings_count', 'allowed_visit_types', 'allowed_shifts', 'status'
+                'completed_bookings_count', 'allowed_visit_types', 'allowed_shifts', 'status',
             ]));
 
             // 2. Sync Users (Audience)
             if ($request->is_for_all_users) {
                 $coupon->users()->detach();
-            } else if ($request->has('users')) {
+            } elseif ($request->has('users')) {
                 $coupon->users()->sync($request->users);
             }
 
@@ -158,12 +159,12 @@ class CouponController extends Controller
             // 4. Sync Services
             if ($request->is_for_all_services) {
                 $coupon->services()->detach();
-            } else if ($request->has('services')) {
+            } elseif ($request->has('services')) {
                 $syncData = [];
                 foreach ($request->services as $svc) {
                     $syncData[$svc['id']] = [
                         'allowed_visit_types' => isset($svc['allowed_visit_types']) ? json_encode($svc['allowed_visit_types']) : null,
-                        'allowed_shifts'      => isset($svc['allowed_shifts']) ? json_encode($svc['allowed_shifts']) : null,
+                        'allowed_shifts' => isset($svc['allowed_shifts']) ? json_encode($svc['allowed_shifts']) : null,
                     ];
                 }
                 $coupon->services()->sync($syncData);
@@ -181,7 +182,8 @@ class CouponController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return $this->errorResponse('Error updating coupon: ' . $e->getMessage(), 500);
+
+            return $this->errorResponse('Error updating coupon: '.$e->getMessage(), 500);
         }
     }
 

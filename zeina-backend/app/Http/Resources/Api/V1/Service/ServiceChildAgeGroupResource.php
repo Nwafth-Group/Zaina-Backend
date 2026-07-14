@@ -25,6 +25,7 @@ class ServiceChildAgeGroupResource extends JsonResource
             'children_count' => (int) $this->children_count,
             'required_worker_count' => (int) $this->required_worker_count,
             'status' => $this->status,
+            'note' => $this->note,
         ];
     }
 }

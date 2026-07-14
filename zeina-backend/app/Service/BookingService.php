@@ -12,9 +12,15 @@ use App\Models\ReportHistory;
 use App\Models\Review;
 use App\Models\Service;
 use App\Models\ServicePrice;
+use App\Models\ServiceSchedule;
 use App\Models\User;
+use App\Models\Worker;
+use App\Notifications\ReportNotification;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Str;
 
 class BookingService
 {
@@ -58,7 +64,7 @@ class BookingService
                 ->where('workers.status', 'active')
                 ->exists();
 
-            if (!$workerExists) {
+            if (! $workerExists) {
                 throw new \Exception(__('messages.invalid_worker_for_service'), 422);
             }
 
@@ -91,10 +97,10 @@ class BookingService
             ->where(function ($q) use ($today) {
                 $q->whereNull('effective_end')->orWhere('effective_end', '>=', $today);
             })
-            ->orderByRaw('area_id IS NULL ASC') 
+            ->orderByRaw('area_id IS NULL ASC')
             ->first();
 
-        if (!$servicePrice) {
+        if (! $servicePrice) {
             throw new \Exception(__('messages.service_not_available_in_location'), 400);
         }
 
@@ -107,7 +113,7 @@ class BookingService
         $discountAmount = 0;
         $coupon = null;
 
-        if (!empty($data['coupon_code'])) {
+        if (! empty($data['coupon_code'])) {
             $now = now();
             $coupon = Coupon::where('code', $data['coupon_code'])
                 ->where('status', 'active')
@@ -115,7 +121,7 @@ class BookingService
                 ->where('end_date', '>=', $now)
                 ->first();
 
-            if (!$coupon) {
+            if (! $coupon) {
                 throw new \Exception(__('messages.invalid_or_expired_coupon'), 422);
             }
 
@@ -123,9 +129,6 @@ class BookingService
                 $discountAmount = (float) $coupon->value;
             } elseif ($coupon->type === 'percentage') {
                 $discountAmount = $subtotal * ($coupon->value / 100);
-                if ($coupon->max_discount && $discountAmount > $coupon->max_discount) {
-                    $discountAmount = (float) $coupon->max_discount;
-                }
             }
             if ($discountAmount > $subtotal) {
                 $discountAmount = $subtotal;
@@ -137,18 +140,17 @@ class BookingService
 
         // 7. معالجة حساب وفحص طرق الدفع
         $paymentMethod = $data['payment_method'];
-        
+
         if ($paymentMethod === 'points') {
             $totalEarnedPoints = $user->pointTransactions()->where('type', 'earn')->sum('amount');
             $totalRedeemedPoints = $user->pointTransactions()->where('type', 'redeem')->sum('amount');
             $userPointsBalance = $totalEarnedPoints - $totalRedeemedPoints;
 
-            $pointsRequired = (int) ceil($total); 
+            $pointsRequired = (int) ceil($total);
             if ($userPointsBalance < $pointsRequired) {
                 throw new \Exception("عذراً، رصيد نقاطك الحالي ({$userPointsBalance} نقطة) غير كافٍ. يتطلب الحجز {$pointsRequired} نقطة.", 422);
             }
-        } 
-        elseif ($paymentMethod === 'wallet') {
+        } elseif ($paymentMethod === 'wallet') {
             if ($user->wallet_balance < $total) {
                 if (app()->environment('local', 'testing')) {
                     $deficit = $total - $user->wallet_balance;
@@ -175,23 +177,23 @@ class BookingService
                 ->exists();
 
             $booking = Booking::create([
-                'booking_ref'      => 'HC-' . rand(100000, 999999),
-                'customer_id'      => $user->id,
-                'service_id'       => $data['service_id'],
-                'address_id'       => $data['address_id'],
-                'worker_id'        => $workerIds[0],
-                'coupon_id'        => $coupon ? $coupon->id : null,
-                'booking_date'     => $bookingDate,
-                'start_time'       => $startStr,
-                'end_time'         => $endStr,
+                'booking_ref' => 'HC-'.rand(100000, 999999),
+                'customer_id' => $user->id,
+                'service_id' => $data['service_id'],
+                'address_id' => $data['address_id'],
+                'worker_id' => $workerIds[0],
+                'coupon_id' => $coupon ? $coupon->id : null,
+                'booking_date' => $bookingDate,
+                'start_time' => $startStr,
+                'end_time' => $endStr,
                 'duration_minutes' => $totalMinutes,
-                'price_subtotal'   => $subtotal,
-                'tax_amount'       => $tax,
-                'discount_amount'  => $discountAmount,
-                'total_amount'     => $total,
-                'status'           => 'Upcoming',
-                'payment_status'   => 'paid',
-                'payment_method'   => $paymentMethod,
+                'price_subtotal' => $subtotal,
+                'tax_amount' => $tax,
+                'discount_amount' => $discountAmount,
+                'total_amount' => $total,
+                'status' => 'Upcoming',
+                'payment_status' => 'paid',
+                'payment_method' => $paymentMethod,
             ]);
 
             // خصم الدفع المالي
@@ -199,8 +201,8 @@ class BookingService
                 $user->pointTransactions()->create([
                     'type' => 'redeem',
                     'amount' => (int) ceil($total),
-                    'title_ar' => 'دفع مقابل حجز برقم مرجعي: ' . $booking->booking_ref,
-                    'title_en' => 'Payment for Booking Ref: ' . $booking->booking_ref,
+                    'title_ar' => 'دفع مقابل حجز برقم مرجعي: '.$booking->booking_ref,
+                    'title_en' => 'Payment for Booking Ref: '.$booking->booking_ref,
                 ]);
             } elseif ($paymentMethod === 'wallet') {
                 $user->withdraw($total, 'Payment - Booking', $booking->booking_ref);
@@ -209,9 +211,9 @@ class BookingService
             // تعيين العمال
             foreach ($workerIds as $workerId) {
                 BookingAssignment::create([
-                    'booking_id'  => $booking->id,
-                    'worker_id'   => $workerId,
-                    'status'      => 'active',
+                    'booking_id' => $booking->id,
+                    'worker_id' => $workerId,
+                    'status' => 'active',
                     'assigned_at' => now(),
                 ]);
             }
@@ -223,11 +225,12 @@ class BookingService
             BookingHistory::create([
                 'booking_id' => $booking->id,
                 'new_status' => 'Upcoming',
-                'note'       => "تم إنشاء الحجز والدفع بنجاح عبر ({$paymentMethod}). إجمالي المبلغ: {$total} جنيه.",
+                'note' => "تم إنشاء الحجز والدفع بنجاح عبر ({$paymentMethod}). إجمالي المبلغ: {$total} جنيه.",
                 'created_by' => $user->id,
             ]);
 
             DB::commit();
+
             return $booking;
 
         } catch (\Exception $transactionEx) {
@@ -236,14 +239,13 @@ class BookingService
         }
     }
 
-
     public function rescheduleBooking($bookingId, $userId, array $data, $isAdmin = false)
     {
         // 1. Fetch booking with details
         $booking = Booking::with(['service.rules', 'workers', 'visits', 'customer'])->findOrFail($bookingId);
 
         // Ownership validation (bypassed for admin)
-        if (!$isAdmin && $booking->customer_id !== $userId) {
+        if (! $isAdmin && $booking->customer_id !== $userId) {
             throw new \Exception(__('messages.unauthorized') ?? 'Unauthorized', 403);
         }
 
@@ -301,13 +303,14 @@ class BookingService
                 'booking_id' => $booking->id,
                 'old_status' => 'Upcoming',
                 'new_status' => 'Upcoming',
-                'note'       => $isAdmin 
-                    ? 'Rescheduled by admin. New schedule starts on: ' . $sortedDates[0] . ' at ' . $newStart->format('h:i A')
-                    : 'Rescheduled by customer. New schedule starts on: ' . $sortedDates[0] . ' at ' . $newStart->format('h:i A'),
+                'note' => $isAdmin
+                    ? 'Rescheduled by admin. New schedule starts on: '.$sortedDates[0].' at '.$newStart->format('h:i A')
+                    : 'Rescheduled by customer. New schedule starts on: '.$sortedDates[0].' at '.$newStart->format('h:i A'),
                 'created_by' => $isAdmin ? $userId : $booking->customer_id,
             ]);
 
             DB::commit();
+
             return $booking;
 
         } catch (\Exception $transactionEx) {
@@ -322,40 +325,40 @@ class BookingService
 
         // Must be Upcoming status
         if ($booking->status !== 'Upcoming') {
-            throw new \Exception(__('messages.booking_not_upcoming', ['status' => $booking->status]) ?? 'Booking is not upcoming', 400);
+            throw new \Exception(__('messages.booking_not_upcoming', ['status' => $booking->status]), 400);
         }
 
         // Allow reschedule rule check (bypassed for admin)
         $rules = $booking->service->rules;
-        if (!$isAdmin && $rules && !$rules->allow_reschedule) {
-            throw new \Exception('Rescheduling is not allowed for this service.', 400);
+        if (! $isAdmin && $rules && isset($rules->allow_reschedule) && ! $rules->allow_reschedule) {
+            throw new \Exception(__('messages.rescheduling_not_allowed'), 400);
         }
 
         // Block reschedule if any visit is completed or inService
         if ($booking->relationLoaded('visits') && $booking->visits && $booking->visits->isNotEmpty()) {
             $nonUpcomingCount = $booking->visits->where('status', '!=', 'Upcoming')->count();
             if ($nonUpcomingCount > 0) {
-                throw new \Exception('Cannot reschedule a booking that has already started or been completed.', 400);
+                throw new \Exception(__('messages.booking_started_or_completed'), 400);
             }
         }
 
         // Cut-off timing validation (bypassed for admin)
-        if (!$isAdmin) {
+        if (! $isAdmin) {
             $cutoffHours = $rules ? (int) $rules->reschedule_cutoff_hours : 0;
-            
+
             $earliestVisit = null;
             if ($booking->relationLoaded('visits') && $booking->visits && $booking->visits->isNotEmpty()) {
-                $earliestVisit = $booking->visits->sortBy(fn($v) => $v->visit_date . ' ' . $v->start_time)->first();
+                $earliestVisit = $booking->visits->sortBy(fn ($v) => $v->visit_date.' '.$v->start_time)->first();
             }
-            
-            $earliestDateTimeStr = $earliestVisit 
-                ? ($earliestVisit->visit_date . ' ' . $earliestVisit->start_time)
-                : ($booking->booking_date . ' ' . $booking->start_time);
-                
+
+            $earliestDateTimeStr = $earliestVisit
+                ? ($earliestVisit->visit_date.' '.$earliestVisit->start_time)
+                : ($booking->booking_date.' '.$booking->start_time);
+
             $earliestDateTime = Carbon::parse($earliestDateTimeStr);
 
             if (now()->addHours($cutoffHours)->greaterThan($earliestDateTime)) {
-                throw new \Exception(__('messages.reschedule_cutoff') ?? 'Cannot reschedule as the service starts in less than the cutoff limit.', 400);
+                throw new \Exception(__('messages.reschedule_cutoff_exceeded', ['hours' => $cutoffHours]), 400);
             }
         }
 
@@ -363,16 +366,16 @@ class BookingService
         $dates = $data['dates'];
         if ($booking->visit_type === 'three_visits_per_week') {
             if (count($dates) !== 3) {
-                throw new \Exception('Please select exactly 3 dates for a 3-visit booking.', 400);
+                throw new \Exception(__('messages.select_exactly_3_dates'), 400);
             }
             // Check all 3 belong to the same week
-            $weeks = collect($dates)->map(fn($d) => Carbon::parse($d)->startOfWeek(Carbon::SATURDAY)->toDateString())->unique();
+            $weeks = collect($dates)->map(fn ($d) => Carbon::parse($d)->startOfWeek(Carbon::SATURDAY)->toDateString())->unique();
             if ($weeks->count() > 1) {
-                throw new \Exception('All selected dates must belong to the same calendar week.', 400);
+                throw new \Exception(__('messages.dates_must_belong_to_same_week'), 400);
             }
         } else {
             if (count($dates) !== 1) {
-                throw new \Exception('Please select exactly 1 date for a single visit booking.', 400);
+                throw new \Exception(__('messages.select_exactly_1_date'), 400);
             }
         }
 
@@ -385,13 +388,13 @@ class BookingService
         // Validate service shifts for the new dates
         foreach ($dates as $date) {
             $dayName = strtolower(Carbon::parse($date)->format('l'));
-            $schedules = \App\Models\ServiceSchedule::where('service_id', $booking->service_id)
+            $schedules = ServiceSchedule::where('service_id', $booking->service_id)
                 ->where('day', $dayName)
                 ->where('is_active', true)
                 ->get();
 
             if ($schedules->isEmpty()) {
-                throw new \Exception("The service does not have active schedules on {$date}.", 422);
+                throw new \Exception(__('messages.service_no_active_schedules', ['date' => $date]), 422);
             }
 
             $isValidShift = false;
@@ -404,32 +407,24 @@ class BookingService
                 }
             }
 
-            if (!$isValidShift) {
-                throw new \Exception("The selected time slot is outside the available shifts for {$date}.", 422);
+            if (! $isValidShift) {
+                throw new \Exception(__('messages.time_slot_outside_shifts', ['date' => $date]), 422);
             }
         }
 
         // Worker Availability Check & Allocation
-        $requiredCount = $booking->relationLoaded('workers') ? $booking->workers->count() : $booking->workers()->count();
-        if ($requiredCount === 0) {
-            $requiredCount = 1;
-        }
         $finalWorkers = [];
 
         foreach ($booking->workers as $worker) {
             if ($worker->status !== 'active') {
-                throw new \Exception('Cannot reschedule: one of the assigned workers is inactive.', 422);
+                throw new \Exception(__('messages.worker_inactive'), 422);
             }
             foreach ($dates as $date) {
                 if ($this->isWorkerBusyOnDateSlot($worker->id, $date, $newStartStr, $newEndStr, $booking->id)) {
-                    throw new \Exception('Cannot reschedule: the assigned workers are not available during the selected times.', 422);
+                    throw new \Exception(__('messages.worker_not_available'), 422);
                 }
             }
             $finalWorkers[] = $worker;
-        }
-
-        if (count($finalWorkers) === 0) {
-            throw new \Exception('Cannot reschedule: no workers assigned to this booking.', 422);
         }
 
         return [
@@ -447,304 +442,295 @@ class BookingService
             ->where(function ($q) use ($date, $start, $end) {
                 $q->whereHas('booking', function ($subQ) use ($date, $start, $end) {
                     $subQ->where('booking_date', $date)
-                         ->whereIn('status', ['Upcoming', 'inService'])
-                         ->where('start_time', '<', $end)
-                         ->where('end_time', '>', $start);
+                        ->whereIn('status', ['Upcoming', 'inService'])
+                        ->where('start_time', '<', $end)
+                        ->where('end_time', '>', $start);
                 })
-                ->orWhereHas('booking.visits', function ($subQ) use ($date, $start, $end) {
-                    $subQ->where('visit_date', $date)
-                         ->whereIn('status', ['Upcoming', 'inService'])
-                         ->where('start_time', '<', $end)
-                         ->where('end_time', '>', $start);
-                });
+                    ->orWhereHas('booking.visits', function ($subQ) use ($date, $start, $end) {
+                        $subQ->where('visit_date', $date)
+                            ->whereIn('status', ['Upcoming', 'inService'])
+                            ->where('start_time', '<', $end)
+                            ->where('end_time', '>', $start);
+                    });
             })
             ->exists();
     }
 
-public function cancelBooking($bookingId, $userId, $reason = null, $isAdmin = false)
-{
-    // Retrieve the booking with rules, visits, and customer
-    $booking = Booking::with(['service.rules', 'visits', 'customer'])->findOrFail($bookingId);
+    public function cancelBooking($bookingId, $userId, $reason = null, $isAdmin = false)
+    {
+        // Retrieve the booking with rules, visits, and customer
+        $booking = Booking::with(['service.rules', 'visits', 'customer'])->findOrFail($bookingId);
 
-    // 1. Ownership validation (bypassed for admin)
-    if (!$isAdmin && $booking->customer_id !== $userId) {
-        throw new \Exception(__('messages.unauthorized') ?? 'Unauthorized', 403);
-    }
-
-    // 2. Validate cancellation rules
-    $this->validateCancellation($booking, $isAdmin);
-
-    // 3. Calculate Refund details
-    $refundAmount = 0;
-    $refundPoints = 0;
-    $refundDestination = null;
-
-    if ($booking->payment_status === 'paid') {
-        if ($booking->payment_method === 'points') {
-            $refundPoints = (int) $booking->paid_points;
-            $refundDestination = 'points';
-        } else {
-            $refundAmount = (float) $booking->total_amount;
-            $refundDestination = 'wallet';
-        }
-    }
-
-    // 4. DB Transaction
-    DB::beginTransaction();
-    try {
-        // Update Booking Header
-        $booking->update([
-            'status' => 'cancelled',
-            'cancelled_by' => $isAdmin ? 'admin' : 'customer',
-            'cancelled_at' => now(),
-            'cancellation_reason' => $reason,
-            'refund_amount' => $refundAmount,
-            'refund_points' => $refundPoints,
-            'refund_destination' => $refundDestination,
-            'refund_status' => ($refundDestination ? 'completed' : null),
-        ]);
-
-        // Update booking visits status to cancelled
-        if ($booking->relationLoaded('visits') && $booking->visits) {
-            foreach ($booking->visits as $visit) {
-                $visit->update(['status' => 'cancelled']);
-            }
+        // 1. Ownership validation (bypassed for admin)
+        if (! $isAdmin && $booking->customer_id !== $userId) {
+            throw new \Exception(__('messages.unauthorized') ?? 'Unauthorized', 403);
         }
 
-        // We keep the assignments active so the client knows what workers were selected,
-        // but since the booking status is 'cancelled', these workers are free to be assigned elsewhere.
+        // 2. Validate cancellation rules
+        $this->validateCancellation($booking, $isAdmin);
 
-        // Adjust Coupon
-        if ($booking->coupon_id) {
-            $coupon = \App\Models\Coupon::find($booking->coupon_id);
-            if ($coupon && $coupon->used_count > 0) {
-                $coupon->decrement('used_count');
-            }
-        }
+        // 3. Calculate Refund details
+        $refundAmount = 0;
+        $refundPoints = 0;
+        $refundDestination = null;
 
-        // Log history change
-        BookingHistory::create([
-            'booking_id' => $booking->id,
-            'old_status' => 'Upcoming',
-            'new_status' => 'cancelled',
-            'note'       => $isAdmin ? 'Cancelled by admin. Reason: ' . $reason : 'Cancelled by customer. Reason: ' . $reason,
-            'created_by' => $isAdmin ? $userId : $booking->customer_id,
-        ]);
-
-        // Refund points or wallet
         if ($booking->payment_status === 'paid') {
-            $customer = $booking->customer;
-            if ($refundDestination === 'points') {
-                $customer->pointTransactions()->create([
-                    'type' => 'earn',
-                    'amount' => $refundPoints,
-                    'title_ar' => 'استرداد نقاط للحجز رقم: ' . $booking->booking_ref,
-                    'title_en' => 'Refund points for Booking Ref: ' . $booking->booking_ref,
-                ]);
-            } elseif ($refundDestination === 'wallet') {
-                $customer->deposit($refundAmount, 'Refund - Cancelled Booking', $booking->booking_ref);
+            if ($booking->payment_method === 'points') {
+                $refundPoints = (int) $booking->paid_points;
+                $refundDestination = 'points';
+            } else {
+                $refundAmount = (float) $booking->total_amount;
+                $refundDestination = 'wallet';
             }
         }
 
-        DB::commit();
-        return $booking;
+        // 4. DB Transaction
+        DB::beginTransaction();
+        try {
+            // Update Booking Header
+            $booking->update([
+                'status' => 'cancelled',
+                'cancelled_by' => $isAdmin ? 'admin' : 'customer',
+                'cancelled_at' => now(),
+                'cancellation_reason' => $reason,
+                'refund_amount' => $refundAmount,
+                'refund_points' => $refundPoints,
+                'refund_destination' => $refundDestination,
+                'refund_status' => ($refundDestination ? 'completed' : null),
+            ]);
 
-    } catch (\Exception $transactionEx) {
-        DB::rollBack();
-        throw $transactionEx;
-    }
-}
+            // Update booking visits status to cancelled
+            if ($booking->relationLoaded('visits') && $booking->visits) {
+                foreach ($booking->visits as $visit) {
+                    $visit->update(['status' => 'cancelled']);
+                }
+            }
 
-public function validateCancellation(Booking $booking, $isAdmin = false)
-{
-    $booking->loadMissing(['visits', 'service.rules']);
+            // We keep the assignments active so the client knows what workers were selected,
+            // but since the booking status is 'cancelled', these workers are free to be assigned elsewhere.
 
-    // Can only cancel Upcoming bookings
-    if ($booking->status !== 'Upcoming') {
-        throw new \Exception(__('messages.booking_not_upcoming', ['status' => $booking->status]) ?? 'Booking is not upcoming', 400);
-    }
+            // Adjust Coupon
+            if ($booking->coupon_id) {
+                $coupon = Coupon::find($booking->coupon_id);
+                if ($coupon && $coupon->used_count > 0) {
+                    $coupon->decrement('used_count');
+                }
+            }
 
-    // Completed visit constraint (blocks both customer and admin)
-    if ($booking->relationLoaded('visits') && $booking->visits && $booking->visits->isNotEmpty()) {
-        $completedVisits = $booking->visits->where('status', 'completed')->count();
-        if ($completedVisits > 0) {
-            throw new \Exception('Cannot cancel a booking that has already completed visits.', 400);
+            // Log history change
+            BookingHistory::create([
+                'booking_id' => $booking->id,
+                'old_status' => 'Upcoming',
+                'new_status' => 'cancelled',
+                'note' => $isAdmin ? 'Cancelled by admin. Reason: '.$reason : 'Cancelled by customer. Reason: '.$reason,
+                'created_by' => $isAdmin ? $userId : $booking->customer_id,
+            ]);
+
+            // Refund points or wallet
+            if ($booking->payment_status === 'paid') {
+                $customer = $booking->customer;
+                if ($refundDestination === 'points') {
+                    $customer->pointTransactions()->create([
+                        'type' => 'earn',
+                        'amount' => $refundPoints,
+                        'title_ar' => 'استرداد نقاط للحجز رقم: '.$booking->booking_ref,
+                        'title_en' => 'Refund points for Booking Ref: '.$booking->booking_ref,
+                    ]);
+                } elseif ($refundDestination === 'wallet') {
+                    $customer->deposit($refundAmount, 'Refund - Cancelled Booking', $booking->booking_ref);
+                }
+            }
+
+            DB::commit();
+
+            return $booking;
+
+        } catch (\Exception $transactionEx) {
+            DB::rollBack();
+            throw $transactionEx;
         }
     }
 
-    $rules = $booking->service->rules;
+    public function validateCancellation(Booking $booking, $isAdmin = false)
+    {
+        $booking->loadMissing(['visits', 'service.rules']);
 
-    // Cut-off time validation (bypassed for admin)
-    if (!$isAdmin && $rules) {
-        if (!$rules->allow_cancel) {
-            throw new \Exception('Cancellation is not allowed for this service.', 400);
+        // Can only cancel Upcoming bookings
+        if ($booking->status !== 'Upcoming') {
+            throw new \Exception(__('messages.booking_not_upcoming', ['status' => $booking->status]) ?? 'Booking is not upcoming', 400);
         }
 
-        $earliestVisit = null;
+        // Completed visit constraint (blocks both customer and admin)
         if ($booking->relationLoaded('visits') && $booking->visits && $booking->visits->isNotEmpty()) {
-            $earliestVisit = $booking->visits->sortBy(fn($v) => $v->visit_date . ' ' . $v->start_time)->first();
+            $completedVisits = $booking->visits->where('status', 'completed')->count();
+            if ($completedVisits > 0) {
+                throw new \Exception('Cannot cancel a booking that has already completed visits.', 400);
+            }
         }
-        
-        $earliestDateTimeStr = $earliestVisit 
-            ? ($earliestVisit->visit_date . ' ' . $earliestVisit->start_time)
-            : ($booking->booking_date . ' ' . $booking->start_time);
-            
-        $bookingDateTime = Carbon::parse($earliestDateTimeStr);
-        $cutoffHours = (int) $rules->free_cancel_cutoff_hours;
 
-        if (now()->addHours($cutoffHours)->greaterThan($bookingDateTime)) {
-            throw new \Exception(__('messages.late_cancel_blocked', ['cutoffHours' => $cutoffHours]) ?? 'Cannot cancel within cutoff limit.', 400);
+        $rules = $booking->service->rules;
+
+        // Cut-off time validation (bypassed for admin)
+        if (! $isAdmin && $rules) {
+            if (! $rules->allow_cancel) {
+                throw new \Exception('Cancellation is not allowed for this service.', 400);
+            }
+
+            $earliestVisit = null;
+            if ($booking->relationLoaded('visits') && $booking->visits && $booking->visits->isNotEmpty()) {
+                $earliestVisit = $booking->visits->sortBy(fn ($v) => $v->visit_date.' '.$v->start_time)->first();
+            }
+
+            $earliestDateTimeStr = $earliestVisit
+                ? ($earliestVisit->visit_date.' '.$earliestVisit->start_time)
+                : ($booking->booking_date.' '.$booking->start_time);
+
+            $bookingDateTime = Carbon::parse($earliestDateTimeStr);
+            $cutoffHours = (int) $rules->free_cancel_cutoff_hours;
+
+            if (now()->addHours($cutoffHours)->greaterThan($bookingDateTime)) {
+                throw new \Exception(__('messages.late_cancel_blocked', ['cutoffHours' => $cutoffHours]) ?? 'Cannot cancel within cutoff limit.', 400);
+            }
         }
     }
-}
 
-public function reportBooking($bookingId, $userId, array $data)
-{
-    $booking = Booking::findOrFail($bookingId);
+    public function reportBooking($bookingId, $userId, array $data)
+    {
+        $booking = Booking::findOrFail($bookingId);
 
-    // 1. حماية وصلاحيات
-    if ($booking->customer_id !== $userId) {
-        throw new \Exception(__('messages.unauthorized_report'), 403);
-    }
+        // 1. حماية وصلاحيات
+        if ($booking->customer_id !== $userId) {
+            throw new \Exception(__('messages.unauthorized_report'), 403);
+        }
 
-    // البلاغ يقبل فقط لو كانت الخدمة مكتملة أو قيد التنفيذ
-    $statusLower = strtolower($booking->status);
-    if ($statusLower !== 'completed' && $statusLower !== 'inservice') {
-        throw new \Exception(__('messages.invalid_booking_status_for_report') ?? 'Reports are only allowed for in-service or completed bookings.', 400);
-    }
+        // البلاغ يقبل فقط لو كانت الخدمة مكتملة أو قيد التنفيذ
+        $statusLower = strtolower($booking->status);
+        if ($statusLower !== 'completed' && $statusLower !== 'inservice') {
+            throw new \Exception(__('messages.invalid_booking_status_for_report') ?? 'Reports are only allowed for in-service or completed bookings.', 400);
+        }
 
-    // 2. منع تكرار البلاغ المفتوح لنفس الحجز ونفس السبب
-    $existingReport = Report::query()->where('booking_id', $booking->id)
-        ->where('reason', $data['reason'])
-        ->whereNotIn('status', ['resolved', 'rejected'])
-        ->exists();
-    if ($existingReport) {
-        throw new \Exception(__('messages.open_report_exists'), 400);
-    }
+        // 2. منع تكرار البلاغ المفتوح لنفس الحجز ونفس السبب
+        $existingReport = Report::query()->where('booking_id', $booking->id)
+            ->where('reason', $data['reason'])
+            ->whereNotIn('status', ['resolved', 'rejected'])
+            ->exists();
+        if ($existingReport) {
+            throw new \Exception(__('messages.open_report_exists'), 400);
+        }
 
-    // 3. إنشاء رقم تذكرة فريد
-    $reportNumber = 'REP-' . date('Ymd') . '-' . strtoupper(\Illuminate\Support\Str::random(4));
+        // 3. إنشاء رقم تذكرة فريد
+        $reportNumber = 'REP-'.date('Ymd').'-'.strtoupper(Str::random(4));
 
-    // 4. إنشاء ريكورد البلاغ
-    $report = Report::create([
-        'booking_id'    => $booking->id,
-        'customer_id'   => $userId,
-        'report_number' => $reportNumber,
-        'service_id'    => $booking->service_id,
-        'worker_id'     => $data['worker_id'] ?? null,
-        'reason'        => $data['reason'],
-        'description'   => $data['description'] ?? null,
-        'status'        => 'submitted',
-    ]);
-
-    // 5. تسجيل حركة الحالة
-    ReportHistory::create([
-        'report_id' => $report->id,
-        'old_status' => null,
-        'new_status' => 'submitted',
-        'created_by' => $userId,
-    ]);
-
-    // 6. إرسال إشعار للمسؤولين
-    try {
-        $admins = User::whereIn('type', ['super_admin', 'operation'])->get();
-        \Illuminate\Support\Facades\Notification::send($admins, new \App\Notifications\ReportNotification($report, 'submitted'));
-    } catch (\Exception $ex) {
-        \Illuminate\Support\Facades\Log::error('Failed to send report notification to admins: ' . $ex->getMessage());
-    }
-
-    return $report;
-}
-
-
-
-public function reviewBooking($bookingId, $userId, array $data)
-{
-    $booking = Booking::findOrFail($bookingId);
-
-    // 1. حماية وصلاحيات العميل والحالة
-    if ($booking->customer_id !== $userId) {
-        throw new \Exception(__('messages.unauthorized_review'), 403);
-    }
-
-    if ($booking->status !== 'completed') {
-        throw new \Exception(__('messages.invalid_booking_status_for_review'), 400);
-    }
-
-    // منع تكرار التقييم للحجز بأكمله
-    $alreadyReviewed = Review::where('booking_id', $booking->id)
-        ->where('customer_id', $userId)
-        ->exists();
-    if ($alreadyReviewed) {
-        throw new \Exception(__('messages.booking_already_reviewed'), 400);
-    }
-
-    DB::beginTransaction();
-    try {
-        // 2. تقييم الخدمة (Service)
-        Review::create([
-            'booking_id'      => $booking->id,
-            'customer_id'     => $userId,
-            'reviewable_type' => \App\Models\Service::class,
-            'reviewable_id'   => $booking->service_id,
-            'rating'          => $data['service_rating'],
-            'comment'         => $data['service_comment'] ?? null,
+        // 4. إنشاء ريكورد البلاغ
+        $report = Report::create([
+            'booking_id' => $booking->id,
+            'customer_id' => $userId,
+            'report_number' => $reportNumber,
+            'service_id' => $booking->service_id,
+            'worker_id' => $data['worker_id'] ?? null,
+            'reason' => $data['reason'],
+            'description' => $data['description'] ?? null,
+            'status' => 'submitted',
         ]);
 
-        // 3. تقييم العمال (Workers) المخصصين فعلياً للحجز
-        foreach ($data['workers'] as $workerData) {
-            $isAssigned = BookingAssignment::where('booking_id', $booking->id)
-                ->where('worker_id', $workerData['worker_id'])
-                ->exists();
+        // 5. تسجيل حركة الحالة
+        ReportHistory::create([
+            'report_id' => $report->id,
+            'old_status' => null,
+            'new_status' => 'submitted',
+            'created_by' => $userId,
+        ]);
 
-            if ($isAssigned) {
-                Review::create([
-                    'booking_id'      => $booking->id,
-                    'customer_id'     => $userId,
-                    'reviewable_type' => \App\Models\Worker::class,
-                    'reviewable_id'   => $workerData['worker_id'],
-                    'rating'          => $workerData['rating'],
-                    'comment'         => $workerData['comment'] ?? null,
-                ]);
-            }
+        // 6. إرسال إشعار للمسؤولين
+        try {
+            $admins = User::whereIn('type', ['super_admin', 'operation'])->get();
+            Notification::send($admins, new ReportNotification($report, 'submitted'));
+        } catch (\Exception $ex) {
+            Log::error('Failed to send report notification to admins: '.$ex->getMessage());
         }
 
-        // 4. تحديث متوسط التقييمات في جداول الـ Services والـ Workers
-        $this->updateAverageRating(\App\Models\Service::class, $booking->service_id);
-        
-        foreach ($data['workers'] as $workerData) {
-            $this->updateAverageRating(\App\Models\Worker::class, $workerData['worker_id']);
-        }
-
-        DB::commit();
-        return true;
-
-    } catch (\Exception $transactionEx) {
-        DB::rollBack();
-        throw $transactionEx;
+        return $report;
     }
-}
 
-/**
- * دالة مساعدة لتحديث متوسط التقييم بشكل ديناميكي
- */
-private function updateAverageRating($modelClass, $modelId)
-{
-    $avgRating = Review::where('reviewable_type', $modelClass)
-        ->where('reviewable_id', $modelId)
-        ->avg('rating');
+    public function reviewBooking($bookingId, $userId, array $data)
+    {
+        $booking = Booking::findOrFail($bookingId);
 
-    $modelClass::where('id', $modelId)->update([
-        'avg_rating' => round($avgRating, 2)
-    ]);
-}
+        // 1. حماية وصلاحيات العميل والحالة
+        if ($booking->customer_id !== $userId) {
+            throw new \Exception(__('messages.unauthorized_review'), 403);
+        }
 
+        if ($booking->status !== 'completed') {
+            throw new \Exception(__('messages.invalid_booking_status_for_review'), 400);
+        }
 
+        // منع تكرار التقييم للحجز بأكمله
+        $alreadyReviewed = Review::where('booking_id', $booking->id)
+            ->where('customer_id', $userId)
+            ->exists();
+        if ($alreadyReviewed) {
+            throw new \Exception(__('messages.booking_already_reviewed'), 400);
+        }
 
+        DB::beginTransaction();
+        try {
+            // 2. تقييم الخدمة (Service)
+            Review::create([
+                'booking_id' => $booking->id,
+                'customer_id' => $userId,
+                'reviewable_type' => Service::class,
+                'reviewable_id' => $booking->service_id,
+                'rating' => $data['service_rating'],
+                'comment' => $data['service_comment'] ?? null,
+            ]);
 
+            // 3. تقييم العمال (Workers) المخصصين فعلياً للحجز
+            foreach ($data['workers'] as $workerData) {
+                $isAssigned = BookingAssignment::where('booking_id', $booking->id)
+                    ->where('worker_id', $workerData['worker_id'])
+                    ->exists();
 
+                if ($isAssigned) {
+                    Review::create([
+                        'booking_id' => $booking->id,
+                        'customer_id' => $userId,
+                        'reviewable_type' => Worker::class,
+                        'reviewable_id' => $workerData['worker_id'],
+                        'rating' => $workerData['rating'],
+                        'comment' => $workerData['comment'] ?? null,
+                    ]);
+                }
+            }
 
+            // 4. تحديث متوسط التقييمات في جداول الـ Services والـ Workers
+            $this->updateAverageRating(Service::class, $booking->service_id);
 
+            foreach ($data['workers'] as $workerData) {
+                $this->updateAverageRating(Worker::class, $workerData['worker_id']);
+            }
 
+            DB::commit();
 
+            return true;
+
+        } catch (\Exception $transactionEx) {
+            DB::rollBack();
+            throw $transactionEx;
+        }
+    }
+
+    /**
+     * دالة مساعدة لتحديث متوسط التقييم بشكل ديناميكي
+     */
+    private function updateAverageRating($modelClass, $modelId)
+    {
+        $avgRating = Review::where('reviewable_type', $modelClass)
+            ->where('reviewable_id', $modelId)
+            ->avg('rating');
+
+        $modelClass::where('id', $modelId)->update([
+            'avg_rating' => round($avgRating, 2),
+        ]);
+    }
 }

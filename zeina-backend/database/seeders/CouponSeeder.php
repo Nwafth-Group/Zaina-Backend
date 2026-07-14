@@ -24,18 +24,11 @@ class CouponSeeder extends Seeder
             $this->command->error('يجب تشغيل UserSeeder و CategoryAndServiceSeeder أولاً قبل تشغيل كوبونات النظام!');
             return;
         }
-
-        // =========================================================================
-        // السيناريو 1: كوبون عام ومفتوح لجميع المستخدمين وكل الخدمات بقيمة ثابتة
-        // ينتهي بعد شهر والحد الأدنى للحجز 200 جنيه، يخصم 50 جنيه ثابتة
-        // =========================================================================
         $globalCoupon = Coupon::firstOrCreate(
             ['code' => 'WELCOME50'],
             [
                 'type' => 'fixed',
                 'value' => 50.00,
-                'max_discount' => null,
-                'min_booking_amount' => 200.00,
                 'usage_limit' => 1000, // متاح لأول 1000 مستخدم في التطبيق
                 'user_usage_limit' => 1, // كل كستمر يستعمله مرة واحدة فقط
                 'used_count' => 0,
@@ -52,8 +45,6 @@ class CouponSeeder extends Seeder
             [
                 'type' => 'percentage',
                 'value' => 50.00,
-                'max_discount' => null,
-                'min_booking_amount' => 50.00,
                 'usage_limit' => 1000, // متاح لأول 1000 مستخدم في التطبيق
                 'user_usage_limit' => 1, // كل كستمر يستعمله مرة واحدة فقط
                 'used_count' => 0,
@@ -74,8 +65,6 @@ class CouponSeeder extends Seeder
             [
                 'type' => 'fixed',
                 'value' => 150.00,
-                'max_discount' => null,
-                'min_booking_amount' => 300.00,
                 'usage_limit' => 50,
                 'user_usage_limit' => 2, // مسموح للمستخدم المخصص استعماله مرتين
                 'used_count' => 0,
@@ -88,12 +77,12 @@ class CouponSeeder extends Seeder
         );
         // ربط الكوبون بالمستخدمين الذين جلبناهم في البداية
         $vipCoupon->users()->sync($customers->pluck('id')->toArray());
-       ;
+        ;
 
 
         // =========================================================================
         // السيناريو 3: كوبون مخصص "فقط" لخدمات التنظيف (شامل كل المستخدمين)
-        // بنسبة مئوية (20%) مع سقف خصم (Max Discount) يساوي 80 جنيه
+        // بنسبة مئوية (20%)
         // =========================================================================
         if (!empty($cleaningServices)) {
             $cleanCoupon = Coupon::firstOrCreate(
@@ -101,8 +90,6 @@ class CouponSeeder extends Seeder
                 [
                     'type' => 'percentage',
                     'value' => 20.00, // 20%
-                    'max_discount' => 80.00, // 🌟 أقصى قيمة خصم مسموحة هي 80 جنيه
-                    'min_booking_amount' => 100.00,
                     'usage_limit' => 500,
                     'user_usage_limit' => 1,
                     'used_count' => 0,
@@ -127,8 +114,6 @@ class CouponSeeder extends Seeder
             [
                 'type' => 'percentage',
                 'value' => 10.00,
-                'max_discount' => 30.00,
-                'min_booking_amount' => 50.00,
                 'usage_limit' => 100,
                 'user_usage_limit' => 1,
                 'used_count' => 0,
@@ -151,8 +136,6 @@ class CouponSeeder extends Seeder
                 [
                     'type' => 'fixed',
                     'value' => 70.00,
-                    'max_discount' => null,
-                    'min_booking_amount' => 250.00,
                     'usage_limit' => 20,
                     'user_usage_limit' => 1,
                     'used_count' => 0,
@@ -168,7 +151,6 @@ class CouponSeeder extends Seeder
             $exclusiveCoupon->users()->sync([$customers->first()->id]);
             $exclusiveCoupon->services()->sync([$cleaningServices[0]]);
         }
-
         $this->command->info('✅ تم ملء قاعدة البيانات بكوبونات متنوعة تغطي كافة الحالات التشغيلية بنجاح!');
     }
 }

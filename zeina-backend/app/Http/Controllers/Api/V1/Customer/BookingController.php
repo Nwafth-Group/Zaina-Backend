@@ -3,20 +3,23 @@
 namespace App\Http\Controllers\Api\V1\Customer;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\V1\Customer\CancelBookingRequest;
+use App\Http\Requests\Api\V1\Customer\GetAvailableDatesRequest;
 use App\Http\Requests\Api\V1\Customer\RescheduleBookingRequest;
 use App\Http\Requests\Api\V1\Customer\ReviewBookingRequest;
 use App\Http\Requests\Api\V1\Customer\RportBookingRequest;
 use App\Http\Requests\Api\V1\Customer\StoreBookingRequest as StoreBookingRequestV2;
-use App\Http\Requests\Api\V1\Customer\CancelBookingRequest;
 use App\Http\Requests\Api\V1\Customer\ValidateBookingRequest;
-use App\Http\Requests\Api\V1\Customer\GetAvailableDatesRequest;
-use App\Http\Resources\Api\V1\Booking\BookingResource;
 use App\Http\Resources\Api\V1\Booking\BookingListResource;
+use App\Http\Resources\Api\V1\Booking\BookingResource;
 use App\Http\Resources\Api\V1\Reports\ReportsResource;
+use App\Jobs\SendOtpSmsJob;
 use App\Models\Booking;
 use App\Models\BookingAssignment;
 use App\Models\Report;
+use App\Models\Service;
 use App\Models\ServiceSchedule;
+use App\Notifications\BookingNotification;
 use App\Service\BookingService;
 use App\Service\Customer\CustomerBookingService;
 use App\Traits\ApiResponseTrait;
@@ -24,6 +27,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class BookingController extends Controller
 {
@@ -77,7 +81,7 @@ class BookingController extends Controller
     public function availableDates(GetAvailableDatesRequest $request)
     {
         $data = $request->validated();
-        $service = \App\Models\Service::with(['rules', 'schedules', 'childAgeGroups'])->findOrFail($data['service_id']);
+        $service = Service::with(['rules', 'schedules', 'childAgeGroups'])->findOrFail($data['service_id']);
 
         $data['duration'] = (int) $data['duration'];
 
@@ -93,8 +97,8 @@ class BookingController extends Controller
 
             foreach ($groupedCounts as $groupId => $count) {
                 $group = $validGroups->firstWhere('id', $groupId);
-                if (!$group) {
-                    return $this->errorResponse("Babysitter calculation rule is not configured.", 422);
+                if (! $group) {
+                    return $this->errorResponse('Babysitter calculation rule is not configured.', 422);
                 }
 
                 $childrenCountRule = $group->children_count ?? 1;
@@ -109,7 +113,7 @@ class BookingController extends Controller
 
             $maxWorkers = $service->max_workers ?? 5;
             if ($calculatedMinWorkers > $maxWorkers) {
-                return $this->errorResponse("The required number of babysitters exceeds the service limit.", 422);
+                return $this->errorResponse('The required number of babysitters exceeds the service limit.', 422);
             }
 
             if (empty($data['workers_count'])) {
@@ -121,7 +125,9 @@ class BookingController extends Controller
                     $isArabic = app()->getLocale() === 'ar';
                     foreach ($groupedCounts as $groupId => $count) {
                         $group = $validGroups->firstWhere('id', $groupId);
-                        if (!$group) continue;
+                        if (! $group) {
+                            continue;
+                        }
                         $childrenCountRule = $group->children_count ?? 1;
                         $requiredWorkerCountRule = $group->required_worker_count ?? 1;
                         if ($group->calculation_type === 'per_child') {
@@ -141,13 +147,14 @@ class BookingController extends Controller
                         }
                     }
                     $breakdownText = implode($isArabic ? ' ، ' : ', ', $breakdown);
-                    $msg = $isArabic 
+                    $msg = $isArabic
                         ? "لا يمكن أن يقل عدد جليسات الأطفال عن الحد الأدنى المحسوب وهو {$calculatedMinWorkers}. التفاصيل: ({$breakdownText})"
                         : "The number of babysitters cannot be less than the calculated minimum of {$calculatedMinWorkers}. Breakdown: ({$breakdownText})";
+
                     return $this->errorResponse($msg, 422);
                 }
                 if ($data['workers_count'] > $maxWorkers) {
-                    return $this->errorResponse("The required number of babysitters exceeds the service limit.", 422);
+                    return $this->errorResponse('The required number of babysitters exceeds the service limit.', 422);
                 }
             }
 
@@ -170,34 +177,34 @@ class BookingController extends Controller
         }
 
         $genderOptions = $service->worker_gender_options ?? [];
-        if (!in_array($data['worker_gender'], $genderOptions)) {
-            return $this->errorResponse("The selected gender is not available for this service.", 422);
+        if (! in_array($data['worker_gender'], $genderOptions)) {
+            return $this->errorResponse('The selected gender is not available for this service.', 422);
         }
 
-        $startTime = \Carbon\Carbon::parse($data['start_time']);
+        $startTime = Carbon::parse($data['start_time']);
         $endTime = $startTime->copy()->addHours($data['duration']);
-        
-        $serviceStart = \Carbon\Carbon::parse($service->start_time ?? '08:00');
-        $serviceEnd = \Carbon\Carbon::parse($service->end_time ?? '20:00');
-        
+
+        $serviceStart = Carbon::parse($service->start_time ?? '08:00');
+        $serviceEnd = Carbon::parse($service->end_time ?? '20:00');
+
         if ($startTime->lt($serviceStart) || $startTime->gt($serviceEnd)) {
             return $this->errorResponse("Selected start time must be within the service window ({$service->start_time} to {$service->end_time}).", 422);
         }
 
         $dates = [];
-        $maxDays = ($service->rules && $service->rules->max_advance_booking_days > 0) 
-            ? (int) $service->rules->max_advance_booking_days 
+        $maxDays = ($service->rules && $service->rules->max_advance_booking_days > 0)
+            ? (int) $service->rules->max_advance_booking_days
             : 30;
         $allowSameDay = $service->rules ? (bool) $service->rules->allow_same_day : false;
 
-        $startDate = $allowSameDay ? \Carbon\Carbon::today() : \Carbon\Carbon::tomorrow();
-        $endDate = \Carbon\Carbon::today()->addDays($maxDays);
+        $startDate = $allowSameDay ? Carbon::today() : Carbon::tomorrow();
+        $endDate = Carbon::today()->addDays($maxDays);
 
         $workingDays = $service->schedules()
             ->where('is_active', true)
             ->pluck('day')
             ->unique()
-            ->map(fn($d) => strtolower($d))
+            ->map(fn ($d) => strtolower($d))
             ->toArray();
 
         $serviceWorkers = $service->workers()
@@ -215,27 +222,27 @@ class BookingController extends Controller
 
         for ($date = $startDate->copy(); $date->lte($endDate); $date->addDay()) {
             $dayName = strtolower($date->format('l'));
-            if (!in_array($dayName, $workingDays)) {
+            if (! in_array($dayName, $workingDays)) {
                 continue;
             }
 
             $dateStr = $date->toDateString();
 
-            $busyWorkerCount = \App\Models\BookingAssignment::whereIn('worker_id', $serviceWorkers)
+            $busyWorkerCount = BookingAssignment::whereIn('worker_id', $serviceWorkers)
                 ->where('status', 'active')
                 ->whereHas('booking', function ($q) use ($dateStr, $startStr, $endStr) {
                     $q->where('booking_date', $dateStr)
                         ->whereIn('status', ['Upcoming', 'inService'])
                         ->where(function ($timeQ) use ($startStr, $endStr) {
                             $timeQ->where('start_time', '<', $endStr)
-                                  ->where('end_time', '>', $startStr);
+                                ->where('end_time', '>', $startStr);
                         });
                 })
                 ->count();
 
             $availableCount = count($serviceWorkers) - $busyWorkerCount;
             if ($availableCount >= $data['workers_count']) {
-                $dates[] = $dateStr . ' 00:00:00';
+                $dates[] = $dateStr.' 00:00:00';
             }
         }
 
@@ -251,17 +258,19 @@ class BookingController extends Controller
 
         try {
             $result = $this->customerBookingService->allocateWorkersAndCalculatePrice($user, array_merge($request->validated(), $request->only('coupon_code')));
+
             return $this->successResponse($result, 'Booking details validated and workers allocated successfully.');
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             throw $e;
         } catch (\Exception $e) {
-            Log::error('Validation booking failed: ' . $e->getMessage(), [
+            Log::error('Validation booking failed: '.$e->getMessage(), [
                 'exception' => $e,
                 'user_id' => auth()->id(),
                 'request' => $request->all(),
             ]);
             $statusCode = in_array($e->getCode(), [400, 402, 422, 429]) ? $e->getCode() : 500;
             $msg = $statusCode === 500 ? __('messages.error_occurred') : $e->getMessage();
+
             return $this->errorResponse($msg, $statusCode);
         }
     }
@@ -274,10 +283,10 @@ class BookingController extends Controller
         $user = auth()->user();
 
         // Atomic lock to prevent concurrent submissions
-        $lockKey = 'booking_lock_user_' . $user->id . '_service_' . $request->service_id;
+        $lockKey = 'booking_lock_user_'.$user->id.'_service_'.$request->service_id;
         $lock = Cache::lock($lockKey, 10);
 
-        if (!$lock->get()) {
+        if (! $lock->get()) {
             return $this->errorResponse(__('messages.booking_in_progress') ?? 'جاري معالجة طلب حجزك الحالي بالفعل، الرجاء الانتظار.', 429);
         }
 
@@ -288,7 +297,7 @@ class BookingController extends Controller
 
             // Send notification
             try {
-                $user->notify(new \App\Notifications\BookingNotification(
+                $user->notify(new BookingNotification(
                     __('sms.booking_confirmed', []),
                     __('sms.booking_confirmed_message', [
                         'ref' => $booking->booking_ref,
@@ -301,7 +310,7 @@ class BookingController extends Controller
                     ]
                 ));
             } catch (\Exception $notifEx) {
-                Log::error('Failed to trigger system booking notification: ' . $notifEx->getMessage());
+                Log::error('Failed to trigger system booking notification: '.$notifEx->getMessage());
             }
 
             return $this->successResponse(
@@ -310,12 +319,12 @@ class BookingController extends Controller
                 201
             );
 
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             $lock->release();
             throw $e;
         } catch (\Exception $e) {
             $lock->release();
-            Log::error('Store booking failed: ' . $e->getMessage(), [
+            Log::error('Store booking failed: '.$e->getMessage(), [
                 'exception' => $e,
                 'user_id' => auth()->id(),
                 'request' => $request->all(),
@@ -323,6 +332,7 @@ class BookingController extends Controller
 
             $statusCode = in_array($e->getCode(), [400, 402, 422, 429]) ? $e->getCode() : 500;
             $msg = $statusCode === 500 ? __('messages.error_occurred') : $e->getMessage();
+
             return $this->errorResponse($msg, $statusCode);
         }
     }
@@ -347,7 +357,7 @@ class BookingController extends Controller
             ->where('is_active', true)
             ->get();
 
-        $periodMinutes = ($booking->service->duration->service_period_hours ?? 2) * 60;
+        $periodMinutes = $booking->duration_minutes ?? (($booking->service->duration->service_period_hours ?? 2) * 60);
         $workerIds = $booking->workers->pluck('id')->toArray();
 
         $existingBookings = BookingAssignment::whereIn('worker_id', $workerIds)
@@ -372,8 +382,8 @@ class BookingController extends Controller
         $now = now();
 
         foreach ($schedules as $schedule) {
-            $shiftStart = Carbon::parse($schedule->start_time);
-            $shiftEnd = Carbon::parse($schedule->end_time);
+            $shiftStart = Carbon::parse($date->format('Y-m-d').' '.$schedule->start_time);
+            $shiftEnd = Carbon::parse($date->format('Y-m-d').' '.$schedule->end_time);
 
             $dropdownLabel = 'Shift: '.$shiftStart->format('h:i A').' - '.$shiftEnd->format('h:i A');
             $fixedBlocks = [];
@@ -382,10 +392,15 @@ class BookingController extends Controller
             while ($currentBlockStart->lte($shiftEnd)) {
                 $blockEnd = $currentBlockStart->copy()->addMinutes($periodMinutes);
 
+                // Ensure the block fits entirely within the shift boundary
+                if ($blockEnd->gt($shiftEnd)) {
+                    break;
+                }
+
                 if ($isToday) {
-                    $blockEndDateTime = Carbon::parse($date->format('Y-m-d').' '.$blockEnd->format('H:i:s'));
-                    if ($blockEndDateTime->lte($now)) {
+                    if ($blockEnd->lte($now)) {
                         $currentBlockStart->addMinutes($periodMinutes);
+
                         continue;
                     }
                 }
@@ -443,11 +458,11 @@ class BookingController extends Controller
 
         $isSandbox = config('services.community_sms.sandbox_mode');
         $otp = $isSandbox ? '123456' : rand(100000, 999999);
-        Cache::put('booking_cancel_otp_' . $booking->id, $otp, now()->addMinutes(10));
+        Cache::put('booking_cancel_otp_'.$booking->id, $otp, now()->addMinutes(10));
 
         $mobile = $booking->customer->phone_number;
         $message = __('messages.otp_message', ['otp' => $otp]);
-        \App\Jobs\SendOtpSmsJob::dispatch($mobile, $message);
+        SendOtpSmsJob::dispatch($mobile, $message);
 
         $responseData = [];
         if ($isSandbox) {
@@ -469,16 +484,17 @@ class BookingController extends Controller
             $this->bookingService->validateReschedule($booking, $request->validated(), false);
         } catch (\Exception $e) {
             $statusCode = in_array($e->getCode(), [400, 422]) ? $e->getCode() : 400;
+
             return $this->errorResponse($e->getMessage(), $statusCode);
         }
 
         $isSandbox = config('services.community_sms.sandbox_mode');
         $otp = $isSandbox ? '123456' : rand(100000, 999999);
-        Cache::put('booking_reschedule_otp_' . $booking->id, $otp, now()->addMinutes(10));
+        Cache::put('booking_reschedule_otp_'.$booking->id, $otp, now()->addMinutes(10));
 
         $mobile = $booking->customer->phone_number;
         $message = __('messages.otp_message', ['otp' => $otp]);
-        \App\Jobs\SendOtpSmsJob::dispatch($mobile, $message);
+        SendOtpSmsJob::dispatch($mobile, $message);
 
         $responseData = [];
         if ($isSandbox) {
@@ -494,22 +510,22 @@ class BookingController extends Controller
             $userId = auth()->id();
             $user = auth()->user();
 
-            $cachedOtp = Cache::get('booking_reschedule_otp_' . $id);
-            if (!$cachedOtp) {
+            $cachedOtp = Cache::get('booking_reschedule_otp_'.$id);
+            if (! $cachedOtp) {
                 return $this->errorResponse(__('messages.otp_expired') ?? 'OTP Expired', 422);
             }
             if ($cachedOtp != $request->otp && $request->otp !== '123456') {
                 return $this->errorResponse(__('messages.invalid_otp') ?? 'Invalid OTP', 422);
             }
-            Cache::forget('booking_reschedule_otp_' . $id);
+            Cache::forget('booking_reschedule_otp_'.$id);
 
             $booking = $this->bookingService->rescheduleBooking($id, $userId, $request->validated());
 
             try {
-                $newStart = \Carbon\Carbon::parse($request->start_time);
+                $newStart = Carbon::parse($request->start_time);
                 $firstDate = collect($request->dates)->sort()->first();
 
-                $user->notify(new \App\Notifications\BookingNotification(
+                $user->notify(new BookingNotification(
                     __('sms.booking_rescheduled_title'),
                     __('sms.booking_rescheduled_message', [
                         'ref' => $booking->booking_ref,
@@ -526,7 +542,7 @@ class BookingController extends Controller
                 ));
 
             } catch (\Exception $notifEx) {
-                \Illuminate\Support\Facades\Log::error('Failed to trigger system reschedule notification: '.$notifEx->getMessage());
+                Log::error('Failed to trigger system reschedule notification: '.$notifEx->getMessage());
             }
 
             return $this->successResponse(
@@ -551,19 +567,19 @@ class BookingController extends Controller
             $userId = auth()->id();
             $user = auth()->user();
 
-            $cachedOtp = Cache::get('booking_cancel_otp_' . $id);
-            if (!$cachedOtp) {
+            $cachedOtp = Cache::get('booking_cancel_otp_'.$id);
+            if (! $cachedOtp) {
                 return $this->errorResponse(__('messages.otp_expired') ?? 'OTP Expired', 422);
             }
             if ($cachedOtp != $request->otp && $request->otp !== '123456') {
                 return $this->errorResponse(__('messages.invalid_otp') ?? 'Invalid OTP', 422);
             }
-            Cache::forget('booking_cancel_otp_' . $id);
+            Cache::forget('booking_cancel_otp_'.$id);
 
             $booking = $this->bookingService->cancelBooking($id, $userId, $request->cancellation_reason);
 
             try {
-                $user->notify(new \App\Notifications\BookingNotification(
+                $user->notify(new BookingNotification(
                     __('sms.booking_cancelled_title'),
                     __('sms.booking_cancelled_message', [
                         'ref' => $booking->booking_ref,
@@ -578,7 +594,7 @@ class BookingController extends Controller
                 ));
 
             } catch (\Exception $notifEx) {
-                \Illuminate\Support\Facades\Log::error('Failed to trigger system cancellation notification: '.$notifEx->getMessage());
+                Log::error('Failed to trigger system cancellation notification: '.$notifEx->getMessage());
             }
 
             return $this->successResponse(
@@ -661,6 +677,7 @@ class BookingController extends Controller
                 'message' => __('messages.unauthorized') ?? 'Unauthorized',
             ], 403);
         }
+
         return $this->successResponse(new ReportsResource($report->load(['booking', 'service', 'worker'])), __('messages.report_details_retrieved_successfully'));
     }
 }
