@@ -284,4 +284,15 @@ return [
     'notification_english_required' => 'English title and content are required when English language is selected.',
     'notification_invalid_schedule' => 'The send date and time cannot be in the past.',
     'notification_invalid_format' => 'Invalid date or time format.',
+
+    // Report Notifications
+    'report_notification_title_status_changed' => 'Report Status Updated: :number',
+    'report_notification_body_status_changed' => 'Your booking report status has been updated to: :status',
+    'report_notification_title_note_added' => 'New Reply on Report: :number',
+    'report_notification_body_note_added' => 'An administrator has added a new update/note to your booking report.',
+    'report_status_submitted' => 'Submitted',
+    'report_status_under_review' => 'Under Review',
+    'report_status_in_progress' => 'In Progress',
+    'report_status_resolved' => 'Resolved',
+    'report_status_rejected' => 'Rejected',
 ];

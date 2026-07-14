@@ -12,6 +12,7 @@ use App\Notifications\ReportNotification;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ReportController extends Controller
 {
@@ -58,13 +59,14 @@ class ReportController extends Controller
                 'last_page' => $reports->lastPage(),
                 'per_page' => $reports->perPage(),
                 'total' => $reports->total(),
-            ]
+            ],
         ], 'Reports retrieved successfully');
     }
 
     public function show(Report $report)
     {
         $report->load(['booking', 'customer', 'service', 'worker', 'assignedAdmin', 'histories.createdBy']);
+
         return $this->successResponse(new AdminReportDetailResource($report), 'Report details retrieved successfully');
     }
 
@@ -78,7 +80,7 @@ class ReportController extends Controller
         $adminUser = User::findOrFail($adminId);
 
         // Verify the user is an admin or operation employee
-        if (!in_array($adminUser->type, ['super_admin', 'operation'])) {
+        if (! in_array($adminUser->type, ['super_admin', 'operation'])) {
             return response()->json([
                 'success' => false,
                 'message' => 'The selected user is not an administrator or support officer.',
@@ -114,16 +116,17 @@ class ReportController extends Controller
         }
 
         $validTransitions = [
-            'submitted'    => ['under_review', 'rejected'],
+            'submitted' => ['under_review', 'rejected'],
             'under_review' => ['in_progress', 'rejected'],
-            'in_progress'  => ['resolved', 'rejected'],
-            'resolved'     => [], // Terminal
-            'rejected'     => [], // Terminal
+            'in_progress' => ['resolved', 'rejected'],
+            'resolved' => [], // Terminal
+            'rejected' => [], // Terminal
         ];
 
-        if (!in_array($newStatus, $validTransitions[$oldStatus] ?? [], true)) {
+        if (! in_array($newStatus, $validTransitions[$oldStatus] ?? [], true)) {
             $msg = "Cannot change report status from '{$oldStatus}' to '{$newStatus}'. Status changes must follow a sequential flow: Submitted -> Under Review -> In Progress -> Resolved / Rejected.";
             $msgAr = "لا يمكن تغيير حالة البلاغ من '{$oldStatus}' إلى '{$newStatus}'. يجب أن تتبع التحديثات تسلسلاً: مقدم -> قيد المراجعة -> قيد المعالجة -> تم الحل / مرفوض.";
+
             return response()->json([
                 'success' => false,
                 'message' => app()->getLocale() === 'ar' ? $msgAr : $msg,
@@ -150,7 +153,7 @@ class ReportController extends Controller
             try {
                 $report->customer->notify(new ReportNotification($report, 'status_changed'));
             } catch (\Exception $ex) {
-                \Illuminate\Support\Facades\Log::error('Failed to notify customer of report status update: ' . $ex->getMessage());
+                Log::error('Failed to notify customer of report status update: '.$ex->getMessage());
             }
 
             return $this->successResponse(
@@ -160,6 +163,7 @@ class ReportController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update report status.',
@@ -177,10 +181,17 @@ class ReportController extends Controller
         $note = $request->input('note');
 
         // Append to admin notes
-        $currentNotes = $report->admin_notes ? $report->admin_notes . "\n" : "";
+        $currentNotes = $report->admin_notes ? $report->admin_notes."\n" : '';
         $report->update([
-            'admin_notes' => $currentNotes . "[" . now()->toDateTimeString() . " by " . auth()->user()->first_name . "]: " . $note,
+            'admin_notes' => $currentNotes.'['.now()->toDateTimeString().' by '.auth()->user()->first_name.']: '.$note,
         ]);
+
+        // Notify the customer of note addition
+        try {
+            $report->customer->notify(new ReportNotification($report, 'note_added'));
+        } catch (\Exception $ex) {
+            Log::error('Failed to notify customer of report note update: '.$ex->getMessage());
+        }
 
         return $this->successResponse(
             new AdminReportDetailResource($report->load(['booking', 'customer', 'service', 'worker', 'assignedAdmin', 'histories.createdBy'])),

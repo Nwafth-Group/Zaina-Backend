@@ -278,4 +278,15 @@ return [
     'notification_english_required' => 'العنوان والمحتوى باللغة الإنجليزية مطلوبان عند اختيار اللغة الإنجليزية.',
     'notification_invalid_schedule' => 'لا يمكن جدولة الإرسال في وقت ماضٍ.',
     'notification_invalid_format' => 'صيغة تاريخ أو وقت غير صالحة.',
+
+    // Report Notifications
+    'report_notification_title_status_changed' => 'تحديث حالة البلاغ: :number',
+    'report_notification_body_status_changed' => 'تم تحديث حالة بلاغ الحجز الخاص بك إلى: :status',
+    'report_notification_title_note_added' => 'رد جديد على البلاغ: :number',
+    'report_notification_body_note_added' => 'أضاف المشرف تحديثاً/ملاحظة جديدة على بلاغ الحجز الخاص بك.',
+    'report_status_submitted' => 'مقدم',
+    'report_status_under_review' => 'قيد المراجعة',
+    'report_status_in_progress' => 'قيد المعالجة',
+    'report_status_resolved' => 'تم الحل',
+    'report_status_rejected' => 'مرفوض',
 ];
