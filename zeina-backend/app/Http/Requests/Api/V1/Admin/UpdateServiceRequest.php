@@ -262,16 +262,12 @@ class UpdateServiceRequest extends FormRequest
                 if ($isSecondService || $isThirdService) {
                     $minWorkers = $this->input('min_workers') ?? ($service ? $service->min_workers : null);
                     $maxWorkers = $this->input('max_workers') ?? ($service ? $service->max_workers : null);
+                    if ($minWorkers !== null && $minWorkers < 1) {
+                        $validator->errors()->add('min_workers', 'Minimum worker count must be greater than 0.');
+                    }
                     if ($isSecondService) {
-                        if ($minWorkers !== null && $minWorkers < 2) {
-                            $validator->errors()->add('min_workers', 'The minimum number of workers for this service must be 2.');
-                        }
                         if ($maxWorkers !== null && $maxWorkers > 12) {
                             $validator->errors()->add('max_workers', 'The maximum number of workers for this service must be 12.');
-                        }
-                    } else { // $isThirdService
-                        if ($minWorkers !== null && $minWorkers < 1) {
-                            $validator->errors()->add('min_workers', 'Minimum worker count must be greater than 0.');
                         }
                     }
                     if ($minWorkers !== null && $maxWorkers !== null && $minWorkers > $maxWorkers) {
