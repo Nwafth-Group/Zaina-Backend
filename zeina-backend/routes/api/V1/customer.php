@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\Customer\AddressController;
 use App\Http\Controllers\Api\V1\Customer\AuthController;
 use App\Http\Controllers\Api\V1\Customer\BookingController;
 use App\Http\Controllers\Api\V1\Customer\CategoryController;
+use App\Http\Controllers\Api\V1\Customer\CompanyInfoController;
 use App\Http\Controllers\Api\V1\Customer\CouponController;
 use App\Http\Controllers\Api\V1\Customer\HomeController;
 use App\Http\Controllers\Api\V1\Customer\KycController;
@@ -52,6 +53,8 @@ Route::prefix('customer')->group(function () {
         Route::get('privacy', [LegalDocumentController::class, 'getPrivacy']);
         Route::get('about-us', [LegalDocumentController::class, 'getAboutUs']);
     });
+
+    Route::get('company-info', [CompanyInfoController::class, 'show']);
 
     // fetch counttries and govrenrates and citites and areas ..
     Route::get('locations/countries', [LocationController::class, 'countries']);

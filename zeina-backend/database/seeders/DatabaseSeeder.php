@@ -41,6 +41,7 @@ class DatabaseSeeder extends Seeder
             AnnouncementSeeder::class,
             MobileNotificationSeeder::class,
             KhaledTestUserSeeder::class,
+            CompanyInfoSeeder::class,
         ]);
     }
 }

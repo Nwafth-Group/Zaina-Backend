@@ -7,23 +7,24 @@ use App\Http\Controllers\Api\V1\Admin\AuthController;
 use App\Http\Controllers\Api\V1\Admin\BookingController;
 use App\Http\Controllers\Api\V1\Admin\CategoryController;
 use App\Http\Controllers\Api\V1\Admin\CityController;
+use App\Http\Controllers\Api\V1\Admin\CompanyInfoController;
 use App\Http\Controllers\Api\V1\Admin\CountryController;
 use App\Http\Controllers\Api\V1\Admin\CouponController;
 use App\Http\Controllers\Api\V1\Admin\DashboardController;
 use App\Http\Controllers\Api\V1\Admin\EmployeeController;
-use App\Http\Controllers\Api\V1\Admin\MobileNotificationController;
 use App\Http\Controllers\Api\V1\Admin\GovrenrateController;
 use App\Http\Controllers\Api\V1\Admin\KysController;
+use App\Http\Controllers\Api\V1\Admin\LegalDocumentController;
+use App\Http\Controllers\Api\V1\Admin\MobileNotificationController;
 use App\Http\Controllers\Api\V1\Admin\ProfileController;
 use App\Http\Controllers\Api\V1\Admin\ProviderController;
+use App\Http\Controllers\Api\V1\Admin\ReportController;
+use App\Http\Controllers\Api\V1\Admin\ReviewController;
 use App\Http\Controllers\Api\V1\Admin\RoleController;
 use App\Http\Controllers\Api\V1\Admin\ServiceController;
 use App\Http\Controllers\Api\V1\Admin\ServicePriceController;
 use App\Http\Controllers\Api\V1\Admin\UserController;
 use App\Http\Controllers\Api\V1\Admin\WorkerController;
-use App\Http\Controllers\Api\V1\Admin\ReviewController;
-use App\Http\Controllers\Api\V1\Admin\ReportController;
-use App\Http\Controllers\Api\V1\Admin\LegalDocumentController;
 use App\Http\Middleware\IsAdmin;
 use Illuminate\Support\Facades\Route;
 
@@ -42,6 +43,10 @@ Route::prefix('admin')->group(function () {
     Route::middleware(['auth:sanctum', IsAdmin::class])->group(function () {
 
         Route::get('dashboard/stats', [DashboardController::class, 'stats']);
+
+        // Company Information Settings
+        Route::get('company-info', [CompanyInfoController::class, 'show']);
+        Route::post('company-info', [CompanyInfoController::class, 'update']);
 
         // Current admin's live identity/roles/permissions (keeps the UI in sync).
         Route::get('me', [ProfileController::class, 'me']);
@@ -170,7 +175,5 @@ Route::prefix('admin')->group(function () {
         //     });
 
     });
-
-
 
 });
