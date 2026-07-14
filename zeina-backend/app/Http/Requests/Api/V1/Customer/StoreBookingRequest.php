@@ -25,23 +25,23 @@ class StoreBookingRequest extends FormRequest
     protected function prepareForValidation()
     {
         $serviceId = $this->input('service_id');
-        $service = $serviceId ? \App\Models\Service::find($serviceId) : null;
-        
+        $service = $serviceId ? Service::find($serviceId) : null;
+
         $mergeData = [];
         $mergeData['child_age_groups'] = $this->parseChildAgeGroups();
-        
+
         if ($service) {
-            if (!$this->filled('duration')) {
+            if (! $this->filled('duration')) {
                 $mergeData['duration'] = $service->default_duration ?? 4;
             }
-            
-            if (!$this->filled('worker_gender')) {
+
+            if (! $this->filled('worker_gender')) {
                 $genderOptions = $service->worker_gender_options ?? [];
                 $mergeData['worker_gender'] = count($genderOptions) > 0 ? $genderOptions[0] : 'Female';
             }
         }
 
-        if (!empty($mergeData)) {
+        if (! empty($mergeData)) {
             $this->merge($mergeData);
         }
     }
@@ -52,24 +52,24 @@ class StoreBookingRequest extends FormRequest
     public function rules(): array
     {
         $serviceId = $this->input('service_id');
-        $service = $serviceId ? \App\Models\Service::find($serviceId) : null;
+        $service = $serviceId ? Service::find($serviceId) : null;
         $isBabysitter = $service && $service->service_code === 'BABYSITTER_HOURLY';
 
         return [
-            'service_id'     => ['required', 'exists:services,id'],
-            'address_id'     => ['required', 'exists:customer_addresses,id'],
-            'visit_type'     => ['nullable', 'string', 'in:single_visit,three_visits_per_week'],
-            'dates'          => ['required', 'array'],
-            'dates.*'        => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
-            'start_time'     => ['required', 'date_format:H:i'],
-            'worker_ids'     => ['required', 'array', 'min:1'],
-            'worker_ids.*'   => ['required', 'exists:workers,id'],
+            'service_id' => ['required', 'exists:services,id'],
+            'address_id' => ['required', 'exists:customer_addresses,id'],
+            'visit_type' => ['nullable', 'string', 'in:single_visit,three_visits_per_week'],
+            'dates' => ['required', 'array'],
+            'dates.*' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
+            'start_time' => ['required', 'date_format:H:i'],
+            'worker_ids' => ['required', 'array', 'min:1'],
+            'worker_ids.*' => ['required', 'exists:workers,id'],
             'payment_method' => ['required', 'string', 'in:points,wallet,card'],
-            'coupon_code'    => ['nullable', 'string'],
-            'duration'       => ['nullable', 'integer'],
-            'worker_gender'  => ['nullable', 'string', 'in:Male,Female'],
+            'coupon_code' => ['nullable', 'string'],
+            'duration' => ['nullable', 'integer'],
+            'worker_gender' => ['nullable', 'string', 'in:Male,Female'],
             'number_of_children' => [$isBabysitter ? 'required' : 'nullable', 'integer', 'min:1'],
-            'child_age_groups' => [$isBabysitter ? 'required' : 'nullable', 'array', 'min:1'],
+            'child_age_groups' => $isBabysitter ? ['required', 'array', 'min:1'] : ['nullable', 'array'],
             'child_age_groups.*' => ['integer', 'exists:service_child_age_groups,id'],
             'note' => ['nullable', 'string'],
         ];
@@ -81,23 +81,23 @@ class StoreBookingRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'service_id.required'     => __('validation.create_booking.service_id_required'),
-            'service_id.exists'       => __('validation.create_booking.service_id_exists'),
-            'address_id.required'     => __('validation.create_booking.address_id_required'),
-            'address_id.exists'       => __('validation.create_booking.address_id_exists'),
-            'dates.required'          => __('validation.create_booking.date_required'),
-            'dates.array'             => __('validation.create_booking.dates_array'),
-            'dates.*.date_format'     => __('validation.create_booking.date_date_format'),
-            'dates.*.after_or_equal'  => __('validation.create_booking.date_after_or_equal'),
-            'start_time.required'     => __('validation.create_booking.start_time_required'),
-            'start_time.date_format'  => __('validation.create_booking.start_time_date_format'),
+            'service_id.required' => __('validation.create_booking.service_id_required'),
+            'service_id.exists' => __('validation.create_booking.service_id_exists'),
+            'address_id.required' => __('validation.create_booking.address_id_required'),
+            'address_id.exists' => __('validation.create_booking.address_id_exists'),
+            'dates.required' => __('validation.create_booking.date_required'),
+            'dates.array' => __('validation.create_booking.dates_array'),
+            'dates.*.date_format' => __('validation.create_booking.date_date_format'),
+            'dates.*.after_or_equal' => __('validation.create_booking.date_after_or_equal'),
+            'start_time.required' => __('validation.create_booking.start_time_required'),
+            'start_time.date_format' => __('validation.create_booking.start_time_date_format'),
             'payment_method.required' => __('validation.create_booking.payment_method_required'),
-            'payment_method.string'   => __('validation.create_booking.payment_method_string'),
-            'payment_method.in'       => __('validation.create_booking.payment_method_in'),
-            'worker_ids.required'     => __('validation.create_booking.worker_ids_required'),
-            'worker_ids.array'        => __('validation.create_booking.worker_ids_array'),
-            'worker_ids.min'          => __('validation.create_booking.worker_ids_min'),
-            'worker_ids.*.exists'     => __('validation.create_booking.worker_ids_exists'),
+            'payment_method.string' => __('validation.create_booking.payment_method_string'),
+            'payment_method.in' => __('validation.create_booking.payment_method_in'),
+            'worker_ids.required' => __('validation.create_booking.worker_ids_required'),
+            'worker_ids.array' => __('validation.create_booking.worker_ids_array'),
+            'worker_ids.min' => __('validation.create_booking.worker_ids_min'),
+            'worker_ids.*.exists' => __('validation.create_booking.worker_ids_exists'),
         ];
     }
 
@@ -110,18 +110,19 @@ class StoreBookingRequest extends FormRequest
             function ($validator) {
                 $serviceId = $this->input('service_id');
                 $service = Service::with('rules')->find($serviceId);
-                if (!$service) {
+                if (! $service) {
                     return;
                 }
 
                 $dates = $this->input('dates') ?? [];
-                if (empty($dates) || !is_array($dates)) {
+                if (empty($dates) || ! is_array($dates)) {
                     return;
                 }
 
                 // Check for duplicate dates
                 if (count($dates) !== count(array_unique($dates))) {
                     $validator->errors()->add('dates', __('validation.create_booking.dates_unique'));
+
                     return;
                 }
 
@@ -130,9 +131,11 @@ class StoreBookingRequest extends FormRequest
                 // 1. Validate date counts by visit type
                 if ($visitType === 'three_visits_per_week' && count($dates) !== 3) {
                     $validator->errors()->add('dates', __('validation.create_booking.dates_exactly_three'));
+
                     return;
                 } elseif ($visitType === 'single_visit' && count($dates) !== 1) {
                     $validator->errors()->add('dates', __('validation.create_booking.dates_exactly_one'));
+
                     return;
                 }
 
@@ -155,7 +158,7 @@ class StoreBookingRequest extends FormRequest
                     $date = Carbon::parse($dateStr);
 
                     if ($dateStr === $todayStr) {
-                        if ($rules && !$rules->allow_same_day) {
+                        if ($rules && ! $rules->allow_same_day) {
                             $validator->errors()->add('dates', __('validation.create_booking.dates_same_day_not_allowed', ['date' => $dateStr]));
                         }
                     }
@@ -177,7 +180,7 @@ class StoreBookingRequest extends FormRequest
 
                 if ($isThirdService) {
                     $childAgeGroups = $this->input('child_age_groups') ?? [];
-                    if (!is_array($childAgeGroups)) {
+                    if (! is_array($childAgeGroups)) {
                         $childAgeGroups = [];
                     }
                     $numberOfChildren = (int) $this->input('number_of_children');
@@ -200,8 +203,9 @@ class StoreBookingRequest extends FormRequest
 
                     foreach ($groupedCounts as $groupId => $count) {
                         $group = $validGroups->firstWhere('id', $groupId);
-                        if (!$group) {
+                        if (! $group) {
                             $validator->errors()->add('child_age_groups', __('validation.create_booking.child_age_groups_invalid'));
+
                             continue;
                         }
 
@@ -241,7 +245,7 @@ class StoreBookingRequest extends FormRequest
                     $genderOptions = $service->worker_gender_options ?? [];
                     if (empty($workerGender)) {
                         $validator->errors()->add('worker_gender', 'Please select a worker gender.');
-                    } elseif (!in_array($workerGender, $genderOptions)) {
+                    } elseif (! in_array($workerGender, $genderOptions)) {
                         $validator->errors()->add('worker_gender', __('validation.create_booking.worker_gender_invalid'));
                     }
 
@@ -264,7 +268,7 @@ class StoreBookingRequest extends FormRequest
                         }
                     }
                 }
-            }
+            },
         ];
     }
 }

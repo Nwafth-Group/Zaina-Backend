@@ -25,23 +25,23 @@ class ValidateBookingRequest extends FormRequest
     protected function prepareForValidation()
     {
         $serviceId = $this->input('service_id');
-        $service = $serviceId ? \App\Models\Service::find($serviceId) : null;
-        
+        $service = $serviceId ? Service::find($serviceId) : null;
+
         $mergeData = [];
         $mergeData['child_age_groups'] = $this->parseChildAgeGroups();
-        
+
         if ($service) {
-            if (!$this->filled('duration')) {
+            if (! $this->filled('duration')) {
                 $mergeData['duration'] = $service->default_duration ?? 4;
             }
-            
-            if (!$this->filled('worker_gender')) {
+
+            if (! $this->filled('worker_gender')) {
                 $genderOptions = $service->worker_gender_options ?? [];
                 $mergeData['worker_gender'] = count($genderOptions) > 0 ? $genderOptions[0] : 'Female';
             }
         }
 
-        if (!empty($mergeData)) {
+        if (! empty($mergeData)) {
             $this->merge($mergeData);
         }
     }
@@ -52,7 +52,7 @@ class ValidateBookingRequest extends FormRequest
     public function rules(): array
     {
         $serviceId = $this->input('service_id');
-        $service = $serviceId ? \App\Models\Service::find($serviceId) : null;
+        $service = $serviceId ? Service::find($serviceId) : null;
         $isBabysitter = $service && $service->service_code === 'BABYSITTER_HOURLY';
 
         return [
@@ -69,7 +69,7 @@ class ValidateBookingRequest extends FormRequest
             'duration' => ['nullable', 'integer'],
             'worker_gender' => ['nullable', 'string', 'in:Male,Female'],
             'number_of_children' => [$isBabysitter ? 'required' : 'nullable', 'integer', 'min:1'],
-            'child_age_groups' => [$isBabysitter ? 'required' : 'nullable', 'array', 'min:1'],
+            'child_age_groups' => $isBabysitter ? ['required', 'array', 'min:1'] : ['nullable', 'array'],
             'child_age_groups.*' => ['integer', 'exists:service_child_age_groups,id'],
             'note' => ['nullable', 'string'],
         ];
@@ -106,18 +106,19 @@ class ValidateBookingRequest extends FormRequest
             function ($validator) {
                 $serviceId = $this->input('service_id');
                 $service = Service::with('rules')->find($serviceId);
-                if (!$service) {
+                if (! $service) {
                     return;
                 }
 
                 $dates = $this->input('dates') ?? [];
-                if (empty($dates) || !is_array($dates)) {
+                if (empty($dates) || ! is_array($dates)) {
                     return;
                 }
 
                 // Check for duplicate dates
                 if (count($dates) !== count(array_unique($dates))) {
                     $validator->errors()->add('dates', __('validation.create_booking.dates_unique'));
+
                     return;
                 }
 
@@ -126,9 +127,11 @@ class ValidateBookingRequest extends FormRequest
                 // 1. Validate date counts by visit type
                 if ($visitType === 'three_visits_per_week' && count($dates) !== 3) {
                     $validator->errors()->add('dates', __('validation.create_booking.dates_exactly_three'));
+
                     return;
                 } elseif ($visitType === 'single_visit' && count($dates) !== 1) {
                     $validator->errors()->add('dates', __('validation.create_booking.dates_exactly_one'));
+
                     return;
                 }
 
@@ -152,7 +155,7 @@ class ValidateBookingRequest extends FormRequest
 
                     // Same-day check
                     if ($dateStr === $todayStr) {
-                        if ($rules && !$rules->allow_same_day) {
+                        if ($rules && ! $rules->allow_same_day) {
                             $validator->errors()->add('dates', __('validation.create_booking.dates_same_day_not_allowed', ['date' => $dateStr]));
                         }
                     }
@@ -171,13 +174,13 @@ class ValidateBookingRequest extends FormRequest
             },
             function ($validator) {
                 $serviceId = $this->input('service_id');
-                $service = \App\Models\Service::with('childAgeGroups')->find($serviceId);
-                if (!$service || $service->service_code !== 'BABYSITTER_HOURLY') {
+                $service = Service::with('childAgeGroups')->find($serviceId);
+                if (! $service || $service->service_code !== 'BABYSITTER_HOURLY') {
                     return;
                 }
 
                 $childAgeGroups = $this->input('child_age_groups') ?? [];
-                if (!is_array($childAgeGroups)) {
+                if (! is_array($childAgeGroups)) {
                     $childAgeGroups = [];
                 }
                 $numberOfChildren = (int) $this->input('number_of_children');
@@ -200,8 +203,9 @@ class ValidateBookingRequest extends FormRequest
 
                 foreach ($groupedCounts as $groupId => $count) {
                     $group = $validGroups->firstWhere('id', $groupId);
-                    if (!$group) {
+                    if (! $group) {
                         $validator->errors()->add('child_age_groups', __('validation.create_booking.child_age_groups_invalid'));
+
                         continue;
                     }
 
@@ -236,8 +240,8 @@ class ValidateBookingRequest extends FormRequest
             },
             function ($validator) {
                 $serviceId = $this->input('service_id');
-                $service = \App\Models\Service::find($serviceId);
-                if (!$service) {
+                $service = Service::find($serviceId);
+                if (! $service) {
                     return;
                 }
 
@@ -274,11 +278,11 @@ class ValidateBookingRequest extends FormRequest
                         $gender = 'Female';
                     }
                     $genderOptions = $service->worker_gender_options ?? [];
-                    if (!$gender || !in_array($gender, $genderOptions)) {
+                    if (! $gender || ! in_array($gender, $genderOptions)) {
                         $validator->errors()->add('worker_gender', __('validation.create_booking.worker_gender_invalid'));
                     }
                 }
-            }
+            },
         ];
     }
 }

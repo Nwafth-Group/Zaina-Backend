@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Api\V1\Customer;
 
+use App\Models\Service;
 use App\Traits\ParsesChildAgeGroups;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -23,19 +24,19 @@ class GetAvailableDatesRequest extends FormRequest
     protected function prepareForValidation()
     {
         $serviceId = $this->input('service_id');
-        $service = $serviceId ? \App\Models\Service::find($serviceId) : null;
+        $service = $serviceId ? Service::find($serviceId) : null;
 
         $mergeData = [];
         $mergeData['child_age_groups'] = $this->parseChildAgeGroups();
 
         if ($service) {
-            if (!$this->filled('worker_gender')) {
+            if (! $this->filled('worker_gender')) {
                 $genderOptions = $service->worker_gender_options ?? [];
                 $mergeData['worker_gender'] = count($genderOptions) > 0 ? $genderOptions[0] : 'Female';
             }
         }
 
-        if (!empty($mergeData)) {
+        if (! empty($mergeData)) {
             $this->merge($mergeData);
         }
     }
@@ -43,7 +44,7 @@ class GetAvailableDatesRequest extends FormRequest
     public function rules(): array
     {
         $serviceId = $this->input('service_id');
-        $service = $serviceId ? \App\Models\Service::find($serviceId) : null;
+        $service = $serviceId ? Service::find($serviceId) : null;
         $isBabysitter = $service && $service->service_code === 'BABYSITTER_HOURLY';
 
         return [
@@ -51,10 +52,10 @@ class GetAvailableDatesRequest extends FormRequest
             'address_id' => 'required|exists:customer_addresses,id',
             'start_time' => 'required|date_format:H:i',
             'duration' => 'required|integer',
-            'worker_gender' => ($isBabysitter ? 'nullable' : 'required') . '|string|in:Male,Female',
-            'workers_count' => ($isBabysitter ? 'nullable' : 'required') . '|integer|min:1',
-            'number_of_children' => ($isBabysitter ? 'required' : 'nullable') . '|integer|min:1',
-            'child_age_groups' => ($isBabysitter ? 'required' : 'nullable') . '|array|min:1',
+            'worker_gender' => ($isBabysitter ? 'nullable' : 'required').'|string|in:Male,Female',
+            'workers_count' => ($isBabysitter ? 'nullable' : 'required').'|integer|min:1',
+            'number_of_children' => ($isBabysitter ? 'required' : 'nullable').'|integer|min:1',
+            'child_age_groups' => $isBabysitter ? 'required|array|min:1' : 'nullable|array',
             'child_age_groups.*' => 'integer|exists:service_child_age_groups,id',
             'note' => 'nullable|string',
         ];
@@ -95,13 +96,13 @@ class GetAvailableDatesRequest extends FormRequest
         return [
             function ($validator) {
                 $serviceId = $this->input('service_id');
-                $service = \App\Models\Service::with('childAgeGroups')->find($serviceId);
-                if (!$service || $service->service_code !== 'BABYSITTER_HOURLY') {
+                $service = Service::with('childAgeGroups')->find($serviceId);
+                if (! $service || $service->service_code !== 'BABYSITTER_HOURLY') {
                     return;
                 }
 
                 $childAgeGroups = $this->input('child_age_groups') ?? [];
-                if (!is_array($childAgeGroups)) {
+                if (! is_array($childAgeGroups)) {
                     $childAgeGroups = [];
                 }
                 $numberOfChildren = (int) $this->input('number_of_children');
@@ -118,11 +119,11 @@ class GetAvailableDatesRequest extends FormRequest
 
                 $validGroupIds = $service->childAgeGroups->where('status', 'active')->pluck('id')->toArray();
                 foreach ($childAgeGroups as $index => $groupId) {
-                    if (!in_array($groupId, $validGroupIds)) {
+                    if (! in_array($groupId, $validGroupIds)) {
                         $validator->errors()->add("child_age_groups.{$index}", __('validation.create_booking.child_age_groups_invalid'));
                     }
                 }
-            }
+            },
         ];
     }
 }
