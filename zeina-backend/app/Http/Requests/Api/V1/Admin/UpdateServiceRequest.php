@@ -335,15 +335,6 @@ class UpdateServiceRequest extends FormRequest
                                 if ($from > $to) {
                                     $validator->errors()->add("child_age_groups.{$i}.age_from", 'Age From must be less than or equal to Age To.');
                                 }
-
-                                // Overlap check with previous active group
-                                if ($i > 0) {
-                                    $prev = $activeGroups[$i - 1];
-                                    $prevTo = (int) ($prev['age_to'] ?? 0);
-                                    if ($from < $prevTo) {
-                                        $validator->errors()->add('child_age_groups', 'Child age groups cannot overlap.');
-                                    }
-                                }
                             }
                         }
                     }
