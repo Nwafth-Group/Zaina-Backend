@@ -286,7 +286,5 @@ return [
     'report_notification_body_note_added' => 'أضاف المشرف تحديثاً/ملاحظة جديدة على بلاغ الحجز الخاص بك.',
     'report_status_submitted' => 'مقدم',
     'report_status_under_review' => 'قيد المراجعة',
-    'report_status_in_progress' => 'قيد المعالجة',
     'report_status_resolved' => 'تم الحل',
-    'report_status_rejected' => 'مرفوض',
 ];

@@ -612,7 +612,7 @@ class BookingService
         // 2. منع تكرار البلاغ المفتوح لنفس الحجز ونفس السبب
         $existingReport = Report::query()->where('booking_id', $booking->id)
             ->where('reason', $data['reason'])
-            ->whereNotIn('status', ['resolved', 'rejected'])
+            ->where('status', '!=', 'resolved')
             ->exists();
         if ($existingReport) {
             throw new \Exception(__('messages.open_report_exists'), 400);

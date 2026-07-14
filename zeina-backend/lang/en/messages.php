@@ -292,7 +292,5 @@ return [
     'report_notification_body_note_added' => 'An administrator has added a new update/note to your booking report.',
     'report_status_submitted' => 'Submitted',
     'report_status_under_review' => 'Under Review',
-    'report_status_in_progress' => 'In Progress',
     'report_status_resolved' => 'Resolved',
-    'report_status_rejected' => 'Rejected',
 ];

@@ -100,7 +100,7 @@ class ReportController extends Controller
     public function updateStatus(Request $request, Report $report)
     {
         $request->validate([
-            'status' => 'required|string|in:submitted,under_review,in_progress,resolved,rejected',
+            'status' => 'required|string|in:submitted,under_review,resolved',
             'note' => 'nullable|string|max:1000',
         ]);
 
@@ -116,16 +116,14 @@ class ReportController extends Controller
         }
 
         $validTransitions = [
-            'submitted' => ['under_review', 'rejected'],
-            'under_review' => ['in_progress', 'rejected'],
-            'in_progress' => ['resolved', 'rejected'],
+            'submitted' => ['under_review', 'resolved'],
+            'under_review' => ['resolved'],
             'resolved' => [], // Terminal
-            'rejected' => [], // Terminal
         ];
 
         if (! in_array($newStatus, $validTransitions[$oldStatus] ?? [], true)) {
-            $msg = "Cannot change report status from '{$oldStatus}' to '{$newStatus}'. Status changes must follow a sequential flow: Submitted -> Under Review -> In Progress -> Resolved / Rejected.";
-            $msgAr = "لا يمكن تغيير حالة البلاغ من '{$oldStatus}' إلى '{$newStatus}'. يجب أن تتبع التحديثات تسلسلاً: مقدم -> قيد المراجعة -> قيد المعالجة -> تم الحل / مرفوض.";
+            $msg = "Cannot change report status from '{$oldStatus}' to '{$newStatus}'. Status changes must follow a sequential flow: Submitted -> Under Review -> Resolved.";
+            $msgAr = "لا يمكن تغيير حالة البلاغ من '{$oldStatus}' إلى '{$newStatus}'. يجب أن تتبع التحديثات تسلسلاً: مقدم -> قيد المراجعة -> تم الحل.";
 
             return response()->json([
                 'success' => false,
