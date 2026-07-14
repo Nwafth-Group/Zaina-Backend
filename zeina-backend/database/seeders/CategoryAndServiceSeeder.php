@@ -2,15 +2,16 @@
 
 namespace Database\Seeders;
 
-use App\Models\Category;
-use App\Models\Service;
-use App\Models\City;
 use App\Models\Area;
+use App\Models\Category;
+use App\Models\City;
+use App\Models\Service;
 use App\Models\User;
+use App\Models\Worker;
+use App\Service\ServiceWriter;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Storage;
 
 class CategoryAndServiceSeeder extends Seeder
 {
@@ -24,6 +25,7 @@ class CategoryAndServiceSeeder extends Seeder
 
         if ($cities->isEmpty() || $areas->isEmpty()) {
             $this->command->error('must have cities and areas in the database before running this seeder to ensure proper geographical distribution of services.');
+
             return;
         }
 
@@ -48,11 +50,11 @@ class CategoryAndServiceSeeder extends Seeder
             $categories[$key] = $category;
 
             // رفع الميديا للقسم
-            $dummyIconPath = public_path('dummy/' . $data['icon']);
+            $dummyIconPath = public_path('dummy/'.$data['icon']);
             if (file_exists($dummyIconPath)) {
                 $extension = pathinfo($dummyIconPath, PATHINFO_EXTENSION);
-                $iconName = 'category_' . $category->id . '_icon.' . $extension;
-                $iconPath = 'categories/icons/' . $iconName;
+                $iconName = 'category_'.$category->id.'_icon.'.$extension;
+                $iconPath = 'categories/icons/'.$iconName;
 
                 Storage::disk('public')->put($iconPath, file_get_contents($dummyIconPath));
 
@@ -121,9 +123,9 @@ class CategoryAndServiceSeeder extends Seeder
             $genderAttr = ($isFirstService || $isThirdService) ? 'female' : fake()->randomElement(['male', 'female']);
 
             // Sync workers to this service
-            $newWorkers = \App\Models\Worker::factory(3)->create([
+            $newWorkers = Worker::factory(3)->create([
                 'status' => 'active',
-                'gender' => $genderAttr
+                'gender' => $genderAttr,
             ]);
             $workerIds = $newWorkers->pluck('id')->toArray();
 
@@ -134,8 +136,8 @@ class CategoryAndServiceSeeder extends Seeder
                 'type' => $data['type'],
                 'name_ar' => $data['ar'],
                 'name_en' => $data['en'],
-                'description_ar' => 'وصف تفصيلي لخدمة ' . $data['ar'],
-                'description_en' => 'Detailed description for ' . $data['en'],
+                'description_ar' => 'وصف تفصيلي لخدمة '.$data['ar'],
+                'description_en' => 'Detailed description for '.$data['en'],
                 'features' => $features,
                 'status' => 'active',
                 'workers' => $workerIds,
@@ -144,7 +146,7 @@ class CategoryAndServiceSeeder extends Seeder
                     ? [['type' => 'single_visit', 'discount' => 0]]
                     : [
                         ['type' => 'single_visit', 'discount' => 0],
-                        ['type' => '3_days_per_week', 'discount' => 15]
+                        ['type' => '3_days_per_week', 'discount' => 15],
                     ],
                 'base_price' => $data['price'],
                 'start_time' => '08:00',
@@ -166,7 +168,7 @@ class CategoryAndServiceSeeder extends Seeder
                     ['start_time' => '09:00'],
                     ['start_time' => '12:00'],
                     ['start_time' => '14:00'],
-                    ['start_time' => '16:00']
+                    ['start_time' => '16:00'],
                 ],
 
                 'terms_ar' => 'الشروط والأحكام الخاصة بالخدمة...',
@@ -182,7 +184,7 @@ class CategoryAndServiceSeeder extends Seeder
                     'max_advance_booking_days' => 30,
                     'arrival_buffer_minutes' => 15,
                     'late_arrival_grace_minutes' => 15,
-                ]
+                ],
             ];
 
             if ($isFirstService || $isThirdService) {
@@ -207,6 +209,7 @@ class CategoryAndServiceSeeder extends Seeder
                         'children_count' => 1,
                         'required_worker_count' => 1,
                         'status' => 'active',
+                        'note' => '1 babysitter for each child (مربية واحدة لكل طفل)',
                     ],
                     [
                         'name_ar' => 'من 2 إلى 7 سنوات',
@@ -217,6 +220,7 @@ class CategoryAndServiceSeeder extends Seeder
                         'children_count' => 2,
                         'required_worker_count' => 1,
                         'status' => 'active',
+                        'note' => '1 babysitter for every 2 children (1 جليسة لكل 2 أطفال)',
                     ],
                     [
                         'name_ar' => 'أكبر من 3 سنوات',
@@ -227,29 +231,30 @@ class CategoryAndServiceSeeder extends Seeder
                         'children_count' => 3,
                         'required_worker_count' => 2,
                         'status' => 'active',
-                    ]
+                        'note' => '2 babysitters for every 3 children (2 جليسة لكل 3 أطفال)',
+                    ],
                 ];
             }
 
             // Write service and sync its relations using the ServiceWriter class
             $service = Service::where('name_en', $data['en'])->first();
             if ($service) {
-                $service = app(\App\Service\ServiceWriter::class)->update($service, $payload);
+                $service = app(ServiceWriter::class)->update($service, $payload);
             } else {
-                $service = app(\App\Service\ServiceWriter::class)->create($payload);
+                $service = app(ServiceWriter::class)->create($payload);
             }
 
             // Sync media icon
             $dummyIconPath = public_path("assist/services/{$service->id}.webp");
-            if (!file_exists($dummyIconPath)) {
+            if (! file_exists($dummyIconPath)) {
                 $selectedIcon = Arr::random($dummyIconsList);
-                $dummyIconPath = public_path('dummy/' . $selectedIcon);
+                $dummyIconPath = public_path('dummy/'.$selectedIcon);
             }
 
             if (file_exists($dummyIconPath)) {
                 $extension = pathinfo($dummyIconPath, PATHINFO_EXTENSION);
-                $iconName = 'service_' . $service->id . '_icon.' . $extension;
-                $iconPath = 'services/icons/' . $iconName;
+                $iconName = 'service_'.$service->id.'_icon.'.$extension;
+                $iconPath = 'services/icons/'.$iconName;
 
                 Storage::disk('public')->put($iconPath, file_get_contents($dummyIconPath));
 
