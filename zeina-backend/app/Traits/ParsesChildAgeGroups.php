@@ -11,7 +11,7 @@ trait ParsesChildAgeGroups
     {
         $queryString = request()->getQueryString();
         $rawChildAgeGroups = [];
-        
+
         // 1. Try parsing from raw query string to handle duplicate keys without brackets (e.g. child_age_groups=1&child_age_groups=2)
         if ($queryString) {
             $parts = explode('&', $queryString);
@@ -21,13 +21,15 @@ trait ParsesChildAgeGroups
                     $key = urldecode($subParts[0]);
                     $val = urldecode($subParts[1]);
                     if ($key === 'child_age_groups' || $key === 'child_age_groups[]') {
-                        $rawChildAgeGroups[] = (int) $val;
+                        if (is_numeric($val)) {
+                            $rawChildAgeGroups[] = (int) $val;
+                        }
                     }
                 }
             }
         }
 
-        if (!empty($rawChildAgeGroups)) {
+        if (! empty($rawChildAgeGroups)) {
             return $rawChildAgeGroups;
         }
 
@@ -42,11 +44,13 @@ trait ParsesChildAgeGroups
             if ($trimmed !== '') {
                 return array_map('intval', explode(',', $trimmed));
             }
+
             return [];
         }
 
         // 3. Fallback to normal input if already array, or empty
         $childAgeGroups = $this->input('child_age_groups') ?? [];
+
         return is_array($childAgeGroups) ? $childAgeGroups : [];
     }
 }
