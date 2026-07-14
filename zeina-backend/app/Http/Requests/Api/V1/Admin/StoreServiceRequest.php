@@ -3,6 +3,11 @@
 namespace App\Http\Requests\Api\V1\Admin;
 
 use App\Http\Requests\Api\V1\CustomFormRequest;
+use App\Models\Category;
+use App\Models\Service;
+use Carbon\Carbon;
+use Illuminate\Contracts\Validation\ValidationRule;
+use Illuminate\Validation\Rule;
 
 class StoreServiceRequest extends CustomFormRequest
 {
@@ -17,7 +22,7 @@ class StoreServiceRequest extends CustomFormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -33,13 +38,13 @@ class StoreServiceRequest extends CustomFormRequest
                 'required',
                 'string',
                 'max:100',
-                \Illuminate\Validation\Rule::unique('services', 'name_ar')->where('category_id', $this->category_id),
+                Rule::unique('services', 'name_ar')->where('category_id', $this->category_id),
             ],
             'name_en' => [
                 'required',
                 'string',
                 'max:100',
-                \Illuminate\Validation\Rule::unique('services', 'name_en')->where('category_id', $this->category_id),
+                Rule::unique('services', 'name_en')->where('category_id', $this->category_id),
             ],
             'description_ar' => 'required|string|max:500',
             'description_en' => 'required|string|max:500',
@@ -50,9 +55,9 @@ class StoreServiceRequest extends CustomFormRequest
             'workers' => 'nullable|array',
             'workers.*' => [
                 'integer',
-                \Illuminate\Validation\Rule::exists('workers', 'id')->where('status', 'active'),
+                Rule::exists('workers', 'id')->where('status', 'active'),
             ],
-            
+
             // Available Visit Type & Pricing
             'available_visit_types' => 'required|array|min:1',
             'available_visit_types.*.type' => 'required|string|in:single_visit,3_days_per_week',
@@ -138,7 +143,7 @@ class StoreServiceRequest extends CustomFormRequest
             'rules.max_changes_per_booking' => 'nullable|integer|min:0',
             'rules.arrival_buffer_minutes' => 'nullable|integer|min:0',
             'rules.late_arrival_grace_minutes' => 'nullable|integer|min:0',
-            
+
             // Terms & Conditions
             'terms_ar' => 'required|string|max:5000',
             'terms_en' => 'required|string|max:5000',
@@ -152,7 +157,7 @@ class StoreServiceRequest extends CustomFormRequest
         if ($serviceCode === 'HOSPITALITY_WORKER_HOURLY' || $serviceCode === 'BABYSITTER_HOURLY') {
             $isSecondOrThird = true;
         } elseif ($categoryId) {
-            $category = \App\Models\Category::find($categoryId);
+            $category = Category::find($categoryId);
             if ($category) {
                 $catEn = strtolower($category->name_en);
                 if (str_contains($catEn, 'hospitality') || str_contains($category->name_ar, 'ضيافة') ||
@@ -185,13 +190,13 @@ class StoreServiceRequest extends CustomFormRequest
 
                 if ($startTime && $endTime) {
                     foreach ($shifts as $index => $shift) {
-                        if (!empty($shift['start_time'])) {
+                        if (! empty($shift['start_time'])) {
                             try {
-                                $start = \Carbon\Carbon::parse($shift['start_time']);
-                                $end = !empty($shift['end_time']) 
-                                    ? \Carbon\Carbon::parse($shift['end_time']) 
+                                $start = Carbon::parse($shift['start_time']);
+                                $end = ! empty($shift['end_time'])
+                                    ? Carbon::parse($shift['end_time'])
                                     : $start->copy()->addHours($defaultDuration);
-                                    
+
                                 $startStr = $start->format('H:i');
                                 $endStr = $end->format('H:i');
 
@@ -213,13 +218,13 @@ class StoreServiceRequest extends CustomFormRequest
                 $categoryId = $this->input('category_id');
                 if (empty($categoryId) && $this->route('service')) {
                     $service = $this->route('service');
-                    $categoryId = is_object($service) ? $service->category_id : \App\Models\Service::find($service)?->category_id;
+                    $categoryId = is_object($service) ? $service->category_id : Service::find($service)?->category_id;
                 }
 
                 $serviceCode = $this->input('service_code');
                 if (empty($serviceCode) && $this->route('service')) {
                     $service = $this->route('service');
-                    $serviceCode = is_object($service) ? $service->service_code : \App\Models\Service::find($service)?->service_code;
+                    $serviceCode = is_object($service) ? $service->service_code : Service::find($service)?->service_code;
                 }
 
                 $isSecondService = false;
@@ -230,7 +235,7 @@ class StoreServiceRequest extends CustomFormRequest
                 } elseif ($serviceCode === 'BABYSITTER_HOURLY') {
                     $isThirdService = true;
                 } elseif ($categoryId) {
-                    $category = \App\Models\Category::find($categoryId);
+                    $category = Category::find($categoryId);
                     if ($category) {
                         $catEn = strtolower($category->name_en);
                         if (str_contains($catEn, 'hospitality') || str_contains($category->name_ar, 'ضيافة')) {
@@ -252,18 +257,17 @@ class StoreServiceRequest extends CustomFormRequest
                 if ($isSecondService || $isThirdService) {
                     $minWorkers = $this->input('min_workers');
                     $maxWorkers = $this->input('max_workers');
+
+                    if ($minWorkers !== null && $minWorkers < 1) {
+                        $validator->errors()->add('min_workers', 'Minimum worker count must be greater than 0.');
+                    }
+
                     if ($isSecondService) {
-                        if ($minWorkers !== null && $minWorkers < 2) {
-                            $validator->errors()->add('min_workers', 'The minimum number of workers for this service must be 2.');
-                        }
                         if ($maxWorkers !== null && $maxWorkers > 12) {
                             $validator->errors()->add('max_workers', 'The maximum number of workers for this service must be 12.');
                         }
-                    } else { // $isThirdService
-                        if ($minWorkers !== null && $minWorkers < 1) {
-                            $validator->errors()->add('min_workers', 'Minimum worker count must be greater than 0.');
-                        }
                     }
+
                     if ($minWorkers !== null && $maxWorkers !== null && $minWorkers > $maxWorkers) {
                         $validator->errors()->add('min_workers', 'Minimum worker count cannot be greater than maximum worker count.');
                     }
@@ -284,7 +288,7 @@ class StoreServiceRequest extends CustomFormRequest
                         $validator->errors()->add('start_time', 'The allowed service start time must be between 8:00 AM and 8:00 PM.');
                     }
                     if ($endTime !== null && $endTime > '20:00') {
-                        $validator->errors()->add('end_time', 'The allowed service request end window must be between 8:00 AM and 8:00 PM.');
+                        $validator->errors()->add('end_time', 'The allowed service end time must be between 8:00 AM and 8:00 PM.');
                     }
 
                     $visitTypes = $this->input('available_visit_types', []);
@@ -307,13 +311,13 @@ class StoreServiceRequest extends CustomFormRequest
                     }
 
                     $ageGroups = $this->input('child_age_groups', []);
-                    $activeGroups = array_filter($ageGroups, fn($g) => ($g['status'] ?? '') === 'active');
+                    $activeGroups = array_filter($ageGroups, fn ($g) => ($g['status'] ?? '') === 'active');
 
                     if (empty($activeGroups)) {
                         $validator->errors()->add('child_age_groups', 'At least one active child age group must be configured before publishing.');
                     } else {
                         // Check for overlaps: sort active groups by age_from
-                        usort($activeGroups, fn($a, $b) => ($a['age_from'] ?? 0) <=> ($b['age_from'] ?? 0));
+                        usort($activeGroups, fn ($a, $b) => ($a['age_from'] ?? 0) <=> ($b['age_from'] ?? 0));
 
                         for ($i = 0; $i < count($activeGroups); $i++) {
                             $current = $activeGroups[$i];
@@ -328,7 +332,7 @@ class StoreServiceRequest extends CustomFormRequest
                             if ($i > 0) {
                                 $prev = $activeGroups[$i - 1];
                                 $prevTo = (int) ($prev['age_to'] ?? 0);
-                                if ($from <= $prevTo) {
+                                if ($from < $prevTo) {
                                     $validator->errors()->add('child_age_groups', 'Child age groups cannot overlap.');
                                 }
                             }
@@ -336,10 +340,10 @@ class StoreServiceRequest extends CustomFormRequest
                     }
                 }
 
-                if ($this->filled('pricing_type') && !$isSecondService && !$isThirdService) {
+                if ($this->filled('pricing_type') && ! $isSecondService && ! $isThirdService) {
                     $validator->errors()->add('pricing_type', 'Pricing type configuration is only allowed for the Hospitality and Babysitting services.');
                 }
-            }
+            },
         ];
     }
 

@@ -23,7 +23,7 @@ class WorkerResource extends JsonResource
             'id' => $service->id,
             'name_ar' => $service->name_ar,
             'name_en' => $service->name_en,
-        ] : 'Not Assigned';
+        ] : null;
 
         return [
             'id' => $this->id,

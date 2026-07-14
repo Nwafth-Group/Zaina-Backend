@@ -689,6 +689,7 @@ class BookingController extends Controller
     {
         $user = auth()->user();
         $reports = Report::query()->where('customer_id', $user->id)
+            ->with(['booking', 'service', 'worker', 'histories'])
             ->get();
 
         return $this->successResponse(ReportsResource::collection($reports), __('messages.my_reports_retrieved_successfully'));
@@ -703,6 +704,6 @@ class BookingController extends Controller
             ], 403);
         }
 
-        return $this->successResponse(new ReportsResource($report->load(['booking', 'service', 'worker'])), __('messages.report_details_retrieved_successfully'));
+        return $this->successResponse(new ReportsResource($report->load(['booking', 'service', 'worker', 'histories'])), __('messages.report_details_retrieved_successfully'));
     }
 }

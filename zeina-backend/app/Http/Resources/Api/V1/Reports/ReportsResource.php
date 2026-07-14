@@ -22,10 +22,18 @@ class ReportsResource extends JsonResource
             'reason' => $this->reason,
             'description' => $this->description,
             'status' => $this->status,
-            'admin_notes' => $this->admin_notes ? array_values(array_filter(array_map('trim', explode("\n", $this->admin_notes)))) : [],
             'service_name' => app()->getLocale() === 'ar'
                 ? ($this->service->name_ar ?? ($this->booking->service->name_ar ?? null))
                 : ($this->service->name_en ?? ($this->booking->service->name_en ?? null)),
+            'history' => $this->histories ? $this->histories->map(function ($history) {
+                return [
+                    'id' => $history->id,
+                    'old_status' => $history->old_status,
+                    'new_status' => $history->new_status,
+                    'note' => $history->note,
+                    'created_at' => $history->created_at->toDateTimeString(),
+                ];
+            }) : [],
             'created_at' => $this->created_at->toDateTimeString(),
             'updated_at' => $this->updated_at->toDateTimeString(),
         ];

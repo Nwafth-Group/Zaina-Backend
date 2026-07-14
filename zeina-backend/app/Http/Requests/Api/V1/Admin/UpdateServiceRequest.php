@@ -2,7 +2,12 @@
 
 namespace App\Http\Requests\Api\V1\Admin;
 
+use App\Models\Category;
+use App\Models\Service;
+use Carbon\Carbon;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateServiceRequest extends FormRequest
 {
@@ -17,7 +22,7 @@ class UpdateServiceRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -33,7 +38,7 @@ class UpdateServiceRequest extends FormRequest
                 'nullable',
                 'string',
                 'max:100',
-                \Illuminate\Validation\Rule::unique('services', 'service_code')->ignore($serviceId),
+                Rule::unique('services', 'service_code')->ignore($serviceId),
             ],
             'type' => 'sometimes|required|in:hourly,other',
             'worker_gender_options' => 'sometimes|required|array|min:1',
@@ -44,14 +49,14 @@ class UpdateServiceRequest extends FormRequest
                 'required',
                 'string',
                 'max:100',
-                \Illuminate\Validation\Rule::unique('services', 'name_ar')->where('category_id', $categoryId)->ignore($serviceId),
+                Rule::unique('services', 'name_ar')->where('category_id', $categoryId)->ignore($serviceId),
             ],
             'name_en' => [
                 'sometimes',
                 'required',
                 'string',
                 'max:100',
-                \Illuminate\Validation\Rule::unique('services', 'name_en')->where('category_id', $categoryId)->ignore($serviceId),
+                Rule::unique('services', 'name_en')->where('category_id', $categoryId)->ignore($serviceId),
             ],
             'description_ar' => 'sometimes|required|string|max:500',
             'description_en' => 'sometimes|required|string|max:500',
@@ -62,9 +67,9 @@ class UpdateServiceRequest extends FormRequest
             'workers' => 'sometimes|nullable|array',
             'workers.*' => [
                 'integer',
-                \Illuminate\Validation\Rule::exists('workers', 'id')->where('status', 'active'),
+                Rule::exists('workers', 'id')->where('status', 'active'),
             ],
-            
+
             // Available Visit Type & Pricing
             'available_visit_types' => 'sometimes|required|array|min:1',
             'available_visit_types.*.type' => 'required_with:available_visit_types|string|in:single_visit,3_days_per_week',
@@ -150,20 +155,20 @@ class UpdateServiceRequest extends FormRequest
             'rules.max_changes_per_booking' => 'nullable|integer|min:0',
             'rules.arrival_buffer_minutes' => 'nullable|integer|min:0',
             'rules.late_arrival_grace_minutes' => 'nullable|integer|min:0',
-            
+
             // Terms & Conditions
             'terms_ar' => 'sometimes|required|string|max:5000',
             'terms_en' => 'sometimes|required|string|max:5000',
             'acceptance_required' => 'sometimes|nullable|boolean',
         ];
 
-        $serviceCode = $this->input('service_code') ?? ($service ? (is_object($service) ? $service->service_code : \App\Models\Service::find($service)?->service_code) : null);
+        $serviceCode = $this->input('service_code') ?? ($service ? (is_object($service) ? $service->service_code : Service::find($service)?->service_code) : null);
 
         $isSecondOrThird = false;
         if ($serviceCode === 'HOSPITALITY_WORKER_HOURLY' || $serviceCode === 'BABYSITTER_HOURLY') {
             $isSecondOrThird = true;
         } elseif ($categoryId) {
-            $category = \App\Models\Category::find($categoryId);
+            $category = Category::find($categoryId);
             if ($category) {
                 $catEn = strtolower($category->name_en);
                 if (str_contains($catEn, 'hospitality') || str_contains($category->name_ar, 'ضيافة') ||
@@ -197,13 +202,13 @@ class UpdateServiceRequest extends FormRequest
 
                 if ($startTime && $endTime) {
                     foreach ($shifts as $index => $shift) {
-                        if (!empty($shift['start_time'])) {
+                        if (! empty($shift['start_time'])) {
                             try {
-                                $start = \Carbon\Carbon::parse($shift['start_time']);
-                                $end = !empty($shift['end_time']) 
-                                    ? \Carbon\Carbon::parse($shift['end_time']) 
+                                $start = Carbon::parse($shift['start_time']);
+                                $end = ! empty($shift['end_time'])
+                                    ? Carbon::parse($shift['end_time'])
                                     : $start->copy()->addHours($defaultDuration);
-                                    
+
                                 $startStr = $start->format('H:i');
                                 $endStr = $end->format('H:i');
 
@@ -233,7 +238,7 @@ class UpdateServiceRequest extends FormRequest
                 } elseif ($serviceCode === 'BABYSITTER_HOURLY') {
                     $isThirdService = true;
                 } elseif ($categoryId) {
-                    $category = \App\Models\Category::find($categoryId);
+                    $category = Category::find($categoryId);
                     if ($category) {
                         $catEn = strtolower($category->name_en);
                         if (str_contains($catEn, 'hospitality') || str_contains($category->name_ar, 'ضيافة')) {
@@ -289,7 +294,10 @@ class UpdateServiceRequest extends FormRequest
                         $validator->errors()->add('start_time', 'The allowed service start time must be between 8:00 AM and 8:00 PM.');
                     }
                     if ($endTime !== null && $endTime > '20:00') {
-                        $validator->errors()->add('end_time', 'The allowed service request end window must be between 8:00 AM and 8:00 PM.');
+                        $validator->errors()->add('end_time', 'The allowed service end time must be between 8:00 AM and 8:00 PM.');
+                    }
+                    if ($startTime !== null && $endTime !== null && $startTime >= $endTime) {
+                        $validator->errors()->add('start_time', 'Start time must be strictly before end time.');
                     }
 
                     if ($this->has('available_visit_types')) {
@@ -315,13 +323,13 @@ class UpdateServiceRequest extends FormRequest
 
                     if ($this->has('child_age_groups')) {
                         $ageGroups = $this->input('child_age_groups', []);
-                        $activeGroups = array_filter($ageGroups, fn($g) => ($g['status'] ?? '') === 'active');
+                        $activeGroups = array_filter($ageGroups, fn ($g) => ($g['status'] ?? '') === 'active');
 
                         if (empty($activeGroups)) {
                             $validator->errors()->add('child_age_groups', 'At least one active child age group must be configured before publishing.');
                         } else {
                             // Check for overlaps: sort active groups by age_from
-                            usort($activeGroups, fn($a, $b) => ($a['age_from'] ?? 0) <=> ($b['age_from'] ?? 0));
+                            usort($activeGroups, fn ($a, $b) => ($a['age_from'] ?? 0) <=> ($b['age_from'] ?? 0));
 
                             for ($i = 0; $i < count($activeGroups); $i++) {
                                 $current = $activeGroups[$i];
@@ -336,7 +344,7 @@ class UpdateServiceRequest extends FormRequest
                                 if ($i > 0) {
                                     $prev = $activeGroups[$i - 1];
                                     $prevTo = (int) ($prev['age_to'] ?? 0);
-                                    if ($from <= $prevTo) {
+                                    if ($from < $prevTo) {
                                         $validator->errors()->add('child_age_groups', 'Child age groups cannot overlap.');
                                     }
                                 }
@@ -345,10 +353,10 @@ class UpdateServiceRequest extends FormRequest
                     }
                 }
 
-                if ($this->filled('pricing_type') && !$isSecondService && !$isThirdService) {
+                if ($this->filled('pricing_type') && ! $isSecondService && ! $isThirdService) {
                     $validator->errors()->add('pricing_type', 'Pricing type configuration is only allowed for the Hospitality and Babysitting services.');
                 }
-            }
+            },
         ];
     }
 
