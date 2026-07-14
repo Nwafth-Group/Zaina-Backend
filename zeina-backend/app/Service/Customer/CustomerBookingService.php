@@ -67,7 +67,7 @@ class CustomerBookingService
         $times = $this->calculateBookingTimes($service, $dates[0], $startTime, $data['duration'] ?? null);
 
         // Check if customer already has an active booking at the same date and overlapping shift
-        if ($this->hasOverlappingCustomerBooking($user->id, $dates, $times['start_str'], $times['end_str'])) {
+        if ($this->hasOverlappingCustomerBooking($user->id, $dates, $times['start_str'], $times['end_str'], $service->id)) {
             throw ValidationException::withMessages([
                 'start_time' => __('validation.create_booking.customer_overlap'),
             ]);
@@ -159,7 +159,7 @@ class CustomerBookingService
         $times = $this->calculateBookingTimes($service, $dates[0], $startTime, $data['duration'] ?? null);
 
         // Check if customer already has an active booking at the same date and overlapping shift
-        if ($this->hasOverlappingCustomerBooking($user->id, $dates, $times['start_str'], $times['end_str'])) {
+        if ($this->hasOverlappingCustomerBooking($user->id, $dates, $times['start_str'], $times['end_str'], $service->id)) {
             throw ValidationException::withMessages([
                 'start_time' => __('validation.create_booking.customer_overlap'),
             ]);
@@ -647,9 +647,10 @@ class CustomerBookingService
     /**
      * Check if the customer already has an active booking at the same date and overlapping shift.
      */
-    private function hasOverlappingCustomerBooking(int $userId, array $dates, string $startStr, string $endStr): bool
+    private function hasOverlappingCustomerBooking(int $userId, array $dates, string $startStr, string $endStr, int $serviceId): bool
     {
         return Booking::where('customer_id', $userId)
+            ->where('service_id', $serviceId)
             ->whereIn('status', ['Upcoming', 'inService'])
             ->where(function ($q) use ($dates, $startStr, $endStr) {
                 // Check if any child booking visit overlaps

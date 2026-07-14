@@ -22,6 +22,7 @@ class ReportsResource extends JsonResource
             'reason' => $this->reason,
             'description' => $this->description,
             'status' => $this->status,
+            'admin_notes' => $this->admin_notes ? array_values(array_filter(array_map('trim', explode("\n", $this->admin_notes)))) : [],
             'service_name' => app()->getLocale() === 'ar'
                 ? ($this->service->name_ar ?? ($this->booking->service->name_ar ?? null))
                 : ($this->service->name_en ?? ($this->booking->service->name_en ?? null)),

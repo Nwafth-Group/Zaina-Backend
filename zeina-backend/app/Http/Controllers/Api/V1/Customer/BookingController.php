@@ -50,8 +50,8 @@ class BookingController extends Controller
             $query->where('status', $request->status);
         }
 
-        $bookings = $query->orderBy('booking_date', 'desc')
-            ->orderBy('start_time', 'desc')
+        $bookings = $query->orderBy('booking_date', 'asc')
+            ->orderBy('start_time', 'asc')
             ->paginate(10);
 
         return $this->successResponse(
@@ -227,6 +227,31 @@ class BookingController extends Controller
             }
 
             $dateStr = $date->toDateString();
+
+            // Check if the authenticated customer already has an active overlapping booking for the same service
+            $customerId = auth()->id();
+            if ($customerId) {
+                $hasCustomerOverlap = Booking::where('customer_id', $customerId)
+                    ->where('service_id', $service->id)
+                    ->whereIn('status', ['Upcoming', 'inService'])
+                    ->where(function ($q) use ($dateStr, $startStr, $endStr) {
+                        $q->whereHas('visits', function ($visitQ) use ($dateStr, $startStr, $endStr) {
+                            $visitQ->where('visit_date', $dateStr)
+                                ->where('start_time', '<', $endStr)
+                                ->where('end_time', '>', $startStr);
+                        })
+                            ->orWhere(function ($parentQ) use ($dateStr, $startStr, $endStr) {
+                                $parentQ->where('booking_date', $dateStr)
+                                    ->where('start_time', '<', $endStr)
+                                    ->where('end_time', '>', $startStr);
+                            });
+                    })
+                    ->exists();
+
+                if ($hasCustomerOverlap) {
+                    continue;
+                }
+            }
 
             $busyWorkerCount = BookingAssignment::whereIn('worker_id', $serviceWorkers)
                 ->where('status', 'active')

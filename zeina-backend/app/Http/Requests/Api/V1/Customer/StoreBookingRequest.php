@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Api\V1\Customer;
 
 use App\Models\Service;
+use App\Service\Customer\CustomerBookingService;
 use App\Traits\ParsesChildAgeGroups;
 use Carbon\Carbon;
 use Illuminate\Foundation\Http\FormRequest;
@@ -230,7 +231,12 @@ class StoreBookingRequest extends FormRequest
                     $workerIds = $this->input('worker_ids') ?? [];
                     $workersCount = count($workerIds);
                     if ($workersCount < $calculatedMinWorkers) {
-                        $validator->errors()->add('worker_ids', __('validation.create_booking.babysitters_count_min', ['min' => $calculatedMinWorkers]));
+                        $breakdown = app(CustomerBookingService::class)->getBabysitterBreakdown($service, $childAgeGroups);
+                        $msg = __('validation.create_booking.babysitters_count_min', ['min' => $calculatedMinWorkers]);
+                        if (! empty($breakdown)) {
+                            $msg .= ' ('.$breakdown.')';
+                        }
+                        $validator->errors()->add('worker_ids', $msg);
                     }
                     if ($workersCount > $maxWorkers) {
                         $validator->errors()->add('worker_ids', __('validation.create_booking.babysitters_count_max', ['max' => $maxWorkers]));
