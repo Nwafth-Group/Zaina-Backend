@@ -8,5 +8,5 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Schedule::command('bookings:send-reminders')->everyMinute()->withoutOverlapping();
-Schedule::command('bookings:auto-update-status')->hourly()->withoutOverlapping();
+Schedule::command('bookings:send-reminders')->everyThirtyMinutes()->withoutOverlapping();
+Schedule::command('bookings:auto-update-status')->everyMinute()->withoutOverlapping();

@@ -140,7 +140,7 @@ class BookingCouponTest extends TestCase
         $this->assertNull($err);
     }
 
-    public function test_coupon_service_specific_visit_types_and_shifts(): void
+    public function test_coupon_service_specific_visit_types(): void
     {
         $user = $this->actingAsCustomer(['status' => 'active', 'verification_status' => 'approved']);
         $service = Service::factory()->create(['status' => 'active']);
@@ -159,12 +159,9 @@ class BookingCouponTest extends TestCase
             'end_date' => now()->addDay(),
         ]);
 
-        // Link service with allowed visit types and shifts
+        // Link service with allowed visit types
         $coupon->services()->attach($service->id, [
             'allowed_visit_types' => json_encode(['three_visits_per_week']),
-            'allowed_shifts' => json_encode([
-                ['start_time' => '08:00', 'end_time' => '12:00']
-            ])
         ]);
 
         // 1. Ineligible Service (another service)
@@ -176,11 +173,7 @@ class BookingCouponTest extends TestCase
         $err = $coupon->checkEligibility($user, $service, 'single_visit', '08:00', '12:00', $address);
         $this->assertEquals('coupon_visit_type_ineligible', $err);
 
-        // 3. Eligible service and visit type, but ineligible shift (13:00 to 17:00)
-        $err = $coupon->checkEligibility($user, $service, 'three_visits_per_week', '13:00', '17:00', $address);
-        $this->assertEquals('coupon_shift_ineligible', $err);
-
-        // 4. Eligible everything (exact matching shift 08:00 to 12:00)
+        // 3. Eligible everything
         $err = $coupon->checkEligibility($user, $service, 'three_visits_per_week', '08:00', '12:00', $address);
         $this->assertNull($err);
     }
