@@ -37,6 +37,7 @@ class BabysitterBookingTest extends TestCase
             'service_code' => 'BABYSITTER_HOURLY',
             'pricing_type' => 'per_hour',
             'base_price' => 70.00,
+            'has_duration_range' => true,
             'min_duration' => 4,
             'max_duration' => 6,
             'min_workers' => 1,
@@ -198,7 +199,6 @@ class BabysitterBookingTest extends TestCase
             'number_of_children' => 3,
             'child_age_groups' => [$newbornGroup->id, $toddlerGroup->id, $toddlerGroup->id],
         ]);
-
         $response->assertStatus(200);
         $response->assertJsonPath('data.pricing.subtotal', 560);
         $response->assertJsonPath('data.pricing.total', 560);

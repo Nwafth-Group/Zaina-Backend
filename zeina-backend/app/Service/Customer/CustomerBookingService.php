@@ -131,6 +131,9 @@ class CustomerBookingService
         if ($service->service_code === 'BABYSITTER_HOURLY') {
             $calculatedMinWorkers = $this->calculateMinimumBabysitters($service, $data['child_age_groups'] ?? []);
             $maxWorkers = $service->max_workers ?? 5;
+            if ($calculatedMinWorkers === 1) {
+                $maxWorkers = 1;
+            }
             $workerIdsCount = count($data['worker_ids'] ?? []);
             if ($calculatedMinWorkers > $maxWorkers) {
                 throw new \Exception(__('validation.create_booking.babysitters_count_max', ['max' => $maxWorkers]), 422);

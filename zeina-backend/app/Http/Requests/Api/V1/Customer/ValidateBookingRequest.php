@@ -7,7 +7,6 @@ use App\Service\Customer\CustomerBookingService;
 use App\Traits\ParsesChildAgeGroups;
 use Carbon\Carbon;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Facades\Log;
 
 class ValidateBookingRequest extends FormRequest
 {
@@ -225,6 +224,9 @@ class ValidateBookingRequest extends FormRequest
                 }
 
                 $maxWorkers = $service->max_workers ?? 5;
+                if ($calculatedMinWorkers === 1) {
+                    $maxWorkers = 1;
+                }
                 if ($calculatedMinWorkers > $maxWorkers) {
                     $validator->errors()->add('child_age_groups', __('validation.create_booking.babysitters_count_max', ['max' => $maxWorkers]));
                 }
