@@ -5,6 +5,7 @@ namespace App\Http\Requests\Api\V1\Customer;
 use App\Models\Service;
 use App\Traits\ParsesChildAgeGroups;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Log;
 
 class GetAvailableDatesRequest extends FormRequest
 {
@@ -102,6 +103,13 @@ class GetAvailableDatesRequest extends FormRequest
                 }
 
                 $childAgeGroups = $this->input('child_age_groups') ?? [];
+                Log::info('--- GetAvailableDatesRequest DEBUG ---', [
+                    'raw_child_age_groups_input' => $this->input('child_age_groups'),
+                    'parsed_child_age_groups' => $childAgeGroups,
+                    'numberOfChildren_input' => $this->input('number_of_children'),
+                    'query_string' => request()->getQueryString(),
+                    'raw_content' => request()->getContent(),
+                ]);
                 if (! is_array($childAgeGroups)) {
                     $childAgeGroups = [];
                 }
