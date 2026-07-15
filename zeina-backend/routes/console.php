@@ -9,4 +9,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('bookings:send-reminders')->everyThirtyMinutes()->withoutOverlapping();
-Schedule::command('bookings:auto-update-status')->everyMinute()->withoutOverlapping();
+Schedule::command('bookings:auto-update-status')->everyThirtyMinutes()->withoutOverlapping();
