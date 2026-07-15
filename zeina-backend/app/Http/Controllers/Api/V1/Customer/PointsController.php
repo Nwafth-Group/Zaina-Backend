@@ -300,6 +300,8 @@ class PointsController extends Controller
 
         if ($request->filled('category')) {
             $query->where('rule_category', $request->category);
+        } else {
+            $query->where('rule_category', 'social_media');
         }
 
         $tasks = $query->get()->map(function ($task) use ($completedTaskIds) {
