@@ -58,7 +58,7 @@ class CouponController extends Controller
                 'name', 'code', 'type', 'value',
                 'usage_limit', 'user_usage_limit', 'start_date', 'end_date',
                 'is_for_all_users', 'is_for_all_services', 'is_for_all_cities',
-                'completed_bookings_count', 'allowed_visit_types', 'allowed_shifts', 'status',
+                'completed_bookings_count', 'allowed_visit_types', 'status',
             ]));
 
             // 2. Sync Users (Audience)
@@ -82,7 +82,6 @@ class CouponController extends Controller
                 foreach ($request->services as $svc) {
                     $syncData[$svc['id']] = [
                         'allowed_visit_types' => isset($svc['allowed_visit_types']) ? json_encode($svc['allowed_visit_types']) : null,
-                        'allowed_shifts' => isset($svc['allowed_shifts']) ? json_encode($svc['allowed_shifts']) : null,
                     ];
                 }
                 $coupon->services()->sync($syncData);
@@ -133,7 +132,7 @@ class CouponController extends Controller
                 'name', 'code', 'type', 'value',
                 'usage_limit', 'user_usage_limit', 'start_date', 'end_date',
                 'is_for_all_users', 'is_for_all_services', 'is_for_all_cities',
-                'completed_bookings_count', 'allowed_visit_types', 'allowed_shifts', 'status',
+                'completed_bookings_count', 'allowed_visit_types', 'status',
             ]));
 
             // 2. Sync Users (Audience)
@@ -164,7 +163,6 @@ class CouponController extends Controller
                 foreach ($request->services as $svc) {
                     $syncData[$svc['id']] = [
                         'allowed_visit_types' => isset($svc['allowed_visit_types']) ? json_encode($svc['allowed_visit_types']) : null,
-                        'allowed_shifts' => isset($svc['allowed_shifts']) ? json_encode($svc['allowed_shifts']) : null,
                     ];
                 }
                 $coupon->services()->sync($syncData);

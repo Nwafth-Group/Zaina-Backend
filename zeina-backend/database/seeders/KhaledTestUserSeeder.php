@@ -33,6 +33,7 @@ class KhaledTestUserSeeder extends Seeder
                 'type'                => 'customer',
                 'verification_status' => 'approved',
                 'status'              => 'active',
+                'wallet_balance'      => 3000
             ]
         );
 

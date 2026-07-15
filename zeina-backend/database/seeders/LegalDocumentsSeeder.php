@@ -48,7 +48,7 @@ class LegalDocumentsSeeder extends Seeder
                 'title_ar' => 'من نحن ومهمتنا',
                 'title_en' => 'About Us & Our Mission',
                 'content_ar' => 'تطبيق زينة يوفر خدمات منزلية متميزة تشمل خدمات العاملة المنزلية، الضيافة، ورعاية الأطفال بأعلى مستويات الجودة والاحترافية.',
-                'content_en' => 'Zaina application provides premium home services including domestic helper, hospitality, and babysitting services with the highest levels of quality and professionalism.',
+                'content_en' => 'Ziena application provides premium home services including domestic helper, hospitality, and babysitting services with the highest levels of quality and professionalism.',
                 'sort_order'=> 1
             ]
         ];

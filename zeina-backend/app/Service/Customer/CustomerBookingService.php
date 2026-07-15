@@ -6,6 +6,7 @@ use App\Models\Booking;
 use App\Models\BookingAssignment;
 use App\Models\BookingHistory;
 use App\Models\BookingVisit;
+use App\Models\CompanyInfo;
 use App\Models\Coupon;
 use App\Models\CustomerAddress;
 use App\Models\Service;
@@ -370,7 +371,7 @@ class CustomerBookingService
         return [$address, $service];
     }
 
-    private function calculateBookingTimes(Service $service, string $date, string $startTime, ?int $customDuration = null): array
+    public function calculateBookingTimes(Service $service, string $date, string $startTime, ?int $customDuration = null): array
     {
         $periodHours = $customDuration ?? ($service->duration->service_period_hours ?? 2);
         $durationMinutes = $periodHours * 60;
@@ -494,7 +495,7 @@ class CustomerBookingService
     /**
      * Calculate price calculations: subtotal, service discount, coupon discount, tax (VAT=0), and total.
      */
-    private function calculatePricing(Service $service, CustomerAddress $address, int $workersCount, int $visitsCount, string $visitType, ?string $couponCode = null, $user = null, $startTime = null, $endTime = null): array
+    public function calculatePricing(Service $service, CustomerAddress $address, int $workersCount, int $visitsCount, string $visitType, ?string $couponCode = null, $user = null, $startTime = null, $endTime = null): array
     {
         $pricePerPeriod = (float) ($service->base_price ?? 0);
         $isFirstService = ($service->service_code === 'DOMESTIC_HELPER_HOURLY');
@@ -554,9 +555,17 @@ class CustomerBookingService
             }
         }
 
-        $tax = 0;
+        $companyInfo = CompanyInfo::first();
+        $vatPercentage = $companyInfo ? (float) $companyInfo->vat_percentage : 0;
+
         $totalDiscount = $serviceDiscountAmount + $couponDiscountAmount;
-        $total = ($subtotal - $totalDiscount) + $tax;
+        $discountedAmount = $subtotal - $totalDiscount;
+        if ($discountedAmount < 0) {
+            $discountedAmount = 0;
+        }
+
+        $tax = $discountedAmount * ($vatPercentage / 100);
+        $total = $discountedAmount + $tax;
 
         return [
             'coupon' => $coupon,

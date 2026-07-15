@@ -35,7 +35,7 @@ class PointSystemSeeder extends Seeder
                 'action_type'    => 'url',
                 'action_text_ar' => 'تابعنا',
                 'action_text_en' => 'Follow',
-                'action_link'    => 'https://facebook.com/zainah.app', // 🌟 هذا الفريد للمهمة الأولى
+                'action_link'    => 'https://facebook.com/zeina.app', // 🌟 هذا الفريد للمهمة الأولى
                 'status'         => true,
             ],
             [
@@ -47,7 +47,7 @@ class PointSystemSeeder extends Seeder
                 'action_type'    => 'url',
                 'action_text_ar' => 'تابعنا',
                 'action_text_en' => 'Follow',
-                'action_link'    => 'https://instagram.com/zainah.app', // 🌟 هذا الفريد للمهمة الثانية
+                'action_link'    => 'https://instagram.com/zeina.app', // 🌟 هذا الفريد للمهمة الثانية
                 'status'         => true,
             ],
             [
@@ -59,7 +59,7 @@ class PointSystemSeeder extends Seeder
                 'action_type'    => 'url',
                 'action_text_ar' => 'شارك التطبيق',
                 'action_text_en' => 'Share App',
-                'action_link'    => 'https://zainah.com/share', // 🌟 هذا الفريد للمهمة الثالثة
+                'action_link'    => 'https://zeina.com/share', // 🌟 هذا الفريد للمهمة الثالثة
                 'status'         => true,
             ]
         ];

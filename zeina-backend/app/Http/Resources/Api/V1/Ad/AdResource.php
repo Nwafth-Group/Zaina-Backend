@@ -19,7 +19,7 @@ class AdResource extends JsonResource
 
         return [
             'id' => $this->id,
-            'link' => $this->link ?? null,
+            'link' => null,
             'image' => $image ? (new MediaResource($image))->getFileUrl() : null,
         ];
     }

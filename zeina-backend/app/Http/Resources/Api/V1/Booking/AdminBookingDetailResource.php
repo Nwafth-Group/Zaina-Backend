@@ -2,6 +2,11 @@
 
 namespace App\Http\Resources\Api\V1\Booking;
 
+use App\Models\CustomerAddress;
+use App\Models\Report;
+use App\Models\Review;
+use App\Models\Service;
+use App\Models\Worker;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -19,11 +24,11 @@ class AdminBookingDetailResource extends JsonResource
     public function toArray(Request $request): array
     {
         $lang = app()->getLocale();
-        $address = $this->whenLoaded('address') instanceof \App\Models\CustomerAddress ? $this->address : null;
+        $address = $this->whenLoaded('address') instanceof CustomerAddress ? $this->address : null;
 
         $childGroupsData = [];
         if ($this->child_age_groups && $this->service) {
-            if (!$this->service->relationLoaded('childAgeGroups')) {
+            if (! $this->service->relationLoaded('childAgeGroups')) {
                 $this->service->load('childAgeGroups');
             }
             $serviceGroups = $this->service->childAgeGroups;
@@ -56,7 +61,7 @@ class AdminBookingDetailResource extends JsonResource
             $visitTypeVal = $this->visit_type ?? 'single_visit';
             foreach ($availableTypes as $vt) {
                 $vtType = $vt['type'] ?? '';
-                if ($vtType === $visitTypeVal 
+                if ($vtType === $visitTypeVal
                     || ($visitTypeVal === 'three_visits_per_week' && ($vtType === '3_days_per_week' || $vtType === '3_visits_per_week'))
                     || ($visitTypeVal === '3_days_per_week' && ($vtType === 'three_visits_per_week' || $vtType === '3_visits_per_week'))
                 ) {
@@ -87,18 +92,20 @@ class AdminBookingDetailResource extends JsonResource
 
             'booking_date' => $this->booking_date ? Carbon::parse($this->booking_date)->format('d M, Y') : null,
             'raw_booking_date' => $this->booking_date ? Carbon::parse($this->booking_date)->toDateString() : null,
+            'raw_start_time' => $this->start_time,
+            'raw_end_time' => $this->end_time,
             'time_slot' => ($this->start_time && $this->end_time)
                 ? Carbon::parse($this->start_time)->format('h:i A').' - '.Carbon::parse($this->end_time)->format('h:i A')
                 : null,
             'duration_minutes' => $this->duration_minutes,
             'visit_type' => $this->visit_type ?? 'single_visit',
             'visit_number' => (int) ($this->visit_number ?? 1),
-            'visit_schedule' => $this->relationLoaded('visits') && $this->visits ? $this->visits->map(fn($v) => [
-                'visit_date'   => $v->visit_date,
-                'visit_day'    => Carbon::parse($v->visit_date)->format('l'),
-                'start_time'   => Carbon::parse($v->start_time)->format('H:i'),
-                'end_time'     => Carbon::parse($v->end_time)->format('H:i'),
-                'duration'     => (int) ceil($v->duration_minutes / 60),
+            'visit_schedule' => $this->relationLoaded('visits') && $this->visits ? $this->visits->map(fn ($v) => [
+                'visit_date' => $v->visit_date,
+                'visit_day' => Carbon::parse($v->visit_date)->format('l'),
+                'start_time' => Carbon::parse($v->start_time)->format('H:i'),
+                'end_time' => Carbon::parse($v->end_time)->format('H:i'),
+                'duration' => (int) ceil($v->duration_minutes / 60),
                 'visit_status' => $v->status,
             ])->values()->toArray() : [],
             'assigned_worker_ids' => $this->relationLoaded('workers') ? $this->workers->pluck('id')->toArray() : [],
@@ -120,18 +127,18 @@ class AdminBookingDetailResource extends JsonResource
             ] : null,
 
             'price_summary' => [
-                'subtotal'                => (float) $this->price_subtotal,
-                'tax'                     => (float) $this->tax_amount,
+                'subtotal' => (float) $this->price_subtotal,
+                'tax' => (float) $this->tax_amount,
                 'service_discount_amount' => (float) $serviceDiscountAmount,
-                'coupon_discount_amount'  => (float) $couponDiscountAmount,
-                'has_coupon'              => !is_null($this->coupon_id),
-                'coupon_id'               => $this->coupon_id,
-                'coupon_code'             => $this->relationLoaded('coupon') && $this->coupon ? $this->coupon->code : null,
-                'discount'                => (float) $this->discount_amount,
-                'total'                   => (float) $this->total_amount,
-                'currency'                => $this->currency_code ?? 'EGP',
-                'payment_transaction_id'  => $this->payment_transaction_id ?? '',
-                'payment_method'          => $this->payment_method,
+                'coupon_discount_amount' => (float) $couponDiscountAmount,
+                'has_coupon' => ! is_null($this->coupon_id),
+                'coupon_id' => $this->coupon_id,
+                'coupon_code' => $this->relationLoaded('coupon') && $this->coupon ? $this->coupon->code : null,
+                'discount' => (float) $this->discount_amount,
+                'total' => (float) $this->total_amount,
+                'currency' => $this->currency_code ?? 'EGP',
+                'payment_transaction_id' => $this->payment_transaction_id ?? '',
+                'payment_method' => $this->payment_method,
             ],
 
             'contract_id' => $this->contract_id ?? 1,
@@ -140,8 +147,8 @@ class AdminBookingDetailResource extends JsonResource
             'child_age_groups' => $childGroupsData,
             'number_of_workers' => (int) ($this->number_of_workers ?? 1),
             'worker_gender' => $this->worker_gender,
-            'is_reviewed' => \App\Models\Review::where('booking_id', $this->id)->exists(),
-            'is_reported' => \App\Models\Report::where('booking_id', $this->id)->exists(),
+            'is_reviewed' => Review::where('booking_id', $this->id)->exists(),
+            'is_reported' => Report::where('booking_id', $this->id)->exists(),
 
             'activity' => $this->relationLoaded('histories')
                 ? $this->histories->map(fn ($h) => [
@@ -156,30 +163,31 @@ class AdminBookingDetailResource extends JsonResource
                 ])->values()
                 : [],
 
-            'payment_method'         => $this->payment_method,
-            'paid_points'            => (int) $this->paid_points,
-            'refund_amount'          => (float) $this->refund_amount,
-            'refund_points'          => (int) $this->refund_points,
-            'refund_destination'     => $this->refund_destination,
-            'refund_status'          => $this->refund_status,
-            'cancelled_by'           => $this->cancelled_by,
-            'cancelled_at'           => $this->cancelled_at ? Carbon::parse($this->cancelled_at)->toIso8601String() : null,
-            'cancellation_reason'    => $this->cancellation_reason,
+            'payment_method' => $this->payment_method,
+            'paid_points' => (int) $this->paid_points,
+            'refund_amount' => (float) $this->refund_amount,
+            'refund_points' => (int) $this->refund_points,
+            'refund_destination' => $this->refund_destination,
+            'refund_status' => $this->refund_status,
+            'cancelled_by' => $this->cancelled_by,
+            'cancelled_at' => $this->cancelled_at ? Carbon::parse($this->cancelled_at)->toIso8601String() : null,
+            'cancellation_reason' => $this->cancellation_reason,
             'created_at' => $this->created_at?->toDateTimeString(),
 
             'reviews' => [
-                'service' => ($serviceReview = \App\Models\Review::where('booking_id', $this->id)
-                    ->where('reviewable_type', \App\Models\Service::class)
+                'service' => ($serviceReview = Review::where('booking_id', $this->id)
+                    ->where('reviewable_type', Service::class)
                     ->first()) ? [
                         'rating' => (int) $serviceReview->rating,
                         'comment' => $serviceReview->comment,
                         'percentage' => (float) $serviceReview->rating_percentage,
                     ] : null,
-                'workers' => \App\Models\Review::where('booking_id', $this->id)
-                    ->where('reviewable_type', \App\Models\Worker::class)
+                'workers' => Review::where('booking_id', $this->id)
+                    ->where('reviewable_type', Worker::class)
                     ->get()
                     ->map(function ($wReview) {
-                        $workerName = \App\Models\Worker::find($wReview->reviewable_id)?->name ?? 'Unknown Worker';
+                        $workerName = Worker::find($wReview->reviewable_id)?->name ?? 'Unknown Worker';
+
                         return [
                             'worker_id' => $wReview->reviewable_id,
                             'worker_name' => $workerName,

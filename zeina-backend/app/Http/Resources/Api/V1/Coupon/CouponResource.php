@@ -72,7 +72,6 @@ class CouponResource extends JsonResource
             // Services
             'is_for_all_services' => (bool) $this->is_for_all_services,
             'allowed_visit_types' => $this->allowed_visit_types,
-            'allowed_shifts' => $this->allowed_shifts,
 
             'services' => $this->when($this->relationLoaded('services'), function () {
                 return $this->services->map(function ($service) {
@@ -84,11 +83,6 @@ class CouponResource extends JsonResource
                                 ? (is_string($service->pivot->allowed_visit_types)
                                     ? json_decode($service->pivot->allowed_visit_types, true)
                                     : $service->pivot->allowed_visit_types)
-                                : null,
-                            'allowed_shifts' => isset($service->pivot->allowed_shifts)
-                                ? (is_string($service->pivot->allowed_shifts)
-                                    ? json_decode($service->pivot->allowed_shifts, true)
-                                    : $service->pivot->allowed_shifts)
                                 : null,
                         ],
                     ];

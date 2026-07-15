@@ -63,7 +63,7 @@ class RolesAndUsersSeeder extends Seeder
             ['phone_number' => '0599000001'],
             [
                 'first_name' => 'Admin',
-                'last_name' => 'ZainahApp',
+                'last_name' => 'Ziena System',
                 'email' => 'admin@example.com',
                 'password' => Hash::make('password'),
                 'verification_status' => 'approved',

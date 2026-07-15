@@ -24,6 +24,7 @@ class CompanyInfo extends Model
         'tiktok_link',
         'linkedin_link',
         'vat_percentage',
+        'tax_number',
     ];
 
     /**

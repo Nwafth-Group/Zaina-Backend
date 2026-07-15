@@ -15,11 +15,6 @@ return new class extends Migration
             $table->id();
             $table->string('title_en')->nullable();
             $table->string('title_ar')->nullable();
-            $table->enum('type', ['general', 'coupon'])->default('general');
-            $table->text('text_en')->nullable();
-            $table->text('text_ar')->nullable();
-            $table->enum('link_type', ['internal', 'external', 'none'])->default('none');
-            $table->string('link')->nullable();
             $table->enum('status', ['active', 'inactive'])->default('active');
             $table->softDeletes();
             $table->timestamps();

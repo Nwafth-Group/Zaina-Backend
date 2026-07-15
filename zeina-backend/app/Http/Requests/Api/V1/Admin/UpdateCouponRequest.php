@@ -70,17 +70,11 @@ class UpdateCouponRequest extends CustomFormRequest
 
             // Validation when all services are selected but restricted by visit type/shifts
             'allowed_visit_types' => ['nullable', 'array'],
-            'allowed_shifts' => ['nullable', 'array'],
-            'allowed_shifts.*.start_time' => ['required_with:allowed_shifts', 'date_format:H:i'],
-            'allowed_shifts.*.end_time' => ['required_with:allowed_shifts', 'date_format:H:i'],
 
             // Validation when specific services are selected
             'services' => ['required_if:is_for_all_services,false', 'array'],
             'services.*.id' => ['required_with:services', 'exists:services,id'],
             'services.*.allowed_visit_types' => ['nullable', 'array'],
-            'services.*.allowed_shifts' => ['nullable', 'array'],
-            'services.*.allowed_shifts.*.start_time' => ['required_with:services.*.allowed_shifts', 'date_format:H:i'],
-            'services.*.allowed_shifts.*.end_time' => ['required_with:services.*.allowed_shifts', 'date_format:H:i'],
 
             'status' => ['required', 'in:active,inactive'],
         ];

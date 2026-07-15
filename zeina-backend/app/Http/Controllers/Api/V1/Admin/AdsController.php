@@ -29,18 +29,12 @@ class AdsController extends Controller
             $search = $request->input('search');
             $query->where(function ($q) use ($search) {
                 $q->where('title_en', 'like', "%{$search}%")
-                  ->orWhere('title_ar', 'like', "%{$search}%")
-                  ->orWhere('text_en', 'like', "%{$search}%")
-                  ->orWhere('text_ar', 'like', "%{$search}%");
+                    ->orWhere('title_ar', 'like', "%{$search}%");
             });
         }
 
         if ($request->filled('status')) {
             $query->where('status', $request->input('status'));
-        }
-
-        if ($request->filled('type')) {
-            $query->where('type', $request->input('type'));
         }
 
         // Sorting

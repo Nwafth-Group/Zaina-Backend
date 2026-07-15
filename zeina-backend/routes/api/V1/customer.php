@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\Customer\AddressController;
 use App\Http\Controllers\Api\V1\Customer\AuthController;
+use App\Http\Controllers\Api\V1\Customer\BookingContractController;
 use App\Http\Controllers\Api\V1\Customer\BookingController;
 use App\Http\Controllers\Api\V1\Customer\CategoryController;
 use App\Http\Controllers\Api\V1\Customer\CompanyInfoController;
@@ -89,6 +90,8 @@ Route::prefix('customer')->group(function () {
         // Bookings
         Route::get('/bookings/available-dates', [BookingController::class, 'availableDates']);
         Route::post('/bookings/validate', [BookingController::class, 'validateBooking']);
+        Route::post('/bookings/contract-preview', [BookingContractController::class, 'previewContract']);
+        Route::get('/bookings/{booking}/contract', [BookingContractController::class, 'downloadContract']);
         Route::get('/reports', [BookingController::class, 'myReports']);
         Route::get('/reports/{report}', [BookingController::class, 'showReport']);
         Route::apiResource('bookings', BookingController::class);

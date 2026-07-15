@@ -74,7 +74,10 @@ class UserController extends Controller
                 if ($request->filled('area_id')) {
                     $aQuery->where('area_id', $request->input('area_id'));
                 } elseif ($request->filled('city_id')) {
-                    $aQuery->where('city_id', $request->input('city_id'));
+                    $cityIds = is_array($request->input('city_id'))
+                        ? $request->input('city_id')
+                        : explode(',', $request->input('city_id'));
+                    $aQuery->whereIn('city_id', array_filter($cityIds));
                 }
             });
         }

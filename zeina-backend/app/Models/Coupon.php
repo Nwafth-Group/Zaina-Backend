@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Carbon\Carbon;
 use Database\Factories\CouponFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -18,7 +17,7 @@ class Coupon extends Model implements Auditable
         'usage_limit', 'user_usage_limit', 'used_count',
         'start_date', 'end_date', 'is_for_all_users', 'is_for_all_services',
         'is_for_all_cities', 'completed_bookings_count', 'allowed_visit_types',
-        'allowed_shifts', 'status',
+        'status',
     ];
 
     protected $casts = [
@@ -28,13 +27,12 @@ class Coupon extends Model implements Auditable
         'is_for_all_services' => 'boolean',
         'is_for_all_cities' => 'boolean',
         'allowed_visit_types' => 'array',
-        'allowed_shifts' => 'array',
     ];
 
     public function services()
     {
         return $this->belongsToMany(Service::class, 'coupon_services')
-            ->withPivot('allowed_visit_types', 'allowed_shifts')
+            ->withPivot('allowed_visit_types')
             ->withTimestamps();
     }
 
@@ -159,30 +157,6 @@ class Coupon extends Model implements Auditable
                 }
             }
 
-            // Check Shift / Time Eligibility (Exact match per user feedback)
-            $allowedShifts = is_string($pivot->allowed_shifts)
-                ? json_decode($pivot->allowed_shifts, true)
-                : $pivot->allowed_shifts;
-
-            if (! empty($allowedShifts)) {
-                $matchesShift = false;
-                $bookingStart = Carbon::parse($startTime)->format('H:i');
-                $bookingEnd = Carbon::parse($endTime)->format('H:i');
-
-                foreach ($allowedShifts as $shift) {
-                    $shiftStart = Carbon::parse($shift['start_time'])->format('H:i');
-                    $shiftEnd = Carbon::parse($shift['end_time'])->format('H:i');
-
-                    if ($bookingStart === $shiftStart && $bookingEnd === $shiftEnd) {
-                        $matchesShift = true;
-                        break;
-                    }
-                }
-
-                if (! $matchesShift) {
-                    return 'coupon_shift_ineligible';
-                }
-            }
         } else {
             // General rules for Coupon (if valid for all services but has visit type/shift limitations)
             $allowedVisitTypes = $this->allowed_visit_types;
@@ -206,26 +180,6 @@ class Coupon extends Model implements Auditable
                 }
             }
 
-            $allowedShifts = $this->allowed_shifts;
-            if (! empty($allowedShifts)) {
-                $matchesShift = false;
-                $bookingStart = Carbon::parse($startTime)->format('H:i');
-                $bookingEnd = Carbon::parse($endTime)->format('H:i');
-
-                foreach ($allowedShifts as $shift) {
-                    $shiftStart = Carbon::parse($shift['start_time'])->format('H:i');
-                    $shiftEnd = Carbon::parse($shift['end_time'])->format('H:i');
-
-                    if ($bookingStart === $shiftStart && $bookingEnd === $shiftEnd) {
-                        $matchesShift = true;
-                        break;
-                    }
-                }
-
-                if (! $matchesShift) {
-                    return 'coupon_shift_ineligible';
-                }
-            }
         }
 
         return null;
