@@ -2,6 +2,8 @@
 
 namespace App\Traits;
 
+use App\Models\Service;
+
 trait ParsesChildAgeGroups
 {
     /**
@@ -44,46 +46,69 @@ trait ParsesChildAgeGroups
             }
         }
 
+        $result = [];
+
         if (! empty($rawChildAgeGroups)) {
-            return $rawChildAgeGroups;
-        }
-
-        // 2. Parse child_age_groups if passed as string representation of array (e.g. "[1,2]" or "1,2")
-        $childAgeGroups = $this->input('child_age_groups');
-        if (is_string($childAgeGroups)) {
-            $decoded = json_decode($childAgeGroups, true);
-            if (is_array($decoded)) {
-                return array_map('intval', $decoded);
-            }
-            $trimmed = trim($childAgeGroups, '[]');
-            if ($trimmed !== '') {
-                return array_map('intval', explode(',', $trimmed));
-            }
-
-            return [];
-        }
-
-        // 3. Fallback to normal input if already array, or empty
-        $childAgeGroups = $this->input('child_age_groups') ?? [];
-        if (is_array($childAgeGroups)) {
-            $flat = [];
-            foreach ($childAgeGroups as $item) {
-                if (is_array($item)) {
-                    $flat = array_merge($flat, array_map('intval', $item));
-                } elseif (is_string($item) && (str_contains($item, ',') || str_contains($item, '['))) {
-                    // Unpack bracket or comma-separated string, e.g. "1,2,3" or "[1,2,3]"
-                    $exploded = explode(',', trim($item, '[] '));
-                    foreach ($exploded as $exVal) {
-                        $flat[] = (int) trim($exVal);
-                    }
+            $result = $rawChildAgeGroups;
+        } else {
+            // 2. Parse child_age_groups if passed as string representation of array (e.g. "[1,2]" or "1,2")
+            $childAgeGroups = $this->input('child_age_groups');
+            if (is_string($childAgeGroups)) {
+                $decoded = json_decode($childAgeGroups, true);
+                if (is_array($decoded)) {
+                    $result = array_map('intval', $decoded);
                 } else {
-                    $flat[] = (int) $item;
+                    $trimmed = trim($childAgeGroups, '[]');
+                    if ($trimmed !== '') {
+                        $result = array_map('intval', explode(',', $trimmed));
+                    }
+                }
+            } else {
+                // 3. Fallback to normal input if already array, or empty
+                $childAgeGroups = $this->input('child_age_groups') ?? [];
+                if (is_array($childAgeGroups)) {
+                    $flat = [];
+                    foreach ($childAgeGroups as $item) {
+                        if (is_array($item)) {
+                            $flat = array_merge($flat, array_map('intval', $item));
+                        } elseif (is_string($item) && (str_contains($item, ',') || str_contains($item, '['))) {
+                            // Unpack bracket or comma-separated string, e.g. "1,2,3" or "[1,2,3]"
+                            $exploded = explode(',', trim($item, '[] '));
+                            foreach ($exploded as $exVal) {
+                                $flat[] = (int) trim($exVal);
+                            }
+                        } else {
+                            $flat[] = (int) $item;
+                        }
+                    }
+                    $result = $flat;
                 }
             }
-
-            return $flat;
         }
 
-        return [];
+        // Self-Healing / Auto-Padding fallback logic:
+        // If the mobile app sent fewer child age group items than number_of_children,
+        // pad the array to prevent validation errors and ensure proper pricing calculations.
+        $numberOfChildren = (int) $this->input('number_of_children', 0);
+        if (count($result) < $numberOfChildren) {
+            $fillValue = count($result) > 0 ? end($result) : null;
+            if ($fillValue === null) {
+                $serviceId = $this->input('service_id');
+                $service = $serviceId ? Service::find($serviceId) : null;
+                if ($service) {
+                    $firstGroup = $service->childAgeGroups()->where('status', 'active')->first();
+                    if ($firstGroup) {
+                        $fillValue = $firstGroup->id;
+                    }
+                }
+            }
+            if ($fillValue !== null) {
+                while (count($result) < $numberOfChildren) {
+                    $result[] = (int) $fillValue;
+                }
+            }
+        }
+
+        return $result;
     }
 }
