@@ -20,9 +20,18 @@ trait ParsesChildAgeGroups
                 if (count($subParts) === 2) {
                     $key = urldecode($subParts[0]);
                     $val = urldecode($subParts[1]);
-                    if ($key === 'child_age_groups' || $key === 'child_age_groups[]') {
+                    // Support array brackets with indices as well, e.g. child_age_groups[0]
+                    if ($key === 'child_age_groups' || $key === 'child_age_groups[]' || preg_match('/^child_age_groups\[\d+\]$/', $key)) {
                         if (is_numeric($val)) {
                             $rawChildAgeGroups[] = (int) $val;
+                        } elseif (is_string($val) && str_contains($val, ',')) {
+                            // Support comma-separated strings inside values, e.g. child_age_groups=1,2,3
+                            $exploded = explode(',', trim($val, '[] '));
+                            foreach ($exploded as $item) {
+                                if (is_numeric(trim($item))) {
+                                    $rawChildAgeGroups[] = (int) trim($item);
+                                }
+                            }
                         }
                     }
                 }
@@ -38,7 +47,7 @@ trait ParsesChildAgeGroups
         if (is_string($childAgeGroups)) {
             $decoded = json_decode($childAgeGroups, true);
             if (is_array($decoded)) {
-                return $decoded;
+                return array_map('intval', $decoded);
             }
             $trimmed = trim($childAgeGroups, '[]');
             if ($trimmed !== '') {
@@ -50,7 +59,25 @@ trait ParsesChildAgeGroups
 
         // 3. Fallback to normal input if already array, or empty
         $childAgeGroups = $this->input('child_age_groups') ?? [];
+        if (is_array($childAgeGroups)) {
+            $flat = [];
+            foreach ($childAgeGroups as $item) {
+                if (is_array($item)) {
+                    $flat = array_merge($flat, array_map('intval', $item));
+                } elseif (is_string($item) && (str_contains($item, ',') || str_contains($item, '['))) {
+                    // Unpack bracket or comma-separated string, e.g. "1,2,3" or "[1,2,3]"
+                    $exploded = explode(',', trim($item, '[] '));
+                    foreach ($exploded as $exVal) {
+                        $flat[] = (int) trim($exVal);
+                    }
+                } else {
+                    $flat[] = (int) $item;
+                }
+            }
 
-        return is_array($childAgeGroups) ? $childAgeGroups : [];
+            return $flat;
+        }
+
+        return [];
     }
 }

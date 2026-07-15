@@ -540,6 +540,8 @@ class CustomerBookingService
                 throw new \Exception(__('messages.coupon_not_found_or_expired'), 422);
             }
 
+            // dd($coupon, now());
+
             $errCode = $coupon->checkEligibility($user, $service, $visitType, $startTime ?? '00:00', $endTime ?? '00:00', $address);
             if ($errCode) {
                 throw new \Exception(__('messages.'.$errCode), 422);
