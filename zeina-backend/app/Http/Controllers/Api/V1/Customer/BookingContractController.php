@@ -268,12 +268,39 @@ class BookingContractController extends Controller
         // Resolve logo from CompanyInfo media collection
         $logoMedia = $company ? $company->media->where('collection', 'company_info/logo')->first() : null;
         $logoBase64 = null;
+        $logoMime = 'image/png';
         if ($logoMedia) {
             $disk = $logoMedia->disk ?? 'public';
             $path = $logoMedia->path;
             if (Storage::disk($disk)->exists($path)) {
                 $absPath = Storage::disk($disk)->path($path);
-                $logoBase64 = base64_encode(file_get_contents($absPath));
+                $mimeType = $logoMedia->mime_type ?? (function_exists('mime_content_type') ? mime_content_type($absPath) : 'image/webp');
+
+                if (str_contains($mimeType, 'webp')) {
+                    // Convert WebP to PNG for mPDF compatibility using GD extension
+                    if (function_exists('imagecreatefromwebp')) {
+                        try {
+                            $im = @imagecreatefromwebp($absPath);
+                            if ($im) {
+                                ob_start();
+                                imagepng($im);
+                                $pngData = ob_get_clean();
+                                $logoBase64 = base64_encode($pngData);
+                                $logoMime = 'image/png';
+                                imagedestroy($im);
+                            }
+                        } catch (\Throwable $e) {
+                            $logoBase64 = base64_encode(file_get_contents($absPath));
+                            $logoMime = $mimeType;
+                        }
+                    } else {
+                        $logoBase64 = base64_encode(file_get_contents($absPath));
+                        $logoMime = $mimeType;
+                    }
+                } else {
+                    $logoBase64 = base64_encode(file_get_contents($absPath));
+                    $logoMime = $mimeType;
+                }
             }
         }
 
@@ -304,6 +331,7 @@ class BookingContractController extends Controller
             'rules' => $rulesData,
             'terms' => $termsText,
             'logoBase64' => $logoBase64,
+            'logoMime' => $logoMime,
             'serviceDescription' => $lang === 'ar' ? ($service->description_ar ?? '') : ($service->description_en ?? ''),
             'workerGender' => $workerGenderFormatted,
         ];

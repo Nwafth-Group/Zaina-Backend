@@ -163,7 +163,7 @@
             <!-- Right Side (EN) / Left Side (AR) -->
             <td style="width: 40%; text-align: {{ $lang === 'ar' ? 'left' : 'right' }}; vertical-align: middle;">
                 @if(!empty($logoBase64))
-                    <img src="data:image/png;base64,{{ $logoBase64 }}" style="max-height: 120px;" />
+                    <img src="data:{{ $logoMime }};base64,{{ $logoBase64 }}" style="max-height: 120px;" />
                 @endif
             </td>
         </tr>
