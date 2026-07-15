@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\V1\Admin\ReportController;
 use App\Http\Controllers\Api\V1\Admin\ReviewController;
 use App\Http\Controllers\Api\V1\Admin\RoleController;
 use App\Http\Controllers\Api\V1\Admin\ServiceController;
+use App\Http\Controllers\Api\V1\Customer\BookingContractController;
 use App\Http\Controllers\Api\V1\Admin\ServicePriceController;
 use App\Http\Controllers\Api\V1\Admin\UserController;
 use App\Http\Controllers\Api\V1\Admin\WorkerController;
@@ -138,6 +139,7 @@ Route::prefix('admin')->group(function () {
         Route::get('bookings/{booking}/eligible-workers', [BookingController::class, 'eligibleWorkers']);
         Route::post('bookings/{booking}/assign-workers', [BookingController::class, 'assignWorkers']);
         Route::post('bookings/{booking}/reschedule', [BookingController::class, 'reschedule']);
+        Route::get('bookings/{booking}/contract', [BookingContractController::class, 'downloadContractForAdmin']);
 
         // Home banners (ads) shown in the customer app.
         Route::apiResource('ads', AdsController::class);

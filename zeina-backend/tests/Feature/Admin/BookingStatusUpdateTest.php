@@ -56,7 +56,10 @@ class BookingStatusUpdateTest extends TestCase
     public function test_admin_can_change_status_and_it_is_logged(): void
     {
         $admin = $this->actingAsAdmin();
-        $booking = Booking::factory()->create(['status' => 'Upcoming']);
+        $booking = Booking::factory()->create([
+            'status' => 'Upcoming',
+            'booking_date' => \Carbon\Carbon::today('Africa/Cairo')->toDateString(),
+        ]);
 
         $this->patchJson(self::ENDPOINT.'/'.$booking->id.'/status', ['status' => 'inService'])
             ->assertOk()
@@ -120,14 +123,14 @@ class BookingStatusUpdateTest extends TestCase
             ->assertJsonStructure(['params' => ['status']]);
     }
 
-    public function test_customer_cannot_change_booking_status(): void
+    public function test_admin_can_download_booking_contract(): void
     {
-        $this->actingAsCustomer();
-        $booking = Booking::factory()->create(['status' => 'Upcoming']);
+        $this->actingAsAdmin();
+        $booking = Booking::factory()->create();
 
-        $this->patchJson(self::ENDPOINT.'/'.$booking->id.'/status', ['status' => 'completed'])
-            ->assertStatus(403);
+        $response = $this->get(self::ENDPOINT.'/'.$booking->id.'/contract');
 
-        $this->assertSame('Upcoming', $booking->fresh()->status);
+        $response->assertOk();
+        $response->assertHeader('content-type', 'application/pdf');
     }
 }

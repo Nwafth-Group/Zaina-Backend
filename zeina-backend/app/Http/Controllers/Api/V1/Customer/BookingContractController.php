@@ -119,7 +119,57 @@ class BookingContractController extends Controller
             (float) $durationHours,
             $booking->workers,
             $pricing,
-            $booking->payment_method,
+            $booking->payment_method ?? 'wallet',
+            $booking->booking_ref,
+            $contractRef,
+            $booking->created_at->format('Y-m-d h:i A'),
+            $booking->worker_gender,
+            $booking->visit_type ?? 'single_visit',
+            (int) $booking->number_of_children,
+            $booking->child_age_groups ?? []
+        );
+    }
+
+    /**
+     * Download the service contract PDF for admin access (skips customer ownership constraint).
+     */
+    public function downloadContractForAdmin(Booking $booking)
+    {
+        $lang = request()->header('Accept-Language') === 'ar' || app()->getLocale() === 'ar' ? 'ar' : 'en';
+        $booking->load(['service.category', 'service.rules', 'address', 'customer', 'workers', 'visits']);
+
+        $service = $booking->service;
+        $address = $booking->address;
+        $company = CompanyInfo::first();
+
+        $dates = $booking->visits->pluck('visit_date')->toArray();
+        if (empty($dates)) {
+            $dates = [$booking->booking_date];
+        }
+
+        $durationHours = $booking->duration_minutes ? ($booking->duration_minutes / 60) : 4;
+
+        $pricing = [
+            'subtotal' => (float) $booking->price_subtotal,
+            'discount' => (float) $booking->discount_amount,
+            'tax' => (float) $booking->tax_amount,
+            'total' => (float) $booking->total_amount,
+        ];
+
+        $contractRef = 'CON-'.$booking->created_at->format('Y').'-'.str_pad($booking->id, 6, '0', STR_PAD_LEFT);
+
+        return $this->renderContractPdf(
+            $lang,
+            $booking->customer,
+            $service,
+            $address,
+            $company,
+            $dates,
+            $booking->start_time,
+            (float) $durationHours,
+            $booking->workers,
+            $pricing,
+            $booking->payment_method ?? 'wallet',
             $booking->booking_ref,
             $contractRef,
             $booking->created_at->format('Y-m-d h:i A'),
