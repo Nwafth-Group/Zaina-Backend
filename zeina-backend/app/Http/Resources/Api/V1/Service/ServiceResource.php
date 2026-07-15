@@ -2,9 +2,10 @@
 
 namespace App\Http\Resources\Api\V1\Service;
 
-use App\Http\Resources\Api\V1\Category\CategoryResourse;
 use App\Http\Resources\Api\V1\Media\MediaResource;
 use App\Http\Resources\Api\V1\Worker\WorkerResource;
+use App\Models\BookingAssignment;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -49,7 +50,7 @@ class ServiceResource extends JsonResource
             // New Configuration Parameters
             'available_visit_types' => collect($this->available_visit_types ?? [])->map(function ($item) {
                 return [
-                    'type'     => $item['type'] ?? '',
+                    'type' => $item['type'] ?? '',
                     'discount' => isset($item['discount']) ? (float) $item['discount'] : 0.0,
                 ];
             })->toArray(),
@@ -64,6 +65,8 @@ class ServiceResource extends JsonResource
             'min_children' => $this->min_children,
             'max_children' => $this->max_children,
             'base_price' => $this->base_price,
+            'terms_ar' => $this->terms_ar,
+            'terms_en' => $this->terms_en,
 
             'duration' => ServiceDurationResource::make($this->whenLoaded('duration')),
             'rules' => ServiceRuleResource::make($this->whenLoaded('rules')),
@@ -88,7 +91,7 @@ class ServiceResource extends JsonResource
                         'end_time' => substr($s->end_time, 0, 5),
                     ];
                 })->unique(function ($item) {
-                    return $item['start_time'] . '-' . $item['end_time'];
+                    return $item['start_time'].'-'.$item['end_time'];
                 })->values()->toArray()
                 : [],
         ];
@@ -101,17 +104,17 @@ class ServiceResource extends JsonResource
         $maxDays = ($rules && $rules->max_advance_booking_days > 0) ? (int) $rules->max_advance_booking_days : 30;
         $allowSameDay = $rules ? (bool) $rules->allow_same_day : false;
 
-        $startDate = $allowSameDay ? \Carbon\Carbon::today() : \Carbon\Carbon::tomorrow();
-        $endDate = \Carbon\Carbon::today()->addDays($maxDays);
+        $startDate = $allowSameDay ? Carbon::today() : Carbon::tomorrow();
+        $endDate = Carbon::today()->addDays($maxDays);
 
         $availableDays = $this->relationLoaded('schedules') && $this->schedules
-            ? $this->schedules->where('is_active', true)->pluck('day')->unique()->map(fn($day) => strtolower($day))->toArray()
+            ? $this->schedules->where('is_active', true)->pluck('day')->unique()->map(fn ($day) => strtolower($day))->toArray()
             : [];
 
         for ($date = $startDate->copy(); $date->lte($endDate); $date->addDay()) {
             $dayName = strtolower($date->format('l'));
             if (in_array($dayName, $availableDays)) {
-                $dates[] = $date->toDateString() . ' 00:00:00';
+                $dates[] = $date->toDateString().' 00:00:00';
             }
         }
 
@@ -121,11 +124,11 @@ class ServiceResource extends JsonResource
     private function getPreferredWorkers()
     {
         $userId = auth('sanctum')->id();
-        if (!$userId) {
+        if (! $userId) {
             return collect();
         }
 
-        $preferredIds = \App\Models\BookingAssignment::whereHas('booking', function ($q) use ($userId) {
+        $preferredIds = BookingAssignment::whereHas('booking', function ($q) use ($userId) {
             $q->where('customer_id', $userId)
                 ->where('service_id', $this->id)
                 ->where('status', 'completed');

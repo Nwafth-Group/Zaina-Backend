@@ -2,15 +2,15 @@
 
 namespace Tests\Feature\Customer;
 
-use App\Models\Category;
-use App\Models\Service;
-use App\Models\Worker;
-use App\Models\CustomerAddress;
 use App\Models\Booking;
 use App\Models\BookingAssignment;
+use App\Models\Category;
+use App\Models\CustomerAddress;
 use App\Models\Report;
 use App\Models\Review;
+use App\Models\Service;
 use App\Models\User;
+use App\Models\Worker;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\ActsAsAdmin;
@@ -18,13 +18,17 @@ use Tests\TestCase;
 
 class RatingsAndReportsTest extends TestCase
 {
-    use RefreshDatabase;
     use ActsAsAdmin;
+    use RefreshDatabase;
 
     protected $customer;
+
     protected $admin;
+
     protected $service;
+
     protected $worker;
+
     protected $booking;
 
     protected function setUp(): void
@@ -86,16 +90,17 @@ class RatingsAndReportsTest extends TestCase
             'workers_count' => 1,
             'status' => 'completed',
             'payment_status' => 'paid',
-            'subtotal' => 200,
-            'vat' => 0,
-            'grand_total' => 200,
+            'price_subtotal' => 200.00,
+            'tax_amount' => 0.00,
+            'discount_amount' => 0.00,
+            'total_amount' => 200.00,
         ]);
 
         // Assign worker to booking
         BookingAssignment::create([
             'booking_id' => $this->booking->id,
             'worker_id' => $this->worker->id,
-            'status' => 'assigned',
+            'status' => 'active',
         ]);
     }
 
@@ -110,8 +115,8 @@ class RatingsAndReportsTest extends TestCase
                     'worker_id' => $this->worker->id,
                     'rating' => 4,
                     'comment' => 'Very punctual worker.',
-                ]
-            ]
+                ],
+            ],
         ];
 
         $response = $this->actingAs($this->customer, 'sanctum')
@@ -165,7 +170,7 @@ class RatingsAndReportsTest extends TestCase
         $payload = [
             'service_rating' => 3,
             'service_comment' => 'Duplicate attempt',
-            'workers' => []
+            'workers' => [],
         ];
 
         $response = $this->actingAs($this->customer, 'sanctum')
@@ -194,14 +199,15 @@ class RatingsAndReportsTest extends TestCase
             'workers_count' => 1,
             'status' => 'Upcoming',
             'payment_status' => 'paid',
-            'subtotal' => 200,
-            'vat' => 0,
-            'grand_total' => 200,
+            'price_subtotal' => 200.00,
+            'tax_amount' => 0.00,
+            'discount_amount' => 0.00,
+            'total_amount' => 200.00,
         ]);
 
         $payload = [
             'service_rating' => 5,
-            'workers' => []
+            'workers' => [],
         ];
 
         $response = $this->actingAs($this->customer, 'sanctum')

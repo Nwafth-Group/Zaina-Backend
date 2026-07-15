@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use Database\Factories\ServiceFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use OwenIt\Auditing\Contracts\Auditable;
 
 class Service extends Model implements Auditable
 {
-    /** @use HasFactory<\Database\Factories\ServiceFactory> */
+    /** @use HasFactory<ServiceFactory> */
     use HasFactory, \OwenIt\Auditing\Auditable;
 
     protected $fillable = [
@@ -19,6 +20,7 @@ class Service extends Model implements Auditable
         'default_duration', 'duration_unit', 'has_duration_range',
         'min_duration', 'max_duration', 'min_workers', 'max_workers', 'base_price',
         'min_children', 'max_children',
+        'points_redemption_enabled', 'points_redemption_method', 'points_required_fixed', 'points_conversion_rate',
     ];
 
     protected $casts = [
@@ -31,6 +33,9 @@ class Service extends Model implements Auditable
         'base_price' => 'decimal:2',
         'min_children' => 'integer',
         'max_children' => 'integer',
+        'points_redemption_enabled' => 'boolean',
+        'points_required_fixed' => 'integer',
+        'points_conversion_rate' => 'integer',
     ];
 
     protected static function booted()
@@ -39,7 +44,7 @@ class Service extends Model implements Auditable
             if (empty($service->service_code)) {
                 $latest = static::orderBy('id', 'desc')->first();
                 $nextId = $latest ? $latest->id + 1 : 1;
-                $service->service_code = 'SVC-' . date('Y') . '-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
+                $service->service_code = 'SVC-'.date('Y').'-'.str_pad($nextId, 4, '0', STR_PAD_LEFT);
             }
         });
 

@@ -185,6 +185,10 @@ class CategoryAndServiceSeeder extends Seeder
                     'arrival_buffer_minutes' => 15,
                     'late_arrival_grace_minutes' => 15,
                 ],
+                'points_redemption_enabled' => true,
+                'points_redemption_method' => 'price_based',
+                'points_required_fixed' => 1000,
+                'points_conversion_rate' => 10,
             ];
 
             if ($isFirstService || $isThirdService) {

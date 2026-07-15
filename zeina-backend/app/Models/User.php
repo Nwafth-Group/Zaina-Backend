@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -12,7 +13,7 @@ use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable implements Auditable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
+    /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory , HasRoles , Notifiable;
 
     use \OwenIt\Auditing\Auditable;
@@ -132,10 +133,7 @@ class User extends Authenticatable implements Auditable
 
     public function getTotalPointsAttribute()
     {
-        $earned = $this->pointTransactions()->where('type', 'earn')->sum('amount');
-        $redeemed = $this->pointTransactions()->where('type', 'redeem')->sum('amount');
-
-        return $earned - $redeemed;
+        return PointTransaction::getUserPointsBalance($this->id);
     }
 
     public function coupons()

@@ -30,6 +30,7 @@ class ServiceWriter
         'default_duration', 'duration_unit', 'has_duration_range',
         'min_duration', 'max_duration', 'min_workers', 'max_workers', 'base_price',
         'min_children', 'max_children',
+        'points_redemption_enabled', 'points_redemption_method', 'points_required_fixed', 'points_conversion_rate',
     ];
 
     /**

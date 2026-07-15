@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\Admin\AdminPointsController;
 use App\Http\Controllers\Api\V1\Admin\AdsController;
 use App\Http\Controllers\Api\V1\Admin\AnnouncementController;
 use App\Http\Controllers\Api\V1\Admin\AreaController;
@@ -151,6 +152,21 @@ Route::prefix('admin')->group(function () {
 
         // Coupons management
         Route::apiResource('coupons', CouponController::class);
+
+        // Loyalty Points Management
+        Route::get('points/rules', [AdminPointsController::class, 'getRules']);
+        Route::post('points/rules', [AdminPointsController::class, 'storeRule']);
+        Route::put('points/rules/{id}', [AdminPointsController::class, 'updateRule']);
+        Route::delete('points/rules/{id}', [AdminPointsController::class, 'destroyRule']);
+
+        Route::get('points/settings', [AdminPointsController::class, 'getSettings']);
+        Route::post('points/settings', [AdminPointsController::class, 'storeSettings']);
+
+        Route::get('points/services', [AdminPointsController::class, 'getServices']);
+        Route::put('points/services/{id}', [AdminPointsController::class, 'updateServicePoints']);
+
+        Route::get('points/transactions', [AdminPointsController::class, 'getTransactions']);
+        Route::post('points/manual-adjustment', [AdminPointsController::class, 'manualAdjustment']);
 
         // Legal documents
         Route::apiResource('legal-documents', LegalDocumentController::class);

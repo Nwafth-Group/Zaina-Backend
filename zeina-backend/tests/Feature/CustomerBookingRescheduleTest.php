@@ -17,8 +17,8 @@ use Tests\TestCase;
 
 class CustomerBookingRescheduleTest extends TestCase
 {
-    use RefreshDatabase;
     use ActsAsAdmin;
+    use RefreshDatabase;
 
     protected function actingAsCustomer(array $overrides = []): User
     {
@@ -36,7 +36,7 @@ class CustomerBookingRescheduleTest extends TestCase
     {
         $user = $this->actingAsCustomer();
         $service = Service::factory()->create(['status' => 'active']);
-        
+
         $rules = ServiceRule::factory()->create([
             'service_id' => $service->id,
             'allow_reschedule' => true,
@@ -104,7 +104,7 @@ class CustomerBookingRescheduleTest extends TestCase
     {
         $user = $this->actingAsCustomer();
         $service = Service::factory()->create(['status' => 'active']);
-        
+
         $rules = ServiceRule::factory()->create([
             'service_id' => $service->id,
             'allow_reschedule' => true,
@@ -188,7 +188,7 @@ class CustomerBookingRescheduleTest extends TestCase
     {
         $user = $this->actingAsCustomer();
         $service = Service::factory()->create(['status' => 'active']);
-        
+
         $rules = ServiceRule::factory()->create([
             'service_id' => $service->id,
             'allow_reschedule' => true,
@@ -245,14 +245,14 @@ class CustomerBookingRescheduleTest extends TestCase
         ]);
 
         $response->assertStatus(422)
-            ->assertJsonPath('message', 'Cannot reschedule: not enough available workers during the selected times.');
+            ->assertJsonPath('message', __('messages.worker_not_available') ?? 'Cannot reschedule: the assigned workers are not available during the selected times.');
     }
 
     public function test_reschedule_3_visits_success_same_week(): void
     {
         $user = $this->actingAsCustomer();
         $service = Service::factory()->create(['status' => 'active']);
-        
+
         $rules = ServiceRule::factory()->create([
             'service_id' => $service->id,
             'allow_reschedule' => true,
@@ -357,7 +357,7 @@ class CustomerBookingRescheduleTest extends TestCase
     {
         $user = $this->actingAsCustomer();
         $service = Service::factory()->create(['status' => 'active']);
-        
+
         $rules = ServiceRule::factory()->create([
             'service_id' => $service->id,
             'allow_reschedule' => true,
@@ -392,7 +392,7 @@ class CustomerBookingRescheduleTest extends TestCase
     {
         $user = $this->actingAsCustomer();
         $service = Service::factory()->create(['status' => 'active']);
-        
+
         $rules = ServiceRule::factory()->create([
             'service_id' => $service->id,
             'allow_reschedule' => true,
@@ -435,7 +435,7 @@ class CustomerBookingRescheduleTest extends TestCase
     {
         $user = $this->actingAsCustomer();
         $service = Service::factory()->create(['status' => 'active']);
-        
+
         $rules = ServiceRule::factory()->create([
             'service_id' => $service->id,
             'allow_reschedule' => true,
@@ -467,7 +467,7 @@ class CustomerBookingRescheduleTest extends TestCase
     {
         $user = $this->actingAsCustomer();
         $service = Service::factory()->create(['status' => 'active']);
-        
+
         $rules = ServiceRule::factory()->create([
             'service_id' => $service->id,
             'allow_reschedule' => false,

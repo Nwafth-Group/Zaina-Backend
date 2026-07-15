@@ -412,23 +412,58 @@ class BookingService
             }
         }
 
-        // Worker Availability Check & Allocation
-        $finalWorkers = [];
+        // Worker Availability Check & Allocation (Auto-reallocate random workers if assigned are unavailable)
+        $targetCount = max($booking->workers_count, $booking->workers->count(), 1);
+        $availableAssigned = collect();
 
         foreach ($booking->workers as $worker) {
-            if ($worker->status !== 'active') {
-                throw new \Exception(__('messages.worker_inactive'), 422);
-            }
-            foreach ($dates as $date) {
-                if ($this->isWorkerBusyOnDateSlot($worker->id, $date, $newStartStr, $newEndStr, $booking->id)) {
-                    throw new \Exception(__('messages.worker_not_available'), 422);
+            if ($worker->status === 'active') {
+                $isBusy = false;
+                foreach ($dates as $date) {
+                    if ($this->isWorkerBusyOnDateSlot($worker->id, $date, $newStartStr, $newEndStr, $booking->id)) {
+                        $isBusy = true;
+                        break;
+                    }
+                }
+                if (! $isBusy) {
+                    $availableAssigned->push($worker);
                 }
             }
-            $finalWorkers[] = $worker;
+        }
+
+        $finalWorkers = $availableAssigned;
+        $needed = $targetCount - $finalWorkers->count();
+
+        if ($needed > 0) {
+            $serviceWorkers = $booking->service->workers()->where('status', 'active')->get();
+            $otherAvailableWorkers = collect();
+
+            foreach ($serviceWorkers as $worker) {
+                if ($finalWorkers->contains('id', $worker->id)) {
+                    continue;
+                }
+                $isBusy = false;
+                foreach ($dates as $date) {
+                    if ($this->isWorkerBusyOnDateSlot($worker->id, $date, $newStartStr, $newEndStr, $booking->id)) {
+                        $isBusy = true;
+                        break;
+                    }
+                }
+                if (! $isBusy) {
+                    $otherAvailableWorkers->push($worker);
+                }
+            }
+
+            if ($otherAvailableWorkers->count() < $needed) {
+                throw new \Exception(__('messages.worker_not_available') ?? 'No available worker was found for the selected reschedule date and time.', 422);
+            }
+
+            $chosenRandom = $otherAvailableWorkers->random($needed);
+            $finalWorkers = $finalWorkers->merge($chosenRandom);
         }
 
         return [
-            'final_workers' => $finalWorkers,
+            'final_workers' => $finalWorkers->all(),
             'new_start_str' => $newStartStr,
             'new_end_str' => $newEndStr,
         ];

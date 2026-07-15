@@ -2,33 +2,45 @@
 
 namespace Tests\Feature;
 
-use App\Models\Coupon;
-use App\Models\User;
-use App\Models\City;
 use App\Models\Area;
-use App\Models\Service;
-use App\Models\CustomerAddress;
 use App\Models\Booking;
+use App\Models\City;
+use App\Models\Coupon;
+use App\Models\CustomerAddress;
+use App\Models\Service;
+use App\Models\ServiceCoverage;
+use App\Models\ServiceDuration;
+use App\Models\ServiceRule;
+use App\Models\ServiceSchedule;
+use App\Models\User;
+use App\Models\Worker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Tests\Concerns\ActsAsAdmin;
 use Tests\TestCase;
 
 class BookingCouponTest extends TestCase
 {
-    use RefreshDatabase;
     use ActsAsAdmin;
+    use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Cache::flush();
+    }
 
     public function test_active_coupon_is_accepted_for_valid_conditions(): void
     {
         $user = $this->actingAsCustomer(['status' => 'active', 'verification_status' => 'approved']);
         $city = City::factory()->create(['status' => 'active']);
         $area = Area::factory()->create(['city_id' => $city->id, 'status' => 'active']);
-        
+
         $address = CustomerAddress::factory()->create([
             'user_id' => $user->id,
             'area_id' => $area->id,
             'is_default' => true,
-            'is_active' => true
+            'is_active' => true,
         ]);
 
         $service = Service::factory()->create([
@@ -60,14 +72,14 @@ class BookingCouponTest extends TestCase
     public function test_coupon_location_eligibility_city_and_area(): void
     {
         $user = $this->actingAsCustomer(['status' => 'active', 'verification_status' => 'approved']);
-        
+
         $city1 = City::factory()->create(['status' => 'active']);
         $area1 = Area::factory()->create(['city_id' => $city1->id, 'status' => 'active']);
         $address1 = CustomerAddress::factory()->create([
             'user_id' => $user->id,
             'area_id' => $area1->id,
             'is_default' => true,
-            'is_active' => true
+            'is_active' => true,
         ]);
 
         $city2 = City::factory()->create(['status' => 'active']);
@@ -76,7 +88,7 @@ class BookingCouponTest extends TestCase
             'user_id' => $user->id,
             'area_id' => $area2->id,
             'is_default' => false,
-            'is_active' => true
+            'is_active' => true,
         ]);
 
         $service = Service::factory()->create(['status' => 'active']);
@@ -132,7 +144,7 @@ class BookingCouponTest extends TestCase
         // Create 3 completed bookings for the user
         Booking::factory()->count(3)->create([
             'customer_id' => $user->id,
-            'status' => 'completed'
+            'status' => 'completed',
         ]);
 
         // User now has 3 completed bookings -> should pass
@@ -220,16 +232,16 @@ class BookingCouponTest extends TestCase
         // Scenario 2: Create completed bookings, but customer address is in different city -> excluded from V1
         Booking::factory()->count(2)->create([
             'customer_id' => $user->id,
-            'status' => 'completed'
+            'status' => 'completed',
         ]);
-        
+
         $anotherCity = City::factory()->create(['status' => 'active']);
         $anotherArea = Area::factory()->create(['city_id' => $anotherCity->id, 'status' => 'active']);
         CustomerAddress::factory()->create([
             'user_id' => $user->id,
             'area_id' => $anotherArea->id,
             'is_default' => true,
-            'is_active' => true
+            'is_active' => true,
         ]);
 
         $response = $this->getJson('/api/v1/customer/coupons');
@@ -242,7 +254,7 @@ class BookingCouponTest extends TestCase
             'user_id' => $user->id,
             'area_id' => $area->id,
             'is_default' => true,
-            'is_active' => true
+            'is_active' => true,
         ]);
 
         $response = $this->getJson('/api/v1/customer/coupons');
@@ -255,43 +267,43 @@ class BookingCouponTest extends TestCase
         $user = $this->actingAsCustomer(['status' => 'active', 'verification_status' => 'approved']);
         $city = City::factory()->create(['status' => 'active']);
         $area = Area::factory()->create(['city_id' => $city->id, 'status' => 'active']);
-        
-        $address = \App\Models\CustomerAddress::factory()->create([
+
+        $address = CustomerAddress::factory()->create([
             'user_id' => $user->id,
             'area_id' => $area->id,
             'is_default' => true,
-            'is_active' => true
+            'is_active' => true,
         ]);
 
-        $service = \App\Models\Service::factory()->create([
+        $service = Service::factory()->create([
             'status' => 'active',
             'base_price' => 200.00,
             'min_workers' => 1,
-            'max_workers' => 3
+            'max_workers' => 3,
         ]);
 
-        \App\Models\ServiceDuration::factory()->create([
+        ServiceDuration::factory()->create([
             'service_id' => $service->id,
-            'service_period_hours' => 2
+            'service_period_hours' => 2,
         ]);
 
         $dayName = strtolower(now()->addDay()->format('l'));
-        \App\Models\ServiceSchedule::factory()->create([
+        ServiceSchedule::factory()->create([
             'service_id' => $service->id,
             'day' => $dayName,
             'start_time' => '08:00:00',
             'end_time' => '16:00:00',
-            'is_active' => true
+            'is_active' => true,
         ]);
 
-        \App\Models\ServiceCoverage::factory()->create([
+        ServiceCoverage::factory()->create([
             'service_id' => $service->id,
             'city_id' => $city->id,
             'area_id' => $area->id,
-            'status' => 'active'
+            'status' => 'active',
         ]);
 
-        $worker = \App\Models\Worker::factory()->create(['status' => 'active']);
+        $worker = Worker::factory()->create(['status' => 'active']);
         $service->workers()->attach($worker->id);
 
         $coupon = Coupon::factory()->create([
@@ -303,7 +315,7 @@ class BookingCouponTest extends TestCase
             'status' => 'active',
             'is_for_all_users' => true,
             'is_for_all_cities' => true,
-            'is_for_all_services' => true
+            'is_for_all_services' => true,
         ]);
 
         // Validate booking details with coupon code
@@ -313,7 +325,7 @@ class BookingCouponTest extends TestCase
             'dates' => [now()->addDay()->toDateString()],
             'start_time' => '10:00',
             'workers_count' => 1,
-            'coupon_code' => 'COUPON50'
+            'coupon_code' => 'COUPON50',
         ];
 
         $response = $this->postJson('/api/v1/customer/bookings/validate', $payload);
@@ -327,9 +339,9 @@ class BookingCouponTest extends TestCase
                     'tax',
                     'discount',
                     'coupon_discount_amount',
-                    'total'
-                ]
-            ]
+                    'total',
+                ],
+            ],
         ]);
 
         $this->assertEquals(200.00, $response->json('data.pricing.subtotal'));
@@ -346,18 +358,18 @@ class BookingCouponTest extends TestCase
             'user_id' => $user->id,
             'area_id' => $area->id,
             'is_default' => true,
-            'is_active' => true
+            'is_active' => true,
         ]);
 
         $service = Service::factory()->create([
             'status' => 'active',
-            'base_price' => 120.00
+            'base_price' => 120.00,
         ]);
 
-        \App\Models\ServiceRule::factory()->create([
+        ServiceRule::factory()->create([
             'service_id' => $service->id,
             'arrival_buffer_minutes' => 15,
-            'late_arrival_grace_minutes' => 30
+            'late_arrival_grace_minutes' => 30,
         ]);
 
         $booking = Booking::create([
@@ -385,10 +397,10 @@ class BookingCouponTest extends TestCase
                         'booking_id',
                         'expected_arrival_time',
                         'first_schedule_date',
-                        'first_schedule_date_formatted'
-                    ]
-                ]
-            ]
+                        'first_schedule_date_formatted',
+                    ],
+                ],
+            ],
         ]);
 
         // 14:00 - 15 mins buffer = 13:45 (1:45 PM); 14:00 + 30 mins grace = 14:30 (2:30 PM)

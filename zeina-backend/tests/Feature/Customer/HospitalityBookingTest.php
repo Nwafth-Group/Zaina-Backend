@@ -179,6 +179,9 @@ class HospitalityBookingTest extends TestCase
             'worker_gender' => 'Female',
         ]);
 
+        if ($response->status() !== 200) {
+            dump($response->json());
+        }
         $response->assertStatus(200);
         // Price should be: Hourly Price (100) * Duration (4) * Workers Count (2) = 800
         $response->assertJsonPath('data.pricing.subtotal', 800);
