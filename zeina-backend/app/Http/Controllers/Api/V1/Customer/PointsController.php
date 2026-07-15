@@ -17,6 +17,11 @@ class PointsController extends Controller
     {
         $user = auth()->user();
 
+        if (empty($user->referral_code)) {
+            $user->referral_code = \App\Models\User::generateUniqueReferralCode();
+            $user->saveQuietly();
+        }
+
         // 1. حساب إجمالي النقاط الحالي للعميل
         $totalPoints = \App\Models\PointTransaction::getUserPointsBalance($user->id);
 

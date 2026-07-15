@@ -179,6 +179,13 @@ class User extends Authenticatable implements Auditable
                 $user->referral_code = self::generateUniqueReferralCode();
             }
         });
+
+        static::retrieved(function ($user) {
+            if ($user->type === 'customer' && empty($user->referral_code)) {
+                $user->referral_code = self::generateUniqueReferralCode();
+                $user->saveQuietly();
+            }
+        });
     }
 
     public function referredBy()
