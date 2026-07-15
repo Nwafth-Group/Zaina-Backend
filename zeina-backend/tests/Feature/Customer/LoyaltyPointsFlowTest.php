@@ -44,6 +44,35 @@ class LoyaltyPointsFlowTest extends TestCase
     {
         $user = $this->actingAsCustomer();
 
+        // Seed active rules
+        RewardTasks::create([
+            'title_ar' => 'دعوة صديق',
+            'title_en' => 'Invite Friend',
+            'points' => 150,
+            'action_type' => 'invite_friend',
+            'action_text_ar' => 'دعوة',
+            'action_text_en' => 'Invite',
+            'status' => true,
+            'rule_category' => 'referral',
+            'trigger_event' => 'referred_register',
+            'frequency_type' => 'repeatable',
+            'calculation_method' => 'fixed',
+        ]);
+
+        RewardTasks::create([
+            'title_ar' => 'إتمام حجز',
+            'title_en' => 'Complete Booking',
+            'points' => 20,
+            'action_type' => 'rate_service',
+            'action_text_ar' => 'حجز',
+            'action_text_en' => 'Book',
+            'status' => true,
+            'rule_category' => 'booking',
+            'trigger_event' => 'booking_completed',
+            'frequency_type' => 'repeatable',
+            'calculation_method' => 'fixed',
+        ]);
+
         // Credit some points
         $user->pointTransactions()->create([
             'type' => 'earn',
@@ -57,9 +86,10 @@ class LoyaltyPointsFlowTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('data.total_points', 150)
             ->assertJsonPath('data.referral_code', $user->referral_code)
-            ->assertJsonPath('data.progress_card.referral.referral_code', $user->referral_code)
-            ->assertJsonPath('data.progress_card.booking.current_step', 0)
-            ->assertJsonPath('data.progress_card.booking_count.current_step', 0);
+            ->assertJsonCount(3, 'data.progress_card')
+            ->assertJsonPath('data.progress_card.0.action_type', 'invite_friend')
+            ->assertJsonPath('data.progress_card.1.action_type', 'complete_booking')
+            ->assertJsonPath('data.progress_card.2.action_type', 'complete_bookings');
     }
 
     public function test_customer_earn_points_category_filtering(): void

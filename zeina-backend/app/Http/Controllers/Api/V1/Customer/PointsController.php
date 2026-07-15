@@ -28,6 +28,8 @@ class PointsController extends Controller
         // Completed bookings count
         $completedCount = $user->bookings()->where('status', 'completed')->count();
 
+        $progressCards = [];
+
         // 🌟 A. Referral Card
         $referralCount = \App\Models\User::where('referred_by_id', $user->id)->count();
         $successfulReferralCount = \App\Models\User::where('referred_by_id', $user->id)
@@ -38,73 +40,103 @@ class PointsController extends Controller
             ->where('reason', 'friend_first_booking')
             ->sum('amount');
 
-        $referralCard = [
-            'title' => app()->getLocale() == 'ar' ? 'دعوة الأصدقاء' : 'Invite Friends',
-            'referral_code' => $user->referral_code,
-            'referral_count' => $referralCount,
-            'successful_referral_count' => $successfulReferralCount,
-            'points_earned_total' => $referralPoints,
-            'reward_points' => $referralRule->points ?? 50,
-            'is_completed' => false, // referral is repeatable
-        ];
-
-        // 🌟 B. Booking Card
-        $bookingPoints = $bookingRule->points ?? 50;
-        $bookingFrequency = $bookingRule->frequency_type ?? 'repeatable';
-        $bookingCurrent = 0;
-        $bookingCompleted = false;
-
-        if ($bookingFrequency === 'one_time') {
-            if ($completedCount >= 1) {
-                $bookingCurrent = 1;
-                $bookingCompleted = true;
-            }
+        if ($referralRule) {
+            $progressCards[] = [
+                'title' => app()->getLocale() == 'ar' ? ($referralRule->title_ar ?? 'دعوة الأصدقاء') : ($referralRule->title_en ?? 'Invite Friends'),
+                'current_step' => $successfulReferralCount,
+                'target_step' => $successfulReferralCount + 1,
+                'steps_remaining' => 1,
+                'is_completed' => false,
+                'reward_points' => (int) $referralRule->points,
+                'action_type' => 'invite_friend',
+                'footer_text' => app()->getLocale() == 'ar'
+                    ? "ادع صديقاً واحصل على {$referralRule->points} نقطة"
+                    : "Invite a friend and get {$referralRule->points} points",
+            ];
         }
 
-        $bookingCard = [
-            'title' => app()->getLocale() == 'ar' ? 'إتمام خدمة' : 'Complete Booking',
-            'current_step' => $bookingCurrent,
-            'target_step' => 1,
-            'steps_remaining' => $bookingCompleted ? 0 : 1,
-            'is_completed' => $bookingCompleted,
-            'reward_points' => $bookingPoints,
-        ];
+        // 🌟 B. Booking Card
+        if ($bookingRule) {
+            $bookingPoints = $bookingRule->points ?? 50;
+            $bookingFrequency = $bookingRule->frequency_type ?? 'repeatable';
+            $bookingCurrent = 0;
+            $bookingCompleted = false;
+
+            if ($bookingFrequency === 'one_time') {
+                if ($completedCount >= 1) {
+                    $bookingCurrent = 1;
+                    $bookingCompleted = true;
+                }
+            } else {
+                $bookingCurrent = 0;
+            }
+
+            $progressCards[] = [
+                'title' => app()->getLocale() == 'ar' ? ($bookingRule->title_ar ?? 'إتمام خدمة') : ($bookingRule->title_en ?? 'Complete Booking'),
+                'current_step' => $bookingCurrent,
+                'target_step' => 1,
+                'steps_remaining' => $bookingCompleted ? 0 : 1,
+                'is_completed' => $bookingCompleted,
+                'reward_points' => (int) $bookingPoints,
+                'action_type' => 'complete_booking',
+                'footer_text' => app()->getLocale() == 'ar'
+                    ? "اكسب {$bookingPoints} نقطة عند إتمام الحجز"
+                    : "Earn {$bookingPoints} points upon booking completion",
+            ];
+        }
 
         // 🌟 C. Booking Count Card
+        $bookingCountEnabled = false;
         $targetServices = 3;
         $bookingCountPoints = 100;
         $bookingCountFrequency = 'repeatable';
 
         if ($bookingCountRule) {
+            $bookingCountEnabled = true;
             $targetServices = (int) ($bookingCountRule->required_booking_count ?? 3);
             $bookingCountPoints = (int) ($bookingCountRule->points ?? 100);
             $bookingCountFrequency = $bookingCountRule->frequency_type ?? 'repeatable';
         } else {
             $pointSetting = DB::table('point_settings')->where('key', 'service_cycle_rules')->first();
             if ($pointSetting && !empty($pointSetting->value)) {
-                $targetServices = (int) ($pointSetting->target_steps ?? 3);
-                $bookingCountPoints = (int) ($pointSetting->reward_points ?? 100);
+                $decodedSetting = json_decode($pointSetting->value, true);
+                if (isset($decodedSetting['enabled']) && $decodedSetting['enabled']) {
+                    $bookingCountEnabled = true;
+                    $targetServices = (int) ($pointSetting->target_steps ?? 3);
+                    $bookingCountPoints = (int) ($pointSetting->reward_points ?? 100);
+                }
             }
         }
 
-        $cycleCurrent = 0;
-        $cycleCompleted = false;
+        if ($bookingCountEnabled) {
+            $cycleCurrent = 0;
+            $cycleCompleted = false;
 
-        if ($bookingCountFrequency === 'one_time') {
-            $cycleCurrent = min($completedCount, $targetServices);
-            $cycleCompleted = ($cycleCurrent >= $targetServices);
-        } else {
-            $cycleCurrent = $completedCount % $targetServices;
+            if ($bookingCountFrequency === 'one_time') {
+                $cycleCurrent = min($completedCount, $targetServices);
+                $cycleCompleted = ($cycleCurrent >= $targetServices);
+            } else {
+                $cycleCurrent = $completedCount % $targetServices;
+            }
+
+            $remaining = max($targetServices - $cycleCurrent, 0);
+            $footerText = app()->getLocale() == 'ar'
+                ? ($remaining > 0 ? "تبقى {$remaining} خطوات لكسب نقاط المكافأة الخاصة بك." : "لقد حصلت على نقاط المكافأة الخاصة بك!")
+                : ($remaining > 0 ? "{$remaining} steps remaining to earn your reward points." : "You have earned your reward points!");
+
+            $progressCards[] = [
+                'title' => app()->getLocale() == 'ar'
+                    ? ($bookingCountRule->title_ar ?? "إتمام {$targetServices} خدمات")
+                    : ($bookingCountRule->title_en ?? "Complete {$targetServices} Bookings"),
+                'current_step' => $cycleCurrent,
+                'target_step' => $targetServices,
+                'steps_remaining' => $remaining,
+                'is_completed' => $cycleCompleted,
+                'reward_points' => $bookingCountPoints,
+                'action_type' => 'complete_bookings',
+                'footer_text' => $footerText,
+            ];
         }
-
-        $bookingCountCard = [
-            'title' => app()->getLocale() == 'ar' ? "إتمام {$targetServices} خدمات" : "Complete {$targetServices} Bookings",
-            'current_step' => $cycleCurrent,
-            'target_step' => $targetServices,
-            'steps_remaining' => max($targetServices - $cycleCurrent, 0),
-            'is_completed' => $cycleCompleted,
-            'reward_points' => $bookingCountPoints,
-        ];
 
         // 3. جلب مهام كسب النقاط الديناميكية (Reward Tasks) - Only social media tasks in summary list
         $completedTaskIds = DB::table('user_reward_tasks')
@@ -149,11 +181,7 @@ class PointsController extends Controller
             'referral_code' => $user->referral_code,
             'referral_count' => $referralCount,
             'successful_referral_count' => $successfulReferralCount,
-            'progress_card' => [
-                'referral' => $referralCard,
-                'booking' => $bookingCard,
-                'booking_count' => $bookingCountCard,
-            ],
+            'progress_card' => $progressCards,
             'earn_points' => $tasks,
             'history' => $recentHistory,
         ], __('messages.points.summary_retrieved'));
