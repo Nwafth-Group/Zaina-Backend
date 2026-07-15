@@ -49,13 +49,13 @@ class AdminPointsController extends Controller
             'subtitle_ar' => 'nullable|string|max:255',
             'subtitle_en' => 'nullable|string|max:255',
             'points' => 'required|integer|min:1',
-            'rule_category' => 'required|string|in:social_media,referral,booking,booking_count,admin_reward,promotional',
+            'rule_category' => 'required|string|in:social_media,referral,booking,booking_count',
             'status' => 'required|boolean',
             'action_type' => 'nullable|string|in:url,invite_friend,rate_service',
             'action_link' => 'nullable|string',
             'trigger_event' => 'nullable|string',
             'required_booking_count' => 'nullable|integer|min:1',
-            'frequency_type' => 'required|string|in:one_time,repeatable,repeatable_cycle',
+            'frequency_type' => 'required|string|in:one_time,repeatable',
             'eligible_services' => 'nullable|array',
             'eligible_services.*' => 'integer|exists:services,id',
             'calculation_method' => 'required|string|in:fixed,price_based',
@@ -111,13 +111,13 @@ class AdminPointsController extends Controller
             'subtitle_ar' => 'nullable|string|max:255',
             'subtitle_en' => 'nullable|string|max:255',
             'points' => 'required|integer|min:1',
-            'rule_category' => 'required|string|in:social_media,referral,booking,booking_count,admin_reward,promotional',
+            'rule_category' => 'required|string|in:social_media,referral,booking,booking_count',
             'status' => 'required|boolean',
             'action_type' => 'nullable|string|in:url,invite_friend,rate_service',
             'action_link' => 'nullable|string',
             'trigger_event' => 'nullable|string',
             'required_booking_count' => 'nullable|integer|min:1',
-            'frequency_type' => 'required|string|in:one_time,repeatable,repeatable_cycle',
+            'frequency_type' => 'required|string|in:one_time,repeatable',
             'eligible_services' => 'nullable|array',
             'eligible_services.*' => 'integer|exists:services,id',
             'calculation_method' => 'required|string|in:fixed,price_based',
@@ -171,54 +171,6 @@ class AdminPointsController extends Controller
         $rule->delete();
 
         return $this->successResponse(null, 'Earning rule deleted successfully.');
-    }
-
-    /**
-     * Get global point redemption settings.
-     */
-    public function getSettings()
-    {
-        $settings = PointSetting::all()->pluck('value', 'key')->toArray();
-
-        // Standard defaults if not configured
-        $defaults = [
-            'points_conversion_rate' => '10',
-            'min_redemption_points' => '100',
-            'max_discount_percentage' => '50',
-            'points_expiration_months' => '12',
-            'include_taxes_in_points' => '0',
-        ];
-
-        $merged = array_merge($defaults, $settings);
-
-        return $this->successResponse($merged, 'Redemption settings retrieved successfully.');
-    }
-
-    /**
-     * Save global point redemption settings.
-     */
-    public function storeSettings(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'points_conversion_rate' => 'required|integer|min:1',
-            'min_redemption_points' => 'required|integer|min:0',
-            'max_discount_percentage' => 'required|integer|min:1|max:100',
-            'points_expiration_months' => 'required|integer|min:1',
-            'include_taxes_in_points' => 'required|boolean',
-        ]);
-
-        if ($validator->fails()) {
-            return $this->errorResponse($validator->errors()->first(), 422);
-        }
-
-        foreach ($request->all() as $key => $value) {
-            PointSetting::updateOrCreate(
-                ['key' => $key],
-                ['value' => (string) $value]
-            );
-        }
-
-        return $this->successResponse($request->all(), 'Redemption settings saved successfully.');
     }
 
     /**

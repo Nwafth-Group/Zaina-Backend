@@ -226,7 +226,7 @@ class CustomerBookingService
 
         // 7. Verify user payment balance (points or wallet)
         $paymentMethod = $data['payment_method'];
-        $this->verifyPaymentBalance($user, $paymentMethod, $totalAmount);
+        $this->verifyPaymentBalance($user, $paymentMethod, $totalAmount, $service);
 
         // 8. Run actual database transaction for insertion
         DB::beginTransaction();
@@ -269,6 +269,7 @@ class CustomerBookingService
                 'status' => 'Upcoming',
                 'payment_status' => 'paid',
                 'payment_method' => $paymentMethod,
+                'paid_points' => $paymentMethod === 'points' ? $this->calculateRequiredPoints($service, $totalAmount) : 0,
                 'visit_type' => $data['visit_type'] ?? 'single_visit',
                 'visit_number' => count($dates),
                 'payment_transaction_id' => 'TXN-'.rand(10000000, 99999999),
@@ -289,9 +290,10 @@ class CustomerBookingService
 
             // Deduct funds
             if ($paymentMethod === 'points') {
+                $pointsRequired = $this->calculateRequiredPoints($service, $totalAmount);
                 $user->pointTransactions()->create([
                     'type' => 'redeem',
-                    'amount' => (int) ceil($totalAmount),
+                    'amount' => $pointsRequired,
                     'title_ar' => 'دفع مقابل حجز برقم مرجعي: '.$booking->booking_ref,
                     'title_en' => 'Payment for Booking Ref: '.$booking->booking_ref,
                 ]);
@@ -572,6 +574,8 @@ class CustomerBookingService
         $tax = $discountedAmount * ($vatPercentage / 100);
         $total = $discountedAmount + $tax;
 
+        $pointsRequired = $this->calculateRequiredPoints($service, $total);
+
         return [
             'coupon' => $coupon,
             'pricing' => [
@@ -585,18 +589,40 @@ class CustomerBookingService
                 'tax' => $tax,
                 'total' => $total,
                 'currency' => 'EGP',
+                'loyalty_points' => [
+                    'redemption_enabled' => (bool) $service->points_redemption_enabled,
+                    'redemption_method' => $service->points_redemption_method,
+                    'points_required' => $pointsRequired,
+                ],
             ],
         ];
     }
 
-    private function verifyPaymentBalance($user, string $paymentMethod, float $totalAmount): void
+    public function calculateRequiredPoints(Service $service, float $totalAmount): int
+    {
+        if (!$service->points_redemption_enabled) {
+            return 0;
+        }
+
+        if ($service->points_redemption_method === 'fixed') {
+            return (int) $service->points_required_fixed;
+        }
+
+        $rate = $service->points_conversion_rate ?? 10;
+
+        return (int) ceil($totalAmount * $rate);
+    }
+
+    private function verifyPaymentBalance($user, string $paymentMethod, float $totalAmount, Service $service): void
     {
         if ($paymentMethod === 'points') {
-            $totalEarnedPoints = $user->pointTransactions()->where('type', 'earn')->sum('amount');
-            $totalRedeemedPoints = $user->pointTransactions()->where('type', 'redeem')->sum('amount');
-            $userPointsBalance = $totalEarnedPoints - $totalRedeemedPoints;
+            if (!$service->points_redemption_enabled) {
+                throw new \Exception("Loyalty points payment is not enabled for this service. / الدفع بالنقاط غير متاح لهذه الخدمة.", 422);
+            }
 
-            $pointsRequired = (int) ceil($totalAmount);
+            $userPointsBalance = \App\Models\PointTransaction::getUserPointsBalance($user->id);
+            $pointsRequired = $this->calculateRequiredPoints($service, $totalAmount);
+
             if ($userPointsBalance < $pointsRequired) {
                 throw new \Exception("عذراً، رصيد نقاطك الحالي ({$userPointsBalance} نقطة) غير كافٍ. يتطلب الحجز {$pointsRequired} نقطة.", 422);
             }

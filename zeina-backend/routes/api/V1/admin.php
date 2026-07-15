@@ -161,9 +161,6 @@ Route::prefix('admin')->group(function () {
         Route::put('points/rules/{id}', [AdminPointsController::class, 'updateRule']);
         Route::delete('points/rules/{id}', [AdminPointsController::class, 'destroyRule']);
 
-        Route::get('points/settings', [AdminPointsController::class, 'getSettings']);
-        Route::post('points/settings', [AdminPointsController::class, 'storeSettings']);
-
         Route::get('points/services', [AdminPointsController::class, 'getServices']);
         Route::put('points/services/{id}', [AdminPointsController::class, 'updateServicePoints']);
 

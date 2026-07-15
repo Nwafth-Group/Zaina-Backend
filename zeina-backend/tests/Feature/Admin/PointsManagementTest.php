@@ -153,7 +153,7 @@ class PointsManagementTest extends TestCase
             'title_ar' => 'قاعدة مؤقتة',
             'title_en' => 'Temp Rule',
             'points' => 100,
-            'rule_category' => 'promotional',
+            'rule_category' => 'social_media',
             'frequency_type' => 'one_time',
             'calculation_method' => 'fixed',
             'action_type' => 'url',
@@ -167,37 +167,6 @@ class PointsManagementTest extends TestCase
 
         $response->assertOk();
         $this->assertDatabaseMissing('reward_tasks', ['id' => $rule->id]);
-    }
-
-    public function test_admin_can_manage_global_settings(): void
-    {
-        // 1. Get default settings
-        $response = $this->actingAs($this->admin, 'sanctum')
-            ->getJson('/api/v1/admin/points/settings');
-
-        $response->assertOk()
-            ->assertJsonPath('data.points_conversion_rate', '10')
-            ->assertJsonPath('data.min_redemption_points', '100');
-
-        // 2. Save settings
-        $payload = [
-            'points_conversion_rate' => 20,
-            'min_redemption_points' => 200,
-            'max_discount_percentage' => 30,
-            'points_expiration_months' => 6,
-            'include_taxes_in_points' => true,
-        ];
-
-        $response = $this->actingAs($this->admin, 'sanctum')
-            ->postJson('/api/v1/admin/points/settings', $payload);
-
-        $response->assertOk()
-            ->assertJsonPath('data.points_conversion_rate', 20);
-
-        $this->assertDatabaseHas('point_settings', [
-            'key' => 'points_conversion_rate',
-            'value' => '20',
-        ]);
     }
 
     public function test_admin_can_manage_service_level_points(): void

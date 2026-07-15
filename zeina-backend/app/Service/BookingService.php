@@ -745,6 +745,8 @@ class BookingService
                 $this->updateAverageRating(Worker::class, $workerData['worker_id']);
             }
 
+            \App\Service\LoyaltyPointService::awardPointsForReview($booking);
+
             DB::commit();
 
             return true;

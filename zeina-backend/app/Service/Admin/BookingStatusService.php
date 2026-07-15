@@ -78,6 +78,10 @@ class BookingStatusService
                 'created_by' => $actor->id,
             ]);
 
+            if ($status === BookingStatus::Completed) {
+                \App\Service\LoyaltyPointService::awardPointsForCompletedBooking($booking);
+            }
+
             return $booking->load(['customer', 'service', 'workers']);
         });
     }

@@ -38,15 +38,24 @@ class ProfileController extends Controller
     {
         $user = auth()->user();
 
-        // 1. تحديث البيانات النصية في الداتابيز
-        $user->update([
+        $updateData = [
             'first_name'   => $request->first_name,
             'last_name'    => $request->last_name,
             'phone_number' => $request->phone_number,
             'email'        => $request->email,
             'id_number'    => $request->id_number,
             'gender'       => $request->gender, 
-        ]);
+        ];
+
+        if (empty($user->referred_by_id) && $request->filled('referral_code')) {
+            $referrer = \App\Models\User::where('referral_code', $request->referral_code)->first();
+            if ($referrer && $referrer->id !== $user->id) {
+                $updateData['referred_by_id'] = $referrer->id;
+            }
+        }
+
+        // 1. تحديث البيانات النصية في الداتابيز
+        $user->update($updateData);
 
         // 2. تحديث صورة الملف الشخصي (Profile Picture)
         if($request->hasFile('image')) {

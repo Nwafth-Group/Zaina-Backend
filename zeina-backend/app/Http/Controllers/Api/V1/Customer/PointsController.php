@@ -18,8 +18,7 @@ class PointsController extends Controller
         $user = auth()->user();
 
         // 1. حساب إجمالي النقاط الحالي للعميل
-        $totalPoints = $user->pointTransactions()->where('type', 'earn')->sum('amount')
-                     - $user->pointTransactions()->where('type', 'redeem')->sum('amount');
+        $totalPoints = \App\Models\PointTransaction::getUserPointsBalance($user->id);
 
         $pointSetting = DB::table('point_settings')->where('key', 'service_cycle_rules')->first();
         $targetServices = $pointSetting ? (int) $pointSetting->target_steps : 3;
@@ -66,8 +65,17 @@ class PointsController extends Controller
                 ];
             });
 
+        // جلب إحصائيات الإحالة
+        $referralCount = \App\Models\User::where('referred_by_id', $user->id)->count();
+        $successfulReferralCount = \App\Models\User::where('referred_by_id', $user->id)
+            ->whereHas('bookings', function($q) { $q->where('status', 'completed'); })
+            ->count();
+
         return $this->successResponse([
             'total_points' => $totalPoints,
+            'referral_code' => $user->referral_code,
+            'referral_count' => $referralCount,
+            'successful_referral_count' => $successfulReferralCount,
             'progress_card' => [
                 // الترجمة بتصير تستقبل الـ target_steps المحقونة ديناميكياً من الأدمن
                 'title' => __('messages.points.complete_services_title', ['count' => $targetServices]),
@@ -138,13 +146,15 @@ class PointsController extends Controller
         $task = RewardTasks::findOrFail($request->task_id);
 
         // حماية تجريبية: نمنع التكرار إذا كانت المهمة من النوع الذي ينجر لمرة واحدة فقط
-        $alreadyCompleted = DB::table('user_reward_tasks')
-            ->where('user_id', $user->id)
-            ->where('task_id', $task->id)
-            ->exists();
+        if ($task->action_type === 'url') {
+            $alreadyCompleted = DB::table('user_reward_tasks')
+                ->where('user_id', $user->id)
+                ->where('task_id', $task->id)
+                ->exists();
 
-        if ($alreadyCompleted) {
-            return $this->errorResponse(__('messages.points.task_already_completed'), 422);
+            if ($alreadyCompleted) {
+                return $this->errorResponse(__('messages.points.task_already_completed'), 422);
+            }
         }
 
         DB::beginTransaction();

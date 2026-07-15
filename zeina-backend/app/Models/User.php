@@ -10,6 +10,7 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use OwenIt\Auditing\Contracts\Auditable;
 use Spatie\Permission\Traits\HasRoles;
+use Illuminate\Support\Str;
 
 class User extends Authenticatable implements Auditable
 {
@@ -40,6 +41,8 @@ class User extends Authenticatable implements Auditable
         'status',
         'email_verified_at',
         'preferred_language',
+        'referral_code',
+        'referred_by_id',
     ];
 
     /**
@@ -160,4 +163,31 @@ class User extends Authenticatable implements Auditable
     //                 ->withTimestamps();
     // }
 
+    public static function generateUniqueReferralCode(): string
+    {
+        do {
+            $code = 'REF-' . strtoupper(Str::random(6));
+        } while (self::where('referral_code', $code)->exists());
+
+        return $code;
+    }
+
+    protected static function booted()
+    {
+        static::creating(function ($user) {
+            if (empty($user->referral_code)) {
+                $user->referral_code = self::generateUniqueReferralCode();
+            }
+        });
+    }
+
+    public function referredBy()
+    {
+        return $this->belongsTo(User::class, 'referred_by_id');
+    }
+
+    public function referrals()
+    {
+        return $this->hasMany(User::class, 'referred_by_id');
+    }
 }

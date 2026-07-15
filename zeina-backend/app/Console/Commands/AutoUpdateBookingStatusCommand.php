@@ -124,6 +124,7 @@ class AutoUpdateBookingStatusCommand extends Command
                             'note'       => 'Automated status change: all scheduled visits completed.',
                             'created_by' => null,
                         ]);
+                        \App\Service\LoyaltyPointService::awardPointsForCompletedBooking($booking);
                     }
                 });
 

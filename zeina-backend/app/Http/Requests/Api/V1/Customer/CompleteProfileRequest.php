@@ -32,7 +32,7 @@ class CompleteProfileRequest extends FormRequest
             'email'           => ['required', 'email', 'max:255', 'unique:users,email,' . $userId],
             'gender'          => ['required', 'in:Male,Female'],
             'image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:4096'],
-          
+            'referral_code'   => ['nullable', 'string', 'exists:users,referral_code'],
         ];
     }
 

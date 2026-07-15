@@ -18,36 +18,6 @@ class PointSystemSeeder extends Seeder
                 'reward_points' => 100,
                 'value' => '3',
             ],
-            'points_conversion_rate' => [
-                'action_type' => 'conversion_rate',
-                'target_steps' => 0,
-                'reward_points' => 0,
-                'value' => '10',
-            ],
-            'min_redemption_points' => [
-                'action_type' => 'min_redemption',
-                'target_steps' => 0,
-                'reward_points' => 0,
-                'value' => '100',
-            ],
-            'max_discount_percentage' => [
-                'action_type' => 'max_discount',
-                'target_steps' => 0,
-                'reward_points' => 0,
-                'value' => '50',
-            ],
-            'points_expiration_months' => [
-                'action_type' => 'expiration',
-                'target_steps' => 0,
-                'reward_points' => 0,
-                'value' => '12',
-            ],
-            'include_taxes_in_points' => [
-                'action_type' => 'taxes_inclusion',
-                'target_steps' => 0,
-                'reward_points' => 0,
-                'value' => '0',
-            ],
         ];
 
         foreach ($settings as $key => $values) {
