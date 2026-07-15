@@ -7,6 +7,7 @@ use App\Service\Customer\CustomerBookingService;
 use App\Traits\ParsesChildAgeGroups;
 use Carbon\Carbon;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Log;
 
 class ValidateBookingRequest extends FormRequest
 {
@@ -181,6 +182,13 @@ class ValidateBookingRequest extends FormRequest
                 }
 
                 $childAgeGroups = $this->input('child_age_groups') ?? [];
+                Log::info('--- ValidateBookingRequest DEBUG ---', [
+                    'raw_child_age_groups_input' => $this->input('child_age_groups'),
+                    'parsed_child_age_groups' => $childAgeGroups,
+                    'numberOfChildren_input' => $this->input('number_of_children'),
+                    'query_string' => request()->getQueryString(),
+                    'raw_content' => request()->getContent(),
+                ]);
                 if (! is_array($childAgeGroups)) {
                     $childAgeGroups = [];
                 }
