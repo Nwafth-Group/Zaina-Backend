@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Channels\FirebaseChannel; // القناة المخصصة تبعتنا
+use App\Channels\SmsChannel;
 use App\Service\SmsService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -37,7 +38,7 @@ class BookingNotification extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return ['database', FirebaseChannel::class, \App\Channels\SmsChannel::class];
+        return ['database', FirebaseChannel::class, SmsChannel::class];
     }
 
     /**
@@ -82,12 +83,38 @@ class BookingNotification extends Notification implements ShouldQueue
     {
         try {
             $smsService = app(SmsService::class);
-            $smsMessage = __('sms.booking_created_sms', [
-                'ref' => $this->extraData['booking_ref'] ?? '',
-                'date' => $this->extraData['booking_date'] ?? '',
-                'status' => 'Upcoming',
-                'workers_count' => $this->extraData['workers_count'] ?? 1,
-            ]);
+
+            $titleKey = $this->title;
+            $isCancelled = (str_contains(strtolower($titleKey), 'cancel') || str_contains($titleKey, 'ملغ') || str_contains($titleKey, 'إلغاء'));
+            $isRescheduled = (str_contains(strtolower($titleKey), 'resched') || str_contains($titleKey, 'تعديل') || str_contains($titleKey, 'إعادة جدولة'));
+
+            if (! empty($this->extraData['sms_message'])) {
+                $smsMessage = $this->extraData['sms_message'];
+            } elseif ($isCancelled) {
+                $smsMessage = __('sms.booking_cancelled_sms', [
+                    'ref' => $this->extraData['booking_ref'] ?? '',
+                ]);
+            } elseif ($isRescheduled) {
+                $smsMessage = __('sms.booking_rescheduled_sms', [
+                    'ref' => $this->extraData['booking_ref'] ?? '',
+                    'date' => $this->extraData['booking_date'] ?? '',
+                    'time' => $this->extraData['booking_time'] ?? '',
+                ]);
+            } else {
+                $isCreatedOrConfirmed = str_contains(strtolower($titleKey), 'confirm') || str_contains(strtolower($titleKey), 'creat') || str_contains($titleKey, 'مؤكد') || str_contains($titleKey, 'إنشاء');
+
+                if ($isCreatedOrConfirmed) {
+                    $smsMessage = __('sms.booking_created_sms', [
+                        'ref' => $this->extraData['booking_ref'] ?? '',
+                        'date' => $this->extraData['booking_date'] ?? '',
+                        'status' => 'Upcoming',
+                        'workers_count' => $this->extraData['workers_count'] ?? 1,
+                    ]);
+                } else {
+                    $smsMessage = $this->body;
+                }
+            }
+
             Log::info('[SMS Notification] Generated SMS Message Content: '.$smsMessage);
             $smsService->send($notifiable->phone_number, $smsMessage);
 

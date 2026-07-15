@@ -10,6 +10,12 @@ trait ParsesChildAgeGroups
     protected function parseChildAgeGroups(): array
     {
         $queryString = request()->getQueryString();
+        if (empty($queryString) && request()->getContent()) {
+            $contentType = request()->header('Content-Type', '');
+            if (str_contains($contentType, 'application/x-www-form-urlencoded')) {
+                $queryString = request()->getContent();
+            }
+        }
         $rawChildAgeGroups = [];
 
         // 1. Try parsing from raw query string to handle duplicate keys without brackets (e.g. child_age_groups=1&child_age_groups=2)
