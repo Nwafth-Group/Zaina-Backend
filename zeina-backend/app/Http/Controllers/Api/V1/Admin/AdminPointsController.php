@@ -64,6 +64,15 @@ class AdminPointsController extends Controller
             'action_text_en' => 'nullable|string|max:255',
         ]);
 
+        $validator->after(function ($validator) use ($request) {
+            if ($request->rule_category === 'social_media' && $request->frequency_type !== 'one_time') {
+                $validator->errors()->add('frequency_type', 'Social media rules must have a "one_time" frequency.');
+            }
+            if ($request->rule_category === 'referral' && $request->frequency_type !== 'repeatable') {
+                $validator->errors()->add('frequency_type', 'Referral rules must have a "repeatable" frequency.');
+            }
+        });
+
         if ($validator->fails()) {
             return $this->errorResponse($validator->errors()->first(), 422);
         }
@@ -125,6 +134,15 @@ class AdminPointsController extends Controller
             'action_text_ar' => 'nullable|string|max:255',
             'action_text_en' => 'nullable|string|max:255',
         ]);
+
+        $validator->after(function ($validator) use ($request) {
+            if ($request->rule_category === 'social_media' && $request->frequency_type !== 'one_time') {
+                $validator->errors()->add('frequency_type', 'Social media rules must have a "one_time" frequency.');
+            }
+            if ($request->rule_category === 'referral' && $request->frequency_type !== 'repeatable') {
+                $validator->errors()->add('frequency_type', 'Referral rules must have a "repeatable" frequency.');
+            }
+        });
 
         if ($validator->fails()) {
             return $this->errorResponse($validator->errors()->first(), 422);

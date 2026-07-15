@@ -21,6 +21,7 @@ class LoyaltyPointsFlowTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        \Illuminate\Support\Facades\Notification::fake();
         // Seed points settings if needed
         \Illuminate\Support\Facades\DB::table('point_settings')->updateOrInsert(
             ['key' => 'points_conversion_rate'],
@@ -34,7 +35,7 @@ class LoyaltyPointsFlowTest extends TestCase
 
     private function actingAsCustomer()
     {
-        $user = User::factory()->create(['type' => 'customer', 'status' => 'active']);
+        $user = User::factory()->create(['type' => 'customer', 'status' => 'active', 'verification_status' => 'approved']);
         $this->actingAs($user, 'sanctum');
         return $user;
     }
@@ -56,7 +57,50 @@ class LoyaltyPointsFlowTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('data.total_points', 150)
             ->assertJsonPath('data.referral_code', $user->referral_code)
-            ->assertJsonPath('data.referral_count', 0);
+            ->assertJsonPath('data.progress_card.referral.referral_code', $user->referral_code)
+            ->assertJsonPath('data.progress_card.booking.current_step', 0)
+            ->assertJsonPath('data.progress_card.booking_count.current_step', 0);
+    }
+
+    public function test_customer_earn_points_category_filtering(): void
+    {
+        $user = $this->actingAsCustomer();
+
+        RewardTasks::create([
+            'title_ar' => 'فيس بوك',
+            'title_en' => 'Facebook',
+            'points' => 10,
+            'rule_category' => 'social_media',
+            'status' => true,
+            'frequency_type' => 'one_time',
+            'calculation_method' => 'fixed',
+            'action_type' => 'url',
+            'action_text_ar' => 'متابعة',
+            'action_text_en' => 'Follow',
+        ]);
+
+        RewardTasks::create([
+            'title_ar' => 'احالة',
+            'title_en' => 'Referral',
+            'points' => 50,
+            'rule_category' => 'referral',
+            'status' => true,
+            'frequency_type' => 'repeatable',
+            'calculation_method' => 'fixed',
+            'action_type' => 'url',
+            'action_text_ar' => 'دعوة',
+            'action_text_en' => 'Invite',
+        ]);
+
+        // Filter for social_media
+        $response = $this->getJson('/api/v1/customer/points/earn-points?category=social_media');
+        $response->assertOk()->assertJsonCount(1, 'data');
+        $this->assertEquals('social_media', $response->json('data.0.rule_category'));
+
+        // Filter for referral
+        $response = $this->getJson('/api/v1/customer/points/earn-points?category=referral');
+        $response->assertOk()->assertJsonCount(1, 'data');
+        $this->assertEquals('referral', $response->json('data.0.rule_category'));
     }
 
     public function test_customer_completing_one_time_task_versus_repeatable(): void
@@ -88,6 +132,13 @@ class LoyaltyPointsFlowTest extends TestCase
     public function test_checkout_pricing_returns_loyalty_points_metadata(): void
     {
         $user = $this->actingAsCustomer();
+        $city = \App\Models\City::factory()->create(['status' => 'active']);
+        $area = \App\Models\Area::factory()->create(['city_id' => $city->id, 'status' => 'active']);
+        $address = CustomerAddress::factory()->create([
+            'user_id' => $user->id,
+            'area_id' => $area->id,
+        ]);
+
         $service = Service::factory()->create([
             'status' => 'active',
             'base_price' => 100.00,
@@ -95,15 +146,25 @@ class LoyaltyPointsFlowTest extends TestCase
             'points_redemption_method' => 'ratio',
             'points_conversion_rate' => 5,
         ]);
+
+        \App\Models\ServiceCoverage::create([
+            'service_id' => $service->id,
+            'city_id' => $city->id,
+            'area_id' => $area->id,
+            'status' => 'active',
+        ]);
+
         $worker = Worker::factory()->create(['status' => 'active']);
 
-        $response = $this->postJson('/api/v1/customer/bookings/pricing', [
+        $response = $this->postJson('/api/v1/customer/bookings/validate', [
             'service_id' => $service->id,
+            'address_id' => $address->id,
             'worker_ids' => [$worker->id],
             'dates' => [Carbon::now()->addDays(2)->toDateString()],
-            'start_time' => '10:00:00',
+            'start_time' => '10:00',
             'duration' => 2,
             'visit_type' => 'single_visit',
+            'workers_count' => 1,
         ]);
 
         $response->assertOk()
@@ -115,6 +176,12 @@ class LoyaltyPointsFlowTest extends TestCase
     public function test_customer_points_redemption_during_checkout(): void
     {
         $user = $this->actingAsCustomer();
+        $city = \App\Models\City::factory()->create(['status' => 'active']);
+        $area = \App\Models\Area::factory()->create(['city_id' => $city->id, 'status' => 'active']);
+        $address = CustomerAddress::factory()->create([
+            'user_id' => $user->id,
+            'area_id' => $area->id,
+        ]);
         
         // Setup service points parameters
         $service = Service::factory()->create([
@@ -124,9 +191,15 @@ class LoyaltyPointsFlowTest extends TestCase
             'points_redemption_method' => 'fixed',
             'points_required_fixed' => 200,
         ]);
+
+        \App\Models\ServiceCoverage::create([
+            'service_id' => $service->id,
+            'city_id' => $city->id,
+            'area_id' => $area->id,
+            'status' => 'active',
+        ]);
         
         $worker = Worker::factory()->create(['status' => 'active']);
-        $address = CustomerAddress::factory()->create(['user_id' => $user->id]);
 
         // Attempt booking payment with points - should fail since balance is 0
         $this->postJson('/api/v1/customer/bookings', [
@@ -134,10 +207,11 @@ class LoyaltyPointsFlowTest extends TestCase
             'address_id' => $address->id,
             'worker_ids' => [$worker->id],
             'dates' => [Carbon::now()->addDays(2)->toDateString()],
-            'start_time' => '10:00:00',
+            'start_time' => '10:00',
             'duration' => 2,
             'visit_type' => 'single_visit',
             'payment_method' => 'points',
+            'workers_count' => 1,
         ])->assertStatus(422);
 
         // Credit 300 points
@@ -154,10 +228,11 @@ class LoyaltyPointsFlowTest extends TestCase
             'address_id' => $address->id,
             'worker_ids' => [$worker->id],
             'dates' => [Carbon::now()->addDays(2)->toDateString()],
-            'start_time' => '10:00:00',
+            'start_time' => '10:00',
             'duration' => 2,
             'visit_type' => 'single_visit',
             'payment_method' => 'points',
+            'workers_count' => 1,
         ]);
 
         $response->assertCreated();
@@ -175,7 +250,7 @@ class LoyaltyPointsFlowTest extends TestCase
     public function test_friend_referral_rewards_referrer_on_first_booking_completion(): void
     {
         // 1. Create referrer
-        $referrer = User::factory()->create(['type' => 'customer', 'status' => 'active']);
+        $referrer = User::factory()->create(['type' => 'customer', 'status' => 'active', 'verification_status' => 'approved']);
         
         // 2. Setup referral tasks rules
         RewardTasks::create([
@@ -194,6 +269,7 @@ class LoyaltyPointsFlowTest extends TestCase
         $friend = User::factory()->create([
             'type' => 'customer',
             'status' => 'active',
+            'verification_status' => 'approved',
             'referred_by_id' => $referrer->id,
         ]);
 
@@ -211,7 +287,8 @@ class LoyaltyPointsFlowTest extends TestCase
             'booking_date' => Carbon::now()->toDateString(),
             'start_time' => '10:00:00',
             'end_time' => '12:00:00',
-            'status' => 'Upcoming',
+            'duration_minutes' => 120,
+            'status' => 'completed',
             'price_subtotal' => 100,
             'total_amount' => 100,
         ]);

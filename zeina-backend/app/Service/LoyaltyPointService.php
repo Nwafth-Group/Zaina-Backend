@@ -63,16 +63,58 @@ class LoyaltyPointService
                 }
 
                 // 🌟 2. Services Cycle Progress (Complete X services to earn Y points)
-                $cycleSetting = DB::table('point_settings')->where('key', 'service_cycle_rules')->first();
-                if ($cycleSetting && !empty($cycleSetting->value)) {
-                    $targetSteps = (int) ($cycleSetting->target_steps ?? 3);
-                    $rewardPoints = (int) ($cycleSetting->reward_points ?? 100);
+                $bookingCountRule = RewardTasks::where('status', true)
+                    ->where('rule_category', 'booking_count')
+                    ->first();
 
-                    if ($targetSteps > 0 && $rewardPoints > 0) {
-                        $completedCount = Booking::where('customer_id', $customer->id)
-                            ->where('status', 'completed')
-                            ->count();
+                $targetSteps = 0;
+                $rewardPoints = 0;
+                $frequencyType = 'repeatable';
 
+                if ($bookingCountRule) {
+                    $targetSteps = (int) ($bookingCountRule->required_booking_count ?? 3);
+                    $rewardPoints = (int) ($bookingCountRule->points ?? 100);
+                    $frequencyType = $bookingCountRule->frequency_type ?? 'repeatable';
+                } else {
+                    $cycleSetting = DB::table('point_settings')->where('key', 'service_cycle_rules')->first();
+                    if ($cycleSetting && !empty($cycleSetting->value)) {
+                        $targetSteps = (int) ($cycleSetting->target_steps ?? 3);
+                        $rewardPoints = (int) ($cycleSetting->reward_points ?? 100);
+                    }
+                }
+
+                if ($targetSteps > 0 && $rewardPoints > 0) {
+                    $completedCount = Booking::where('customer_id', $customer->id)
+                        ->where('status', 'completed')
+                        ->count();
+
+                    if ($frequencyType === 'one_time') {
+                        if ($completedCount >= $targetSteps) {
+                            $alreadyAwardedCycle = PointTransaction::where('user_id', $customer->id)
+                                ->where('reason', 'service_cycle_reward_onetime_' . $targetSteps)
+                                ->exists();
+
+                            if (!$alreadyAwardedCycle) {
+                                $customer->pointTransactions()->create([
+                                    'type' => 'earn',
+                                    'amount' => $rewardPoints,
+                                    'title_ar' => 'مكافأة إتمام عدد خدمات: ' . $targetSteps,
+                                    'title_en' => 'Complete Bookings Target Reward: ' . $targetSteps,
+                                    'reason' => 'service_cycle_reward_onetime_' . $targetSteps,
+                                ]);
+
+                                $customer->notify(new PointsNotification(
+                                    'مكافأة التقدم في الخدمات! 🏆',
+                                    'رائع! أكملت بنجاح ' . $targetSteps . ' خدمات وحصلت على ' . $rewardPoints . ' نقطة مكافأة.',
+                                    $rewardPoints,
+                                    'earn',
+                                    ['target_steps' => $targetSteps]
+                                ));
+
+                                Log::info("ServicesCycle points (one_time) awarded: {$rewardPoints} points to user ID {$customer->id} for reaching {$targetSteps} services.");
+                            }
+                        }
+                    } else {
                         if ($completedCount > 0 && $completedCount % $targetSteps === 0) {
                             $alreadyAwardedCycle = PointTransaction::where('user_id', $customer->id)
                                 ->where('reason', 'service_cycle_reward_' . $completedCount)
@@ -95,7 +137,7 @@ class LoyaltyPointService
                                     ['cycle_completed_level' => ($completedCount / $targetSteps)]
                                 ));
 
-                                Log::info("ServicesCycle points awarded: {$rewardPoints} points to user ID {$customer->id} for completing cycle of {$completedCount} services.");
+                                Log::info("ServicesCycle points (repeatable) awarded: {$rewardPoints} points to user ID {$customer->id} for completing cycle of {$completedCount} services.");
                             }
                         }
                     }

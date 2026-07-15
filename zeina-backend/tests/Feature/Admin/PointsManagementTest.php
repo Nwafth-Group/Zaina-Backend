@@ -111,6 +111,44 @@ class PointsManagementTest extends TestCase
         $response->assertStatus(422);
     }
 
+    public function test_admin_cannot_create_social_media_rule_with_repeatable_frequency(): void
+    {
+        $payload = [
+            'title_ar' => 'تابع فيسبوك تكرار',
+            'title_en' => 'Follow FB Repeat',
+            'points' => 100,
+            'rule_category' => 'social_media',
+            'frequency_type' => 'repeatable', // Invalid for social_media
+            'calculation_method' => 'fixed',
+            'status' => true,
+        ];
+
+        $response = $this->actingAs($this->admin, 'sanctum')
+            ->postJson('/api/v1/admin/points/rules', $payload);
+
+        $response->assertStatus(422)
+            ->assertJsonPath('message', 'Social media rules must have a "one_time" frequency.');
+    }
+
+    public function test_admin_cannot_create_referral_rule_with_onetime_frequency(): void
+    {
+        $payload = [
+            'title_ar' => 'دعوة صديق مرة واحدة',
+            'title_en' => 'Invite Friend One Time',
+            'points' => 100,
+            'rule_category' => 'referral',
+            'frequency_type' => 'one_time', // Invalid for referral
+            'calculation_method' => 'fixed',
+            'status' => true,
+        ];
+
+        $response = $this->actingAs($this->admin, 'sanctum')
+            ->postJson('/api/v1/admin/points/rules', $payload);
+
+        $response->assertStatus(422)
+            ->assertJsonPath('message', 'Referral rules must have a "repeatable" frequency.');
+    }
+
     public function test_admin_can_update_rule(): void
     {
         $rule = RewardTasks::create([

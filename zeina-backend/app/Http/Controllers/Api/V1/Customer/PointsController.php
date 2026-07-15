@@ -20,35 +20,114 @@ class PointsController extends Controller
         // 1. حساب إجمالي النقاط الحالي للعميل
         $totalPoints = \App\Models\PointTransaction::getUserPointsBalance($user->id);
 
-        $pointSetting = DB::table('point_settings')->where('key', 'service_cycle_rules')->first();
-        $targetServices = $pointSetting ? (int) $pointSetting->target_steps : 3;
-        $rewardPoints = $pointSetting ? (int) $pointSetting->reward_points : 100;
-        $actionType = $pointSetting ? $pointSetting->action_type : 'complete_bookings';
+        // Fetch active rules from DB to compute target steps and reward points dynamically
+        $bookingRule = RewardTasks::where('status', true)->where('rule_category', 'booking')->first();
+        $bookingCountRule = RewardTasks::where('status', true)->where('rule_category', 'booking_count')->first();
+        $referralRule = RewardTasks::where('status', true)->where('rule_category', 'referral')->first();
 
-        // حساب عدد الحجوزات المكتملة بناءً على نوع التصرف
+        // Completed bookings count
         $completedCount = $user->bookings()->where('status', 'completed')->count();
 
-        // معادلة حساب الدورة الحالية (باقي القسمة يضمن تصفير العداد والبدء من جديد فور التعبئة)
-        $currentCycleProgress = $completedCount % $targetServices;
-        $stepsRemaining = $targetServices - $currentCycleProgress;
+        // 🌟 A. Referral Card
+        $referralCount = \App\Models\User::where('referred_by_id', $user->id)->count();
+        $successfulReferralCount = \App\Models\User::where('referred_by_id', $user->id)
+            ->whereHas('bookings', function($q) { $q->where('status', 'completed'); })
+            ->count();
+        
+        $referralPoints = $user->pointTransactions()
+            ->where('reason', 'friend_first_booking')
+            ->sum('amount');
 
-        // 3. جلب مهام كسب النقاط الديناميكية (Reward Tasks)
+        $referralCard = [
+            'title' => app()->getLocale() == 'ar' ? 'دعوة الأصدقاء' : 'Invite Friends',
+            'referral_code' => $user->referral_code,
+            'referral_count' => $referralCount,
+            'successful_referral_count' => $successfulReferralCount,
+            'points_earned_total' => $referralPoints,
+            'reward_points' => $referralRule->points ?? 50,
+            'is_completed' => false, // referral is repeatable
+        ];
+
+        // 🌟 B. Booking Card
+        $bookingPoints = $bookingRule->points ?? 50;
+        $bookingFrequency = $bookingRule->frequency_type ?? 'repeatable';
+        $bookingCurrent = 0;
+        $bookingCompleted = false;
+
+        if ($bookingFrequency === 'one_time') {
+            if ($completedCount >= 1) {
+                $bookingCurrent = 1;
+                $bookingCompleted = true;
+            }
+        }
+
+        $bookingCard = [
+            'title' => app()->getLocale() == 'ar' ? 'إتمام خدمة' : 'Complete Booking',
+            'current_step' => $bookingCurrent,
+            'target_step' => 1,
+            'steps_remaining' => $bookingCompleted ? 0 : 1,
+            'is_completed' => $bookingCompleted,
+            'reward_points' => $bookingPoints,
+        ];
+
+        // 🌟 C. Booking Count Card
+        $targetServices = 3;
+        $bookingCountPoints = 100;
+        $bookingCountFrequency = 'repeatable';
+
+        if ($bookingCountRule) {
+            $targetServices = (int) ($bookingCountRule->required_booking_count ?? 3);
+            $bookingCountPoints = (int) ($bookingCountRule->points ?? 100);
+            $bookingCountFrequency = $bookingCountRule->frequency_type ?? 'repeatable';
+        } else {
+            $pointSetting = DB::table('point_settings')->where('key', 'service_cycle_rules')->first();
+            if ($pointSetting && !empty($pointSetting->value)) {
+                $targetServices = (int) ($pointSetting->target_steps ?? 3);
+                $bookingCountPoints = (int) ($pointSetting->reward_points ?? 100);
+            }
+        }
+
+        $cycleCurrent = 0;
+        $cycleCompleted = false;
+
+        if ($bookingCountFrequency === 'one_time') {
+            $cycleCurrent = min($completedCount, $targetServices);
+            $cycleCompleted = ($cycleCurrent >= $targetServices);
+        } else {
+            $cycleCurrent = $completedCount % $targetServices;
+        }
+
+        $bookingCountCard = [
+            'title' => app()->getLocale() == 'ar' ? "إتمام {$targetServices} خدمات" : "Complete {$targetServices} Bookings",
+            'current_step' => $cycleCurrent,
+            'target_step' => $targetServices,
+            'steps_remaining' => max($targetServices - $cycleCurrent, 0),
+            'is_completed' => $cycleCompleted,
+            'reward_points' => $bookingCountPoints,
+        ];
+
+        // 3. جلب مهام كسب النقاط الديناميكية (Reward Tasks) - Only social media tasks in summary list
         $completedTaskIds = DB::table('user_reward_tasks')
             ->where('user_id', $user->id)
             ->pluck('task_id')
             ->toArray();
 
-        $tasks = RewardTasks::where('status', true)->get()->take(3)->map(function ($task) use ($completedTaskIds) {
-            return [
-                'id' => $task->id,
-                'title' => app()->getLocale() == 'ar' ? $task->title_ar : $task->title_en,
-                'subtitle' => app()->getLocale() == 'ar' ? $task->subtitle_ar : $task->subtitle_en,
-                'points' => '+'.$task->points.' Pts',
-                'action_type' => $task->action_type,
-                'action_link' => $task->action_link,
-                'is_completed' => in_array($task->id, $completedTaskIds),
-            ];
-        });
+        $tasks = RewardTasks::where('status', true)
+            ->where('rule_category', 'social_media')
+            ->get()
+            ->take(3)
+            ->map(function ($task) use ($completedTaskIds) {
+                return [
+                    'id' => $task->id,
+                    'title' => app()->getLocale() == 'ar' ? $task->title_ar : $task->title_en,
+                    'subtitle' => app()->getLocale() == 'ar' ? $task->subtitle_ar : $task->subtitle_en,
+                    'points' => '+'.$task->points.' Pts',
+                    'action_type' => $task->action_type,
+                    'action_link' => $task->action_link,
+                    'rule_category' => $task->rule_category,
+                    'is_completed' => in_array($task->id, $completedTaskIds),
+                ];
+            });
 
         // 4. جلب آخر 3 حركات في سجل النقاط
         $recentHistory = $user->pointTransactions()
@@ -65,25 +144,15 @@ class PointsController extends Controller
                 ];
             });
 
-        // جلب إحصائيات الإحالة
-        $referralCount = \App\Models\User::where('referred_by_id', $user->id)->count();
-        $successfulReferralCount = \App\Models\User::where('referred_by_id', $user->id)
-            ->whereHas('bookings', function($q) { $q->where('status', 'completed'); })
-            ->count();
-
         return $this->successResponse([
             'total_points' => $totalPoints,
             'referral_code' => $user->referral_code,
             'referral_count' => $referralCount,
             'successful_referral_count' => $successfulReferralCount,
             'progress_card' => [
-                // الترجمة بتصير تستقبل الـ target_steps المحقونة ديناميكياً من الأدمن
-                'title' => __('messages.points.complete_services_title', ['count' => $targetServices]),
-                'current_step' => $currentCycleProgress,
-                'target_step' => $targetServices,
-                'reward_points' => $rewardPoints,
-                'footer_text' => __('messages.points.steps_remaining', ['count' => $stepsRemaining]),
-                'action_type' => $actionType, // نرسلها للفرونت إند عشان الموبايل يوجه العميل للشاشة الصح
+                'referral' => $referralCard,
+                'booking' => $bookingCard,
+                'booking_count' => $bookingCountCard,
             ],
             'earn_points' => $tasks,
             'history' => $recentHistory,
@@ -186,14 +255,21 @@ class PointsController extends Controller
         }
     }
 
-    public function earnPoints()
+    public function earnPoints(Request $request)
     {
         $user = auth()->user();
         $completedTaskIds = DB::table('user_reward_tasks')
             ->where('user_id', $user->id)
             ->pluck('task_id')
             ->toArray();
-        $tasks = RewardTasks::where('status', true)->get()->map(function ($task) use ($completedTaskIds) {
+
+        $query = RewardTasks::where('status', true);
+
+        if ($request->filled('category')) {
+            $query->where('rule_category', $request->category);
+        }
+
+        $tasks = $query->get()->map(function ($task) use ($completedTaskIds) {
             return [
                 'id' => $task->id,
                 'title' => app()->getLocale() == 'ar' ? $task->title_ar : $task->title_en,
@@ -201,6 +277,7 @@ class PointsController extends Controller
                 'points' => '+'.$task->points.' Pts',
                 'action_type' => $task->action_type,
                 'action_link' => $task->action_link,
+                'rule_category' => $task->rule_category,
                 'is_completed' => in_array($task->id, $completedTaskIds),
             ];
         });
