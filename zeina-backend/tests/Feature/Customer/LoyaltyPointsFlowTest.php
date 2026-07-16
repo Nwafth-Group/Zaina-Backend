@@ -81,6 +81,9 @@ class LoyaltyPointsFlowTest extends TestCase
             'title_en' => 'Test Earn',
         ]);
 
+        // Generate active referral code
+        \App\Models\UserReferralCode::generateForUser($user);
+
         $response = $this->getJson('/api/v1/customer/points/summary');
 
         $response->assertOk()

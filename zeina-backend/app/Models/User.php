@@ -168,18 +168,14 @@ class User extends Authenticatable implements Auditable
         return $this->hasMany(UserReferralCode::class, 'user_id');
     }
 
-    public function activeReferralCode(): string
+    public function activeReferralCode(): ?string
     {
         $activeCode = $this->referralCodes()
             ->where('expires_at', '>', now())
             ->latest()
             ->first();
 
-        if (!$activeCode) {
-            $activeCode = UserReferralCode::generateForUser($this);
-        }
-
-        return $activeCode->code;
+        return $activeCode ? $activeCode->code : null;
     }
 
     public function referredBy()

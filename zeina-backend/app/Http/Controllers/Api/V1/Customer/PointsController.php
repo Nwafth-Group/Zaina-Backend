@@ -184,8 +184,12 @@ class PointsController extends Controller
         $appNameAr = $companyInfo->name_ar ?? 'زينه';
         $appNameEn = $companyInfo->name_en ?? 'Ziena';
 
-        $shareMessageAr = "حملي تطبيق {$appNameAr} واستخدمي كود الدعوة الخاص بي: {$referralCode} للحصول على نقاط مكافأة! رابط أندرويد: {$googlePlayLink} رابط آيفون: {$appStoreLink}";
-        $shareMessageEn = "Download {$appNameEn} App and use my referral code: {$referralCode} to get reward points! Android: {$googlePlayLink} iOS: {$appStoreLink}";
+        $shareMessageAr = $referralCode 
+            ? "حملي تطبيق {$appNameAr} واستخدمي كود الدعوة الخاص بي: {$referralCode} للحصول على نقاط مكافأة! رابط أندرويد: {$googlePlayLink} رابط آيفون: {$appStoreLink}"
+            : null;
+        $shareMessageEn = $referralCode 
+            ? "Download {$appNameEn} App and use my referral code: {$referralCode} to get reward points! Android: {$googlePlayLink} iOS: {$appStoreLink}"
+            : null;
 
         return $this->successResponse([
             'total_points' => $totalPoints,
