@@ -10,3 +10,4 @@ Artisan::command('inspire', function () {
 
 Schedule::command('bookings:send-reminders')->everyThirtyMinutes()->withoutOverlapping();
 Schedule::command('bookings:auto-update-status')->everyThirtyMinutes()->withoutOverlapping();
+Schedule::command('points:cleanup-expired-referrals')->daily()->withoutOverlapping();

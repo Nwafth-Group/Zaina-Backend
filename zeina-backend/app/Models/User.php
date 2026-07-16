@@ -163,29 +163,23 @@ class User extends Authenticatable implements Auditable
     //                 ->withTimestamps();
     // }
 
-    public static function generateUniqueReferralCode(): string
+    public function referralCodes()
     {
-        do {
-            $code = 'REF-' . strtoupper(Str::random(6));
-        } while (self::where('referral_code', $code)->exists());
-
-        return $code;
+        return $this->hasMany(UserReferralCode::class, 'user_id');
     }
 
-    protected static function booted()
+    public function activeReferralCode(): string
     {
-        static::creating(function ($user) {
-            if (empty($user->referral_code)) {
-                $user->referral_code = self::generateUniqueReferralCode();
-            }
-        });
+        $activeCode = $this->referralCodes()
+            ->where('expires_at', '>', now())
+            ->latest()
+            ->first();
 
-        static::retrieved(function ($user) {
-            if ($user->type === 'customer' && empty($user->referral_code)) {
-                $user->referral_code = self::generateUniqueReferralCode();
-                $user->saveQuietly();
-            }
-        });
+        if (!$activeCode) {
+            $activeCode = UserReferralCode::generateForUser($this);
+        }
+
+        return $activeCode->code;
     }
 
     public function referredBy()

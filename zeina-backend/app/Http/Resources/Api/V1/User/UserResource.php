@@ -78,7 +78,7 @@ class UserResource extends JsonResource
                 'full_name'     => $this->referredBy->full_name,
                 'email'         => $this->referredBy->email,
                 'phone_number'  => $this->referredBy->phone_number,
-                'referral_code' => $this->referredBy->referral_code,
+                'referral_code' => $this->referredBy->activeReferralCode(),
             ] : null,
 
             'created_at'             => $this->created_at?->toDateTimeString(),

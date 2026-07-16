@@ -117,7 +117,7 @@ Route::prefix('customer')->group(function () {
             Route::get('/history', [PointsController::class, 'history']);
             Route::get('/earn-points', [PointsController::class, 'earnPoints']);
             Route::post('/complete-task', [PointsController::class, 'completeTask']);
-
+            Route::post('/generate-referral-code', [PointsController::class, 'generateReferralCode']);
         });
 
         Route::apiResource('coupons', CouponController::class)->only(['index', 'show']);

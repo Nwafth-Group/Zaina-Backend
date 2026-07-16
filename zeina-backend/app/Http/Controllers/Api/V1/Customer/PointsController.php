@@ -17,10 +17,7 @@ class PointsController extends Controller
     {
         $user = auth()->user();
 
-        if (empty($user->referral_code)) {
-            $user->referral_code = \App\Models\User::generateUniqueReferralCode();
-            $user->saveQuietly();
-        }
+        $referralCode = $user->activeReferralCode();
 
         // 1. حساب إجمالي النقاط الحالي للعميل
         $totalPoints = \App\Models\PointTransaction::getUserPointsBalance($user->id);
@@ -187,12 +184,12 @@ class PointsController extends Controller
         $appNameAr = $companyInfo->name_ar ?? 'زينه';
         $appNameEn = $companyInfo->name_en ?? 'Ziena';
 
-        $shareMessageAr = "حملي تطبيق {$appNameAr} واستخدمي كود الإحالة الخاص بي: {$user->referral_code} للحصول على نقاط مكافأة! رابط أندرويد: {$googlePlayLink} رابط آيفون: {$appStoreLink}";
-        $shareMessageEn = "Download {$appNameEn} App and use my referral code: {$user->referral_code} to get reward points! Android: {$googlePlayLink} iOS: {$appStoreLink}";
+        $shareMessageAr = "حملي تطبيق {$appNameAr} واستخدمي كود الدعوة الخاص بي: {$referralCode} للحصول على نقاط مكافأة! رابط أندرويد: {$googlePlayLink} رابط آيفون: {$appStoreLink}";
+        $shareMessageEn = "Download {$appNameEn} App and use my referral code: {$referralCode} to get reward points! Android: {$googlePlayLink} iOS: {$appStoreLink}";
 
         return $this->successResponse([
             'total_points' => $totalPoints,
-            'referral_code' => $user->referral_code,
+            'referral_code' => $referralCode,
             'referral_count' => $referralCount,
             'successful_referral_count' => $successfulReferralCount,
             'google_play_link' => $googlePlayLink,
@@ -331,5 +328,30 @@ class PointsController extends Controller
         });
 
         return $this->successResponse($tasks, __('messages.points.earn_points_retrieved'));
+    }
+
+    public function generateReferralCode(Request $request)
+    {
+        $user = auth()->user();
+        
+        $todayCount = \App\Models\UserReferralCode::where('user_id', $user->id)
+            ->whereDate('created_at', \Carbon\Carbon::today())
+            ->count();
+
+        if ($todayCount >= 3) {
+            return $this->errorResponse(
+                app()->getLocale() == 'ar' 
+                    ? 'لقد وصلت إلى الحد الأقصى المسموح به لتوليد كود الدعوة وهو 3 مرات يومياً.' 
+                    : 'You have reached the daily limit of 3 referral codes.',
+                422
+            );
+        }
+
+        $newCodeRecord = \App\Models\UserReferralCode::generateForUser($user);
+
+        return $this->successResponse([
+            'referral_code' => $newCodeRecord->code,
+            'expires_at' => $newCodeRecord->expires_at->toDateTimeString(),
+        ], app()->getLocale() == 'ar' ? 'تم توليد كود الدعوة بنجاح.' : 'Referral code generated successfully.');
     }
 }

@@ -85,7 +85,7 @@ class LoyaltyPointsFlowTest extends TestCase
 
         $response->assertOk()
             ->assertJsonPath('data.total_points', 150)
-            ->assertJsonPath('data.referral_code', $user->referral_code)
+            ->assertJsonPath('data.referral_code', $user->activeReferralCode())
             ->assertJsonCount(3, 'data.progress_card')
             ->assertJsonPath('data.progress_card.0.action_type', 'invite_friend')
             ->assertJsonPath('data.progress_card.1.action_type', 'complete_booking')
@@ -321,5 +321,76 @@ class LoyaltyPointsFlowTest extends TestCase
             'amount' => 150,
             'reason' => 'referral_approved',
         ]);
+    }
+
+    public function test_customer_can_generate_new_referral_code_with_limit(): void
+    {
+        $user = $this->actingAsCustomer();
+
+        // 1. First 3 generations should succeed
+        for ($i = 0; $i < 3; $i++) {
+            $response = $this->postJson('/api/v1/customer/points/generate-referral-code');
+            $response->assertOk()
+                ->assertJsonStructure(['success', 'data' => ['referral_code', 'expires_at']]);
+        }
+
+        // 2. 4th generation should fail with 422 limit exceeded
+        $response = $this->postJson('/api/v1/customer/points/generate-referral-code');
+        $response->assertStatus(422);
+    }
+
+    public function test_expired_referral_code_fails_kyc_submission(): void
+    {
+        $user = $this->actingAsCustomer();
+        $referrer = User::factory()->create(['type' => 'customer', 'status' => 'active']);
+
+        // Create an expired referral code
+        $expiredCode = \App\Models\UserReferralCode::create([
+            'user_id' => $referrer->id,
+            'code' => 'REF-EXPIRED',
+            'expires_at' => now()->subMinutes(10),
+        ]);
+
+        // Upload documents and try to verify with expired code
+        $idFront = \Illuminate\Http\UploadedFile::fake()->image('front.jpg');
+        $idBack = \Illuminate\Http\UploadedFile::fake()->image('back.jpg');
+        $selfie = \Illuminate\Http\UploadedFile::fake()->image('selfie.jpg');
+
+        $response = $this->postJson('/api/v1/customer/verify', [
+            'id_front' => $idFront,
+            'id_back' => $idBack,
+            'selfie' => $selfie,
+            'referral_code' => 'REF-EXPIRED',
+        ]);
+
+        // Assert validation fails
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors('referral_code');
+    }
+
+    public function test_expired_referral_code_cleanup_command(): void
+    {
+        $user = User::factory()->create(['type' => 'customer']);
+
+        // 1. Active referral code
+        $activeCode = \App\Models\UserReferralCode::create([
+            'user_id' => $user->id,
+            'code' => 'REF-ACTIVE',
+            'expires_at' => now()->addDays(2),
+        ]);
+
+        // 2. Expired referral code
+        $expiredCode = \App\Models\UserReferralCode::create([
+            'user_id' => $user->id,
+            'code' => 'REF-DEAD',
+            'expires_at' => now()->subDay(),
+        ]);
+
+        // Run cleanup command
+        $this->artisan('points:cleanup-expired-referrals');
+
+        // Expired code should be deleted, active code should remain
+        $this->assertDatabaseMissing('user_referral_codes', ['code' => 'REF-DEAD']);
+        $this->assertDatabaseHas('user_referral_codes', ['code' => 'REF-ACTIVE']);
     }
 }

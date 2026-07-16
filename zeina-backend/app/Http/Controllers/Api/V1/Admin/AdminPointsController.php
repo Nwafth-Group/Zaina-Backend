@@ -264,9 +264,19 @@ class AdminPointsController extends Controller
             $query->whereDate('created_at', '<=', $request->end_date);
         }
 
-        $transactions = $query->latest()->paginate(15);
+        $paginator = $query->latest()->paginate(15);
 
-        return $this->successResponse($transactions, 'Point transactions retrieved successfully.');
+        $formattedData = [
+            'items' => $paginator->items(),
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+            ]
+        ];
+
+        return $this->successResponse($formattedData, 'Point transactions retrieved successfully.');
     }
 
     /**

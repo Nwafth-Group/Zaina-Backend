@@ -25,7 +25,19 @@ class SubmitVerifyAccountRequest extends FormRequest
            'id_front' => 'required|image|mimes:jpeg,png,jpg,webp,jfif|max:5120',
            'id_back'  => 'required|image|mimes:jpeg,png,jpg,webp,jfif|max:5120',
            'selfie'   => 'required|image|mimes:jpeg,png,jpg,webp,jfif|max:5120',
-           'referral_code' => ['nullable', 'string', 'exists:users,referral_code'],
+           'referral_code' => [
+               'nullable',
+               'string',
+               'exists:user_referral_codes,code',
+               function ($attribute, $value, $fail) {
+                   $referralCode = \App\Models\UserReferralCode::where('code', $value)->first();
+                   if ($referralCode && $referralCode->expires_at->isPast()) {
+                       $fail(app()->getLocale() == 'ar' 
+                           ? 'كود الدعوة هذا قد انتهت صلاحيته.' 
+                           : 'This referral code has expired.');
+                   }
+               }
+           ],
         ];
     }
 

@@ -56,9 +56,9 @@ class KycController extends Controller
             ];
 
             if ($request->filled('referral_code') && empty($user->referred_by_id)) {
-                $referrer = \App\Models\User::where('referral_code', $request->referral_code)->first();
-                if ($referrer && $referrer->id !== $user->id) {
-                    $updateData['referred_by_id'] = $referrer->id;
+                $referralCodeRecord = \App\Models\UserReferralCode::where('code', $request->referral_code)->first();
+                if ($referralCodeRecord && $referralCodeRecord->user_id !== $user->id) {
+                    $updateData['referred_by_id'] = $referralCodeRecord->user_id;
                 }
             }
 
