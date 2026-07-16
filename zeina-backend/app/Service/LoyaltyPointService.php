@@ -143,53 +143,6 @@ class LoyaltyPointService
                     }
                 }
 
-                // 🌟 3. Referral Reward (Referrer gets points when friend completes booking)
-                if (!empty($customer->referred_by_id)) {
-                    $referrer = User::find($customer->referred_by_id);
-                    if ($referrer) {
-                        $alreadyAwardedReferral = PointTransaction::where('user_id', $referrer->id)
-                            ->where('reference_type', User::class)
-                            ->where('reference_id', $customer->id)
-                            ->where('reason', 'friend_first_booking')
-                            ->exists();
-
-                        if (!$alreadyAwardedReferral) {
-                            $firstCompletedBooking = Booking::where('customer_id', $customer->id)
-                                ->where('status', 'completed')
-                                ->orderBy('id', 'asc')
-                                ->first();
-
-                            if ($firstCompletedBooking && $firstCompletedBooking->id === $booking->id) {
-                                $referralTask = RewardTasks::where('status', true)
-                                    ->where('rule_category', 'referral')
-                                    ->where('trigger_event', 'referred_register')
-                                    ->first();
-
-                                if ($referralTask) {
-                                    $referrer->pointTransactions()->create([
-                                        'type' => 'earn',
-                                        'amount' => $referralTask->points,
-                                        'title_ar' => 'مكافأة إحالة صديق: ' . $customer->full_name,
-                                        'title_en' => 'Friend Referral Completed Booking: ' . $customer->full_name,
-                                        'reference_type' => User::class,
-                                        'reference_id' => $customer->id,
-                                        'reason' => 'friend_first_booking',
-                                    ]);
-
-                                    $referrer->notify(new PointsNotification(
-                                        'مكافأة دعوة صديق ناجحة! 🤝',
-                                        'حصلت على ' . $referralTask->points . ' نقطة بعد إتمام صديقك ' . $customer->full_name . ' خدمته الأولى.',
-                                        $referralTask->points,
-                                        'earn',
-                                        ['referred_friend_id' => $customer->id]
-                                    ));
-
-                                    Log::info("Referral points awarded: {$referralTask->points} points to referrer ID {$referrer->id} for friend ID {$customer->id} first completed booking.");
-                                }
-                            }
-                        }
-                    }
-                }
             });
 
         } catch (\Throwable $e) {
@@ -249,6 +202,61 @@ class LoyaltyPointService
 
         } catch (\Throwable $e) {
             Log::error("Failed to process Review Submission Points: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Allocate points when a referred friend gets verified (approved) by the admin.
+     */
+    public static function awardPointsForReferralApproval(User $referredUser): void
+    {
+        try {
+            if (empty($referredUser->referred_by_id)) {
+                return;
+            }
+
+            $referrer = User::find($referredUser->referred_by_id);
+            if (!$referrer) {
+                return;
+            }
+
+            DB::transaction(function () use ($referredUser, $referrer) {
+                $alreadyAwardedReferral = PointTransaction::where('user_id', $referrer->id)
+                    ->where('reference_type', User::class)
+                    ->where('reference_id', $referredUser->id)
+                    ->where('reason', 'referral_approved')
+                    ->exists();
+
+                if (!$alreadyAwardedReferral) {
+                    $referralTask = RewardTasks::where('status', true)
+                        ->where('rule_category', 'referral')
+                        ->first();
+
+                    if ($referralTask) {
+                        $referrer->pointTransactions()->create([
+                            'type' => 'earn',
+                            'amount' => $referralTask->points,
+                            'title_ar' => 'مكافأة إحالة صديق: ' . $referredUser->full_name,
+                            'title_en' => 'Friend Referral Approved: ' . $referredUser->full_name,
+                            'reference_type' => User::class,
+                            'reference_id' => $referredUser->id,
+                            'reason' => 'referral_approved',
+                        ]);
+
+                        $referrer->notify(new PointsNotification(
+                            'مكافأة دعوة صديق ناجحة! 🤝',
+                            'حصلت على ' . $referralTask->points . ' نقطة بعد توثيق حساب صديقك ' . $referredUser->full_name . ' بنجاح.',
+                            $referralTask->points,
+                            'earn',
+                            ['referred_friend_id' => $referredUser->id]
+                        ));
+
+                        Log::info("Referral points awarded: {$referralTask->points} points to referrer ID {$referrer->id} for friend ID {$referredUser->id} verification approval.");
+                    }
+                }
+            });
+        } catch (\Throwable $e) {
+            Log::error('Error awarding referral points on approval: ' . $e->getMessage());
         }
     }
 }

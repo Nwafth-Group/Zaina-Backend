@@ -277,7 +277,7 @@ class LoyaltyPointsFlowTest extends TestCase
         $this->assertEquals(100, PointTransaction::getUserPointsBalance($user->id));
     }
 
-    public function test_friend_referral_rewards_referrer_on_first_booking_completion(): void
+    public function test_friend_referral_rewards_referrer_on_kyc_approval(): void
     {
         // 1. Create referrer
         $referrer = User::factory()->create(['type' => 'customer', 'status' => 'active', 'verification_status' => 'approved']);
@@ -295,36 +295,22 @@ class LoyaltyPointsFlowTest extends TestCase
             'trigger_event' => 'referred_register',
         ]);
 
-        // 3. Register friend using referrer code
+        // 3. Register friend using referrer code (not approved yet)
         $friend = User::factory()->create([
             'type' => 'customer',
             'status' => 'active',
-            'verification_status' => 'approved',
+            'verification_status' => 'pending',
             'referred_by_id' => $referrer->id,
         ]);
 
         // Referrer points should remain 0 initially
         $this->assertEquals(0, PointTransaction::getUserPointsBalance($referrer->id));
 
-        // 4. Friend makes a booking and is completed
-        $service = Service::factory()->create(['status' => 'active']);
-        $address = CustomerAddress::factory()->create(['user_id' => $friend->id]);
-        $booking = Booking::create([
-            'booking_ref' => 'REF-BK-999',
-            'customer_id' => $friend->id,
-            'service_id' => $service->id,
-            'address_id' => $address->id,
-            'booking_date' => Carbon::now()->toDateString(),
-            'start_time' => '10:00:00',
-            'end_time' => '12:00:00',
-            'duration_minutes' => 120,
-            'status' => 'completed',
-            'price_subtotal' => 100,
-            'total_amount' => 100,
-        ]);
+        // 4. Approve the friend (simulating KYC approval)
+        $friend->verification_status = 'approved';
+        $friend->save();
 
-        // Complete the booking via status update logic (which triggers awardPointsForCompletedBooking)
-        \App\Service\LoyaltyPointService::awardPointsForCompletedBooking($booking);
+        \App\Service\LoyaltyPointService::awardPointsForReferralApproval($friend);
 
         // Referrer should now receive the 150 points!
         $this->assertEquals(150, PointTransaction::getUserPointsBalance($referrer->id));
@@ -333,7 +319,7 @@ class LoyaltyPointsFlowTest extends TestCase
             'user_id' => $referrer->id,
             'type' => 'earn',
             'amount' => 150,
-            'reason' => 'friend_first_booking',
+            'reason' => 'referral_approved',
         ]);
     }
 }

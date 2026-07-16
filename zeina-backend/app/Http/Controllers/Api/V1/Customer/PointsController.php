@@ -38,11 +38,11 @@ class PointsController extends Controller
         // 🌟 A. Referral Card
         $referralCount = \App\Models\User::where('referred_by_id', $user->id)->count();
         $successfulReferralCount = \App\Models\User::where('referred_by_id', $user->id)
-            ->whereHas('bookings', function($q) { $q->where('status', 'completed'); })
+            ->where('verification_status', 'approved')
             ->count();
         
         $referralPoints = $user->pointTransactions()
-            ->where('reason', 'friend_first_booking')
+            ->where('reason', 'referral_approved')
             ->sum('amount');
 
         if ($referralRule) {

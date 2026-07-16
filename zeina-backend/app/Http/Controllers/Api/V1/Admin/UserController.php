@@ -122,12 +122,15 @@ class UserController extends Controller
 
         if ($request->action === 'approve') {
             $user->verification_status = 'approved';
+            $user->save();
+
+            // Award points to the referrer on approval
+            \App\Service\LoyaltyPointService::awardPointsForReferralApproval($user);
         } else {
             $user->verification_status = 'rejected';
             $user->rejection_reason = $request->rejection_reason; // حفظ سبب الرفض
+            $user->save();
         }
-
-        $user->save();
 
         return $this->successResponse(null,
             $request->action === 'approve' ? __('messages.user_approved_success') : __('messages.user_rejected_success')
