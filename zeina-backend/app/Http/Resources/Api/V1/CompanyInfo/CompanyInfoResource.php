@@ -31,6 +31,8 @@ class CompanyInfoResource extends JsonResource
             'snapchat_link' => $this->snapchat_link,
             'tiktok_link' => $this->tiktok_link,
             'linkedin_link' => $this->linkedin_link,
+            'google_play_link' => $this->google_play_link,
+            'app_store_link' => $this->app_store_link,
             'vat_percentage' => (float) $this->vat_percentage,
             'logo_url' => $logo ? (new MediaResource($logo))->getFileUrl() : null,
             'created_at' => $this->created_at?->toDateTimeString(),

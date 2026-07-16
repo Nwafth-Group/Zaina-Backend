@@ -23,6 +23,8 @@ class CompanyInfo extends Model
         'snapchat_link',
         'tiktok_link',
         'linkedin_link',
+        'google_play_link',
+        'app_store_link',
         'vat_percentage',
         'tax_number',
     ];

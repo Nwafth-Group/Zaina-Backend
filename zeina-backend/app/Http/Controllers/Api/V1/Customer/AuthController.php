@@ -90,21 +90,12 @@ class AuthController extends Controller
 
         // إذا لم يكن المستخدم موجوداً، نقوم بإنشائه (Register)
         if (! $user) {
-            $referredBy = null;
-            if (!empty($data['referral_code'])) {
-                $referrer = User::where('referral_code', $data['referral_code'])->first();
-                if ($referrer) {
-                    $referredBy = $referrer->id;
-                }
-            }
-
             $user = User::create([
                 'phone_number' => $mobile,
                 'type' => 'customer',
                 'status' => 'active',
                 'verification_status' => 'unverified',
                 'preferred_language' => 'en',
-                'referred_by_id' => $referredBy,
             ]);
             $isNewUser = true;
         }

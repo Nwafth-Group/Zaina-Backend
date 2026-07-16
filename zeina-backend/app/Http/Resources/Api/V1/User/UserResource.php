@@ -73,6 +73,14 @@ class UserResource extends JsonResource
                     'selfie'   => $getSecureUrl($selfie),
             ],
 
+            'invited_by'             => $this->referredBy ? [
+                'id'            => $this->referredBy->id,
+                'full_name'     => $this->referredBy->full_name,
+                'email'         => $this->referredBy->email,
+                'phone_number'  => $this->referredBy->phone_number,
+                'referral_code' => $this->referredBy->referral_code,
+            ] : null,
+
             'created_at'             => $this->created_at?->toDateTimeString(),
             'updated_at'             => $this->updated_at?->toDateTimeString(),
         ];

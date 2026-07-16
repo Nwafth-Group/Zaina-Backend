@@ -181,11 +181,24 @@ class PointsController extends Controller
                 ];
             });
 
+        $companyInfo = \App\Models\CompanyInfo::first();
+        $googlePlayLink = $companyInfo->google_play_link ?? null;
+        $appStoreLink = $companyInfo->app_store_link ?? null;
+        $appNameAr = $companyInfo->name_ar ?? 'زينه';
+        $appNameEn = $companyInfo->name_en ?? 'Ziena';
+
+        $shareMessageAr = "حملي تطبيق {$appNameAr} واستخدمي كود الإحالة الخاص بي: {$user->referral_code} للحصول على نقاط مكافأة! رابط أندرويد: {$googlePlayLink} رابط آيفون: {$appStoreLink}";
+        $shareMessageEn = "Download {$appNameEn} App and use my referral code: {$user->referral_code} to get reward points! Android: {$googlePlayLink} iOS: {$appStoreLink}";
+
         return $this->successResponse([
             'total_points' => $totalPoints,
             'referral_code' => $user->referral_code,
             'referral_count' => $referralCount,
             'successful_referral_count' => $successfulReferralCount,
+            'google_play_link' => $googlePlayLink,
+            'app_store_link' => $appStoreLink,
+            'share_message_ar' => $shareMessageAr,
+            'share_message_en' => $shareMessageEn,
             'progress_card' => $progressCards,
             'earn_points' => $tasks,
             'history' => $recentHistory,

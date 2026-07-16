@@ -25,7 +25,6 @@ class VerifyOtpRequest extends CustomFormRequest
         return [
             'mobile_number' => ['required','string'],
             'otp'           => ['required','numeric'],
-            'referral_code' => ['nullable', 'string', 'exists:users,referral_code'],
         ];
     }
 

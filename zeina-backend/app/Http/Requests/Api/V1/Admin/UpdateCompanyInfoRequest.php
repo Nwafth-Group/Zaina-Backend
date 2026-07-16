@@ -31,6 +31,8 @@ class UpdateCompanyInfoRequest extends FormRequest
             'snapchat_link' => 'nullable|url|max:255',
             'tiktok_link' => 'nullable|url|max:255',
             'linkedin_link' => 'nullable|url|max:255',
+            'google_play_link' => 'nullable|url|max:255',
+            'app_store_link' => 'nullable|url|max:255',
             'vat_percentage' => 'required|numeric|min:0|max:100',
             'logo' => 'nullable|image|mimes:jpeg,png,jpg,svg|max:2048',
         ];

@@ -50,10 +50,19 @@ class KycController extends Controller
             $this->mediaService->upload($request->file('id_back'), $user, 'kyc/id_back', 'private');
             $this->mediaService->upload($request->file('selfie'), $user, 'kyc/selfie', 'private');
             
-            $user->update([
+            $updateData = [
                 'verification_status' => 'pending',
                 'rejection_reason'    => null
-            ]);
+            ];
+
+            if ($request->filled('referral_code') && empty($user->referred_by_id)) {
+                $referrer = \App\Models\User::where('referral_code', $request->referral_code)->first();
+                if ($referrer && $referrer->id !== $user->id) {
+                    $updateData['referred_by_id'] = $referrer->id;
+                }
+            }
+
+            $user->update($updateData);
 
             DB::commit();
 

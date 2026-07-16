@@ -22,9 +22,10 @@ class SubmitVerifyAccountRequest extends FormRequest
     public function rules(): array
     {
         return [
-           'id_front' => 'required|image|mimes:jpeg,png,jpg,webp,jfif|max:5120', // Max 5MB كما في التصميم
+           'id_front' => 'required|image|mimes:jpeg,png,jpg,webp,jfif|max:5120',
            'id_back'  => 'required|image|mimes:jpeg,png,jpg,webp,jfif|max:5120',
            'selfie'   => 'required|image|mimes:jpeg,png,jpg,webp,jfif|max:5120',
+           'referral_code' => ['nullable', 'string', 'exists:users,referral_code'],
         ];
     }
 

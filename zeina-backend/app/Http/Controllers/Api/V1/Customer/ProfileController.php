@@ -47,13 +47,6 @@ class ProfileController extends Controller
             'gender'       => $request->gender, 
         ];
 
-        if (empty($user->referred_by_id) && $request->filled('referral_code')) {
-            $referrer = \App\Models\User::where('referral_code', $request->referral_code)->first();
-            if ($referrer && $referrer->id !== $user->id) {
-                $updateData['referred_by_id'] = $referrer->id;
-            }
-        }
-
         // 1. تحديث البيانات النصية في الداتابيز
         $user->update($updateData);
 

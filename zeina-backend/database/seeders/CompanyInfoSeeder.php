@@ -27,6 +27,8 @@ class CompanyInfoSeeder extends Seeder
                 'snapchat_link' => 'https://snapchat.com/add/zeina',
                 'tiktok_link' => 'https://tiktok.com/@zeina',
                 'linkedin_link' => 'https://linkedin.com/company/zeina',
+                'google_play_link' => 'https://play.google.com/store/apps/details?id=com.zeina.app',
+                'app_store_link' => 'https://apps.apple.com/app/zeina-app/id123456789',
                 'vat_percentage' => 00.00,
                 'tax_number' => '123456789000003',
             ]
