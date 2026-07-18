@@ -49,8 +49,18 @@ class AreaController extends Controller
 
     public function destroy(Area $area)
     {
-        // هنا قد نمنع الحذف مستقبلاً إذا كان هناك عناوين عملاء مرتبطة بهذه المنطقة
-        // if ($area->addresses()->count() > 0) { ... }
+        $hasAddresses = $area->addresses()->exists();
+        $hasCoverages = \App\Models\ServiceCoverage::where('area_id', $area->id)->exists();
+        $hasPrices = \App\Models\ServicePrice::where('area_id', $area->id)->exists();
+
+        if ($hasAddresses || $hasCoverages || $hasPrices) {
+            return $this->errorResponse(
+                app()->getLocale() === 'ar' 
+                    ? 'لا يمكن حذف المنطقة لوجود سجلات مرتبطة بها (عناوين عملاء، تغطيات خدمات، أو تسعيرات).' 
+                    : 'Cannot delete the area because there are associated records (customer addresses, service coverages, or price rules).',
+                400
+            );
+        }
 
         $area->delete();
 

@@ -79,6 +79,7 @@ Route::prefix('admin')->group(function () {
             Route::get('{employee}', [EmployeeController::class, 'show'])->middleware('permission:employees.view');
             Route::match(['put', 'patch'], '{employee}', [EmployeeController::class, 'update'])->middleware('permission:employees.edit');
             Route::patch('{employee}/toggle-status', [EmployeeController::class, 'toggleStatus'])->middleware('permission:employees.edit');
+            Route::delete('{employee}', [EmployeeController::class, 'destroy'])->middleware('permission:employees.delete');
         });
 
         Route::get('roles', [RoleController::class, 'index'])->middleware('permission:roles.view');
@@ -119,66 +120,183 @@ Route::prefix('admin')->group(function () {
         // Route::get('/media/{mediaId}', [KysController::class, 'viewPrivateMedia']);
         //  });
 
-        Route::apiResource('categories', CategoryController::class);
-        Route::post('categories/{category}/toggle-status', [CategoryController::class, 'toggleStatus']);
-        Route::get('services/{service}/details', [ServiceController::class, 'details']);
-        Route::apiResource('services', ServiceController::class);
-        Route::post('services/{service}/toggle-status', [ServiceController::class, 'toggleStatus']);
-        Route::apiResource('servicesprices', ServicePriceController::class);
-        Route::post('servicesprices/estimated', [ServicePriceController::class, 'getEstimatedPrice']);
-        Route::get('workers/nationalities', [WorkerController::class, 'nationalities']);
-        Route::get('workers/{worker}/details', [WorkerController::class, 'details']);
-        Route::apiResource('workers', WorkerController::class);
-        Route::post('workers/{worker}/toggle-status', [WorkerController::class, 'changeStatus']);
+        // Categories
+        Route::middleware('permission:categories.view')->group(function () {
+            Route::get('categories', [CategoryController::class, 'index']);
+            Route::get('categories/{category}', [CategoryController::class, 'show']);
+        });
+        Route::middleware('permission:categories.create')->group(function () {
+            Route::post('categories', [CategoryController::class, 'store']);
+        });
+        Route::middleware('permission:categories.edit')->group(function () {
+            Route::match(['put', 'patch'], 'categories/{category}', [CategoryController::class, 'update']);
+            Route::post('categories/{category}/toggle-status', [CategoryController::class, 'toggleStatus']);
+        });
+        Route::middleware('permission:categories.delete')->group(function () {
+            Route::delete('categories/{category}', [CategoryController::class, 'destroy']);
+        });
 
-        // Bookings are created by customers; the admin area lists, views and
-        // changes their status (logged to booking_histories).
-        Route::get('bookings', [BookingController::class, 'index']);
-        Route::get('bookings/{booking}', [BookingController::class, 'show']);
-        Route::patch('bookings/{booking}/status', [BookingController::class, 'updateStatus']);
-        Route::get('bookings/{booking}/eligible-workers', [BookingController::class, 'eligibleWorkers']);
-        Route::post('bookings/{booking}/assign-workers', [BookingController::class, 'assignWorkers']);
-        Route::post('bookings/{booking}/reschedule', [BookingController::class, 'reschedule']);
-        Route::get('bookings/{booking}/contract', [BookingContractController::class, 'downloadContractForAdmin']);
+        // Services & Prices
+        Route::middleware('permission:services.view')->group(function () {
+            Route::get('services', [ServiceController::class, 'index']);
+            Route::get('services/{service}', [ServiceController::class, 'show']);
+            Route::get('services/{service}/details', [ServiceController::class, 'details']);
+            Route::get('servicesprices', [ServicePriceController::class, 'index']);
+            Route::get('servicesprices/{servicesprice}', [ServicePriceController::class, 'show']);
+            Route::post('servicesprices/estimated', [ServicePriceController::class, 'getEstimatedPrice']);
+        });
+        Route::middleware('permission:services.create')->group(function () {
+            Route::post('services', [ServiceController::class, 'store']);
+            Route::post('servicesprices', [ServicePriceController::class, 'store']);
+        });
+        Route::middleware('permission:services.edit')->group(function () {
+            Route::match(['put', 'patch'], 'services/{service}', [ServiceController::class, 'update']);
+            Route::post('services/{service}/toggle-status', [ServiceController::class, 'toggleStatus']);
+            Route::match(['put', 'patch'], 'servicesprices/{servicesprice}', [ServicePriceController::class, 'update']);
+        });
+        Route::middleware('permission:services.delete')->group(function () {
+            Route::delete('services/{service}', [ServiceController::class, 'destroy']);
+            Route::delete('servicesprices/{servicesprice}', [ServicePriceController::class, 'destroy']);
+        });
+
+        // Workers
+        Route::middleware('permission:workers.view')->group(function () {
+            Route::get('workers', [WorkerController::class, 'index']);
+            Route::get('workers/{worker}', [WorkerController::class, 'show']);
+            Route::get('workers/{worker}/details', [WorkerController::class, 'details']);
+            Route::get('workers/nationalities', [WorkerController::class, 'nationalities']);
+        });
+        Route::middleware('permission:workers.create')->group(function () {
+            Route::post('workers', [WorkerController::class, 'store']);
+        });
+        Route::middleware('permission:workers.edit')->group(function () {
+            Route::match(['put', 'patch'], 'workers/{worker}', [WorkerController::class, 'update']);
+            Route::post('workers/{worker}/toggle-status', [WorkerController::class, 'changeStatus']);
+        });
+        Route::middleware('permission:workers.delete')->group(function () {
+            Route::delete('workers/{worker}', [WorkerController::class, 'destroy']);
+        });
+
+        // Bookings
+        Route::middleware('permission:bookings.view')->group(function () {
+            Route::get('bookings', [BookingController::class, 'index']);
+            Route::get('bookings/{booking}', [BookingController::class, 'show']);
+            Route::get('bookings/{booking}/contract', [BookingContractController::class, 'downloadContractForAdmin']);
+        });
+        Route::middleware('permission:bookings.edit')->group(function () {
+            Route::patch('bookings/{booking}/status', [BookingController::class, 'updateStatus']);
+            Route::get('bookings/{booking}/eligible-workers', [BookingController::class, 'eligibleWorkers']);
+            Route::post('bookings/{booking}/assign-workers', [BookingController::class, 'assignWorkers']);
+            Route::post('bookings/{booking}/reschedule', [BookingController::class, 'reschedule']);
+        });
 
         // Home banners (ads) shown in the customer app.
-        Route::apiResource('ads', AdsController::class);
-        Route::patch('ads/{ad}/toggle-status', [AdsController::class, 'toggleStatus']);
+        Route::middleware('permission:banners.view')->group(function () {
+            Route::get('ads', [AdsController::class, 'index']);
+            Route::get('ads/{ad}', [AdsController::class, 'show']);
+        });
+        Route::middleware('permission:banners.create')->group(function () {
+            Route::post('ads', [AdsController::class, 'store']);
+        });
+        Route::middleware('permission:banners.edit')->group(function () {
+            Route::match(['put', 'patch'], 'ads/{ad}', [AdsController::class, 'update']);
+            Route::patch('ads/{ad}/toggle-status', [AdsController::class, 'toggleStatus']);
+        });
+        Route::middleware('permission:banners.delete')->group(function () {
+            Route::delete('ads/{ad}', [AdsController::class, 'destroy']);
+        });
 
         // Announcements shown in the customer app notifications tab.
-        Route::apiResource('announcements', AnnouncementController::class);
+        Route::middleware('permission:announcements.view')->group(function () {
+            Route::get('announcements', [AnnouncementController::class, 'index']);
+            Route::get('announcements/{announcement}', [AnnouncementController::class, 'show']);
+        });
+        Route::middleware('permission:announcements.create')->group(function () {
+            Route::post('announcements', [AnnouncementController::class, 'store']);
+        });
+        Route::middleware('permission:announcements.edit')->group(function () {
+            Route::match(['put', 'patch'], 'announcements/{announcement}', [AnnouncementController::class, 'update']);
+        });
+        Route::middleware('permission:announcements.delete')->group(function () {
+            Route::delete('announcements/{announcement}', [AnnouncementController::class, 'destroy']);
+        });
 
-        // Mobile Push Notifications
-        Route::apiResource('mobile-notifications', MobileNotificationController::class);
-        Route::patch('mobile-notifications/{mobile_notification}/cancel', [MobileNotificationController::class, 'cancel']);
+        // Mobile Notifications (Push notifications sent via Firebase)
+        Route::middleware('permission:notifications.view')->group(function () {
+            Route::get('mobile-notifications', [MobileNotificationController::class, 'index']);
+            Route::get('mobile-notifications/{mobile_notification}', [MobileNotificationController::class, 'show']);
+        });
+        Route::middleware('permission:notifications.create')->group(function () {
+            Route::post('mobile-notifications', [MobileNotificationController::class, 'store']);
+        });
+        Route::middleware('permission:notifications.edit')->group(function () {
+            Route::match(['put', 'patch'], 'mobile-notifications/{mobile_notification}', [MobileNotificationController::class, 'update']);
+            Route::patch('mobile-notifications/{mobile_notification}/cancel', [MobileNotificationController::class, 'cancel']);
+            Route::post('mobile-notifications/{mobile_notification}/send-now', [MobileNotificationController::class, 'sendNow']);
+        });
+        Route::middleware('permission:notifications.delete')->group(function () {
+            Route::delete('mobile-notifications/{mobile_notification}', [MobileNotificationController::class, 'destroy']);
+        });
 
         // Coupons management
-        Route::apiResource('coupons', CouponController::class);
+        Route::middleware('permission:coupons.view')->group(function () {
+            Route::get('coupons', [CouponController::class, 'index']);
+            Route::get('coupons/{coupon}', [CouponController::class, 'show']);
+        });
+        Route::middleware('permission:coupons.create')->group(function () {
+            Route::post('coupons', [CouponController::class, 'store']);
+        });
+        Route::middleware('permission:coupons.edit')->group(function () {
+            Route::match(['put', 'patch'], 'coupons/{coupon}', [CouponController::class, 'update']);
+        });
+        Route::middleware('permission:coupons.delete')->group(function () {
+            Route::delete('coupons/{coupon}', [CouponController::class, 'destroy']);
+        });
 
         // Loyalty Points Management
-        Route::get('points/rules', [AdminPointsController::class, 'getRules']);
-        Route::post('points/rules', [AdminPointsController::class, 'storeRule']);
-        Route::put('points/rules/{id}', [AdminPointsController::class, 'updateRule']);
-        Route::delete('points/rules/{id}', [AdminPointsController::class, 'destroyRule']);
-
-        Route::get('points/services', [AdminPointsController::class, 'getServices']);
-        Route::put('points/services/{id}', [AdminPointsController::class, 'updateServicePoints']);
-
-        Route::get('points/transactions', [AdminPointsController::class, 'getTransactions']);
-        Route::post('points/manual-adjustment', [AdminPointsController::class, 'manualAdjustment']);
+        Route::middleware('permission:points.view')->group(function () {
+            Route::get('points/rules', [AdminPointsController::class, 'getRules']);
+            Route::get('points/services', [AdminPointsController::class, 'getServices']);
+            Route::get('points/transactions', [AdminPointsController::class, 'getTransactions']);
+        });
+        Route::middleware('permission:points.edit')->group(function () {
+            Route::post('points/rules', [AdminPointsController::class, 'storeRule']);
+            Route::put('points/rules/{id}', [AdminPointsController::class, 'updateRule']);
+            Route::delete('points/rules/{id}', [AdminPointsController::class, 'destroyRule']);
+            Route::put('points/services/{id}', [AdminPointsController::class, 'updateServicePoints']);
+            Route::post('points/manual-adjustment', [AdminPointsController::class, 'manualAdjustment']);
+        });
 
         // Legal documents
-        Route::apiResource('legal-documents', LegalDocumentController::class);
+        Route::middleware('permission:legal_documents.view')->group(function () {
+            Route::get('legal-documents', [LegalDocumentController::class, 'index']);
+            Route::get('legal-documents/{legal_document}', [LegalDocumentController::class, 'show']);
+        });
+        Route::middleware('permission:legal_documents.create')->group(function () {
+            Route::post('legal-documents', [LegalDocumentController::class, 'store']);
+        });
+        Route::middleware('permission:legal_documents.edit')->group(function () {
+            Route::match(['put', 'patch'], 'legal-documents/{legal_document}', [LegalDocumentController::class, 'update']);
+        });
+        Route::middleware('permission:legal_documents.delete')->group(function () {
+            Route::delete('legal-documents/{legal_document}', [LegalDocumentController::class, 'destroy']);
+        });
 
         // Reviews
-        Route::get('reviews', [ReviewController::class, 'index']);
+        Route::middleware('permission:reviews.view')->group(function () {
+            Route::get('reviews', [ReviewController::class, 'index']);
+        });
 
         // Reports
-        Route::get('reports', [ReportController::class, 'index']);
-        Route::get('reports/{report}', [ReportController::class, 'show']);
-        Route::post('reports/{report}/assign', [ReportController::class, 'assign']);
-        Route::patch('reports/{report}/status', [ReportController::class, 'updateStatus']);
-        Route::post('reports/{report}/notes', [ReportController::class, 'addNote']);
+        Route::middleware('permission:reports.view')->group(function () {
+            Route::get('reports', [ReportController::class, 'index']);
+            Route::get('reports/{report}', [ReportController::class, 'show']);
+        });
+        Route::middleware('permission:reports.edit')->group(function () {
+            Route::post('reports/{report}/assign', [ReportController::class, 'assign']);
+            Route::patch('reports/{report}/status', [ReportController::class, 'updateStatus']);
+            Route::post('reports/{report}/notes', [ReportController::class, 'addNote']);
+        });
 
         //  Route::middleware('permission:providers.view')->prefix('providers')->group(function () {
         //         Route::get('/', [ProviderController::class, 'index']);

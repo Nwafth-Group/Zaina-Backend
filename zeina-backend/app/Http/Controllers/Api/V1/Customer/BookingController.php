@@ -566,6 +566,21 @@ class BookingController extends Controller
                     ]
                 ));
 
+                // Notify all admins
+                $admins = \App\Models\User::where('type', 'admin')->get();
+                foreach ($admins as $admin) {
+                    $admin->notify(new BookingNotification(
+                        'Customer Booking Rescheduled / إعادة جدولة حجز من العميل',
+                        "Customer {$user->full_name} has rescheduled booking ref: {$booking->booking_ref} to {$firstDate} at " . $newStart->format('h:i A') . ".",
+                        $booking->id,
+                        [
+                            'booking_ref' => $booking->booking_ref,
+                            'customer_name' => $user->full_name,
+                            'current_status' => 'Upcoming',
+                        ]
+                    ));
+                }
+
             } catch (\Exception $notifEx) {
                 Log::error('Failed to trigger system reschedule notification: '.$notifEx->getMessage());
             }

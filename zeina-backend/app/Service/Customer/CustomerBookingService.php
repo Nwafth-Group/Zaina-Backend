@@ -378,7 +378,7 @@ class CustomerBookingService
 
     public function calculateBookingTimes(Service $service, string $date, string $startTime, ?int $customDuration = null): array
     {
-        $periodHours = $customDuration ?? ($service->duration->service_period_hours ?? 2);
+        $periodHours = $customDuration ?: ($service->min_duration ?: ($service->duration->service_period_hours ?? 2));
         $durationMinutes = $periodHours * 60;
 
         $start = Carbon::parse($startTime);

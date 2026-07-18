@@ -33,7 +33,7 @@ class StoreBookingRequest extends FormRequest
 
         if ($service) {
             if (! $this->filled('duration')) {
-                $mergeData['duration'] = $service->default_duration ?? 4;
+                $mergeData['duration'] = $service->min_duration ?: ($service->default_duration ?? 4);
             }
 
             if (! $this->filled('worker_gender')) {

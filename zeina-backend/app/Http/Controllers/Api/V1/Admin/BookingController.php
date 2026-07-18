@@ -159,6 +159,16 @@ class BookingController extends Controller
             return $this->errorResponse('Cannot assign workers to a booking with failed payment.', 422);
         }
 
+        // Limit worker updates to Upcoming or Pending Assignment bookings only
+        if ($booking->status !== 'Upcoming' && $booking->status !== 'Pending Assignment') {
+            return $this->errorResponse(
+                app()->getLocale() === 'ar'
+                    ? 'لا يمكن تعيين أو تغيير العمال إلا للحجوزات القادمة أو قيد الانتظار.'
+                    : 'Cannot assign or replace workers unless the booking status is Upcoming or Pending Assignment.',
+                422
+            );
+        }
+
         $workerIds = $request->input('worker_ids');
         $workers = Worker::whereIn('id', $workerIds)->get();
 
@@ -264,9 +274,15 @@ class BookingController extends Controller
         // Rule BR-16 / BR-17: Notify customer via push notification, database, and SMS queue
         try {
             if ($booking->customer) {
+                $lang = $booking->customer->preferred_language === 'en' ? 'en' : 'ar';
+                $title = $lang === 'en' ? 'Workers Assignment Updated' : 'تحديث تعيين العاملات';
+                $body = $lang === 'en'
+                    ? "The assigned workers for your booking {$booking->booking_ref} have been updated."
+                    : "تم تحديث تعيين العاملات لحجزك رقم {$booking->booking_ref}.";
+
                 $booking->customer->notify(new BookingNotification(
-                    __('messages.worker_assignment_updated_title'),
-                    __('messages.worker_assignment_updated_body', ['ref' => $booking->booking_ref]),
+                    $title,
+                    $body,
                     $booking->id,
                     [
                         'booking_ref' => $booking->booking_ref,
@@ -294,14 +310,16 @@ class BookingController extends Controller
                 if ($updatedBooking->customer) {
                     $newStart = \Carbon\Carbon::parse($request->start_time);
                     $firstDate = collect($request->dates)->sort()->first();
+                    $lang = $updatedBooking->customer->preferred_language === 'en' ? 'en' : 'ar';
+                    
+                    $title = $lang === 'en' ? 'Booking Rescheduled' : 'إعادة جدولة الحجز';
+                    $body = $lang === 'en'
+                        ? "Your booking {$updatedBooking->booking_ref} has been rescheduled to {$firstDate} at " . $newStart->format('h:i A') . "."
+                        : "تمت إعادة جدولة حجزك رقم {$updatedBooking->booking_ref} ليصبح بتاريخ {$firstDate} في تمام الساعة " . $newStart->format('h:i A') . ".";
 
                     $updatedBooking->customer->notify(new BookingNotification(
-                        __('sms.booking_rescheduled_title'),
-                        __('sms.booking_rescheduled_message', [
-                            'ref' => $updatedBooking->booking_ref,
-                            'date' => $firstDate,
-                            'time' => $newStart->format('h:i A'),
-                        ]),
+                        $title,
+                        $body,
                         $updatedBooking->id,
                         [
                             'booking_ref' => $updatedBooking->booking_ref,

@@ -168,4 +168,51 @@ class EmployeeController extends Controller
 
         return $this->successResponse(null, $msg);
     }
+
+    /**
+     * Delete Employee / Hard Delete with relations validation
+     */
+    public function destroy(User $employee)
+    {
+        // Gating Super Admin protection
+        if ($employee->hasRole('Super Admin') && auth()->user()->type !== 'super_admin') {
+            return $this->errorResponse(__('messages.unauthorized') ?? 'غير مصرح لك بحذف مدير عام.', 403);
+        }
+
+        // Prevent deleting the last Super Admin
+        if ($employee->hasRole('Super Admin')) {
+            $superAdminsCount = User::role('Super Admin')->where('status', 'active')->count();
+            if ($superAdminsCount <= 1) {
+                return $this->errorResponse(
+                    app()->getLocale() === 'ar' 
+                        ? 'لا يمكن حذف آخر مدير عام فعال بالنظام.' 
+                        : 'Cannot delete the last active Super Admin in the system.', 
+                    403
+                );
+            }
+        }
+
+        // Check for relationships
+        $hasBookings = \App\Models\Booking::where('customer_id', $employee->id)->exists();
+        $hasReports = \App\Models\Report::where('assigned_admin_id', $employee->id)
+            ->orWhere('customer_id', $employee->id)
+            ->exists();
+        $hasHistory = \App\Models\BookingHistory::where('created_by', $employee->id)->exists();
+
+        if ($hasBookings || $hasReports || $hasHistory) {
+            return $this->errorResponse(
+                app()->getLocale() === 'ar' 
+                    ? 'لا يمكن حذف الموظف لوجود سجلات مرتبطة به في النظام (حجوزات، بلاغات، أو سجلات حالة).' 
+                    : 'Cannot delete the employee because there are associated records (bookings, reports, or history logs) in the system.',
+                400
+            );
+        }
+
+        // Delete the employee profile media if exists
+        $employee->media()->delete();
+        $employee->roles()->detach();
+        $employee->delete();
+
+        return $this->successResponse(null, app()->getLocale() === 'ar' ? 'تم حذف الموظف بنجاح.' : 'Employee deleted successfully.');
+    }
 }

@@ -578,6 +578,46 @@ class BookingService
 
             DB::commit();
 
+            // Notify admin or customer based on who initiated the cancellation
+            try {
+                if ($isAdmin) {
+                    if ($booking->customer) {
+                        $lang = $booking->customer->preferred_language === 'en' ? 'en' : 'ar';
+                        $title = $lang === 'en' ? 'Booking Cancelled' : 'تم إلغاء الحجز';
+                        $body = $lang === 'en'
+                            ? "Your booking {$booking->booking_ref} has been cancelled by Admin."
+                            : "تم إلغاء حجزك رقم {$booking->booking_ref} بواسطة الإدارة.";
+                        
+                        $booking->customer->notify(new \App\Notifications\BookingNotification(
+                            $title,
+                            $body,
+                            $booking->id,
+                            [
+                                'booking_ref' => $booking->booking_ref,
+                                'booking_date' => $booking->booking_date,
+                                'current_status' => 'cancelled',
+                            ]
+                        ));
+                    }
+                } else {
+                    $admins = \App\Models\User::where('type', 'admin')->get();
+                    foreach ($admins as $admin) {
+                        $admin->notify(new \App\Notifications\BookingNotification(
+                            'Customer Booking Cancelled / إلغاء حجز من العميل',
+                            "Customer {$booking->customer?->full_name} has cancelled booking ref: {$booking->booking_ref}. Reason: " . ($reason ?? 'None'),
+                            $booking->id,
+                            [
+                                'booking_ref' => $booking->booking_ref,
+                                'customer_name' => $booking->customer?->full_name,
+                                'current_status' => 'cancelled',
+                            ]
+                        ));
+                    }
+                }
+            } catch (\Exception $ex) {
+                Log::error('Cancellation notification failure: ' . $ex->getMessage());
+            }
+
             return $booking;
 
         } catch (\Exception $transactionEx) {

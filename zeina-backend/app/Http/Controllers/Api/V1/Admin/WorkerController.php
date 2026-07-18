@@ -178,9 +178,31 @@ class WorkerController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id)
+    public function destroy(Worker $worker)
     {
-        //
+        // Check for relationships
+        $hasBookings = \App\Models\Booking::where('worker_id', $worker->id)->exists();
+        $hasAssignments = \App\Models\BookingAssignment::where('worker_id', $worker->id)->exists();
+        $hasReports = \App\Models\Report::where('worker_id', $worker->id)->exists();
+        $hasReviews = $worker->reviews()->exists();
+
+        if ($hasBookings || $hasAssignments || $hasReports || $hasReviews) {
+            return $this->errorResponse(
+                app()->getLocale() === 'ar' 
+                    ? 'لا يمكن حذف العامل لوجود سجلات مرتبطة به في النظام (حجوزات، تعيينات، بلاغات، أو تقييمات).' 
+                    : 'Cannot delete the worker because there are associated records (bookings, assignments, reports, or reviews) in the system.',
+                400
+            );
+        }
+
+        // Delete pivot references
+        $worker->services()->detach();
+        // Delete media
+        $worker->media()->delete();
+        // Delete worker
+        $worker->delete();
+
+        return $this->successResponse(null, app()->getLocale() === 'ar' ? 'تم حذف العامل بنجاح.' : 'Worker deleted successfully.');
     }
 
     public function changeStatus(Worker $worker)

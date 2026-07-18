@@ -23,8 +23,7 @@ class PointsController extends Controller
         $totalPoints = \App\Models\PointTransaction::getUserPointsBalance($user->id);
 
         // Fetch active rules from DB to compute target steps and reward points dynamically
-        $bookingRule = RewardTasks::where('status', true)->where('rule_category', 'booking')->first();
-        $bookingCountRule = RewardTasks::where('status', true)->where('rule_category', 'booking_count')->first();
+        $bookingRules = RewardTasks::where('status', true)->where('rule_category', 'booking')->get();
         $referralRule = RewardTasks::where('status', true)->where('rule_category', 'referral')->first();
 
         // Completed bookings count
@@ -57,85 +56,38 @@ class PointsController extends Controller
             ];
         }
 
-        // 🌟 B. Booking Card
-        if ($bookingRule) {
-            $bookingPoints = $bookingRule->points ?? 50;
-            $bookingFrequency = $bookingRule->frequency_type ?? 'repeatable';
-            $bookingCurrent = 0;
-            $bookingCompleted = false;
+        // 🌟 B. Booking Cards (Dynamically render for each active booking rule based on required_booking_count)
+        foreach ($bookingRules as $rule) {
+            $requiredCount = (int) ($rule->required_booking_count ?? 1);
+            if ($requiredCount < 1) {
+                $requiredCount = 1;
+            }
 
-            if ($bookingFrequency === 'one_time') {
-                if ($completedCount >= 1) {
-                    $bookingCurrent = 1;
-                    $bookingCompleted = true;
-                }
+            $currentStep = 0;
+            $isCompleted = false;
+
+            if ($rule->frequency_type === 'one_time') {
+                $currentStep = min($completedCount, $requiredCount);
+                $isCompleted = ($completedCount >= $requiredCount);
             } else {
-                $bookingCurrent = 0;
+                // repeatable
+                $currentStep = $completedCount % $requiredCount;
             }
 
-            $progressCards[] = [
-                'title' => app()->getLocale() == 'ar' ? ($bookingRule->title_ar ?? 'إتمام خدمة') : ($bookingRule->title_en ?? 'Complete Booking'),
-                'current_step' => $bookingCurrent,
-                'target_step' => 1,
-                'steps_remaining' => $bookingCompleted ? 0 : 1,
-                'is_completed' => $bookingCompleted,
-                'reward_points' => (int) $bookingPoints,
-                'action_type' => 'complete_booking',
-                'footer_text' => app()->getLocale() == 'ar'
-                    ? "اكسب {$bookingPoints} نقطة عند إتمام الحجز"
-                    : "Earn {$bookingPoints} points upon booking completion",
-            ];
-        }
+            $remaining = max($requiredCount - $currentStep, 0);
 
-        // 🌟 C. Booking Count Card
-        $bookingCountEnabled = false;
-        $targetServices = 3;
-        $bookingCountPoints = 100;
-        $bookingCountFrequency = 'repeatable';
-
-        if ($bookingCountRule) {
-            $bookingCountEnabled = true;
-            $targetServices = (int) ($bookingCountRule->required_booking_count ?? 3);
-            $bookingCountPoints = (int) ($bookingCountRule->points ?? 100);
-            $bookingCountFrequency = $bookingCountRule->frequency_type ?? 'repeatable';
-        } else {
-            $pointSetting = DB::table('point_settings')->where('key', 'service_cycle_rules')->first();
-            if ($pointSetting && !empty($pointSetting->value)) {
-                $decodedSetting = json_decode($pointSetting->value, true);
-                if (isset($decodedSetting['enabled']) && $decodedSetting['enabled']) {
-                    $bookingCountEnabled = true;
-                    $targetServices = (int) ($pointSetting->target_steps ?? 3);
-                    $bookingCountPoints = (int) ($pointSetting->reward_points ?? 100);
-                }
-            }
-        }
-
-        if ($bookingCountEnabled) {
-            $cycleCurrent = 0;
-            $cycleCompleted = false;
-
-            if ($bookingCountFrequency === 'one_time') {
-                $cycleCurrent = min($completedCount, $targetServices);
-                $cycleCompleted = ($cycleCurrent >= $targetServices);
-            } else {
-                $cycleCurrent = $completedCount % $targetServices;
-            }
-
-            $remaining = max($targetServices - $cycleCurrent, 0);
             $footerText = app()->getLocale() == 'ar'
-                ? ($remaining > 0 ? "تبقى {$remaining} خطوات لكسب نقاط المكافأة الخاصة بك." : "لقد حصلت على نقاط المكافأة الخاصة بك!")
-                : ($remaining > 0 ? "{$remaining} steps remaining to earn your reward points." : "You have earned your reward points!");
+                ? ($remaining > 0 ? "اكسب {$rule->points} نقطة عند إتمام {$requiredCount} حجز خدمة (متبقي {$remaining})" : "لقد حصلت على نقاط المكافأة الخاصة بك!")
+                : ($remaining > 0 ? "Earn {$rule->points} points upon completing {$requiredCount} bookings ({$remaining} remaining)" : "You have earned your reward points!");
 
             $progressCards[] = [
-                'title' => app()->getLocale() == 'ar'
-                    ? ($bookingCountRule->title_ar ?? "إتمام {$targetServices} خدمات")
-                    : ($bookingCountRule->title_en ?? "Complete {$targetServices} Bookings"),
-                'current_step' => $cycleCurrent,
-                'target_step' => $targetServices,
+                'title' => app()->getLocale() == 'ar' ? ($rule->title_ar ?? 'إتمام الخدمة') : ($rule->title_en ?? 'Complete Booking'),
+                'current_step' => $currentStep,
+                'target_step' => $requiredCount,
                 'steps_remaining' => $remaining,
-                'is_completed' => $cycleCompleted,
-                'reward_points' => $bookingCountPoints,
-                'action_type' => 'complete_bookings',
+                'is_completed' => $isCompleted,
+                'reward_points' => (int) $rule->points,
+                'action_type' => 'complete_booking',
                 'footer_text' => $footerText,
             ];
         }

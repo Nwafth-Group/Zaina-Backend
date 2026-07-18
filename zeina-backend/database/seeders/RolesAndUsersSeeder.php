@@ -24,6 +24,39 @@ class RolesAndUsersSeeder extends Seeder
             'roles.view', 'roles.create', 'roles.edit', 'roles.delete',
             'bookings.view', 'bookings.edit', 'bookings.delete', 'location.edit',
             'providers.view', 'providers.create', 'providers.edit', 'providers.deactivate', 'provider_eligibility.edit',
+            
+            // Services
+            'services.view', 'services.create', 'services.edit', 'services.delete',
+            
+            // Categories
+            'categories.view', 'categories.create', 'categories.edit', 'categories.delete',
+            
+            // Workers
+            'workers.view', 'workers.create', 'workers.edit', 'workers.delete',
+            
+            // Banners / Ads
+            'banners.view', 'banners.create', 'banners.edit', 'banners.delete',
+            
+            // Announcements
+            'announcements.view', 'announcements.create', 'announcements.edit', 'announcements.delete',
+            
+            // Mobile Push Notifications
+            'notifications.view', 'notifications.create', 'notifications.edit', 'notifications.delete',
+            
+            // Coupons
+            'coupons.view', 'coupons.create', 'coupons.edit', 'coupons.delete',
+            
+            // Loyalty Points
+            'points.view', 'points.edit',
+            
+            // Legal Documents
+            'legal_documents.view', 'legal_documents.create', 'legal_documents.edit', 'legal_documents.delete',
+            
+            // Reviews
+            'reviews.view',
+            
+            // Reports / Tickets
+            'reports.view', 'reports.edit',
         ];
 
         foreach ($permissions as $permission) {

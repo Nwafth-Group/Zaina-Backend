@@ -49,11 +49,10 @@ class AdminPointsController extends Controller
             'subtitle_ar' => 'nullable|string|max:255',
             'subtitle_en' => 'nullable|string|max:255',
             'points' => 'required|integer|min:1',
-            'rule_category' => 'required|string|in:social_media,referral,booking,booking_count',
+            'rule_category' => 'required|string|in:social_media,referral,booking',
             'status' => 'required|boolean',
             'action_type' => 'nullable|string|in:url,invite_friend,rate_service',
             'action_link' => 'nullable|string',
-            'trigger_event' => 'nullable|string',
             'required_booking_count' => 'nullable|integer|min:1',
             'frequency_type' => 'required|string|in:one_time,repeatable',
             'eligible_services' => 'nullable|array',
@@ -65,11 +64,22 @@ class AdminPointsController extends Controller
         ]);
 
         $validator->after(function ($validator) use ($request) {
-            if ($request->rule_category === 'social_media' && $request->frequency_type !== 'one_time') {
-                $validator->errors()->add('frequency_type', 'Social media rules must have a "one_time" frequency.');
+            if ($request->rule_category === 'social_media') {
+                if ($request->frequency_type !== 'one_time') {
+                    $validator->errors()->add('frequency_type', 'Social media rules must have a "one_time" frequency.');
+                }
+                if ($request->action_type !== 'url') {
+                    $validator->errors()->add('action_type', 'Social media rules action type must always be "url" (open link).');
+                }
             }
-            if ($request->rule_category === 'referral' && $request->frequency_type !== 'repeatable') {
-                $validator->errors()->add('frequency_type', 'Referral rules must have a "repeatable" frequency.');
+            if ($request->rule_category === 'referral') {
+                if ($request->frequency_type !== 'repeatable') {
+                    $validator->errors()->add('frequency_type', 'Referral rules must have a "repeatable" frequency.');
+                }
+                $referralExists = RewardTasks::where('rule_category', 'referral')->exists();
+                if ($referralExists) {
+                    $validator->errors()->add('rule_category', 'Only one referral rule is allowed.');
+                }
             }
         });
 
@@ -120,11 +130,10 @@ class AdminPointsController extends Controller
             'subtitle_ar' => 'nullable|string|max:255',
             'subtitle_en' => 'nullable|string|max:255',
             'points' => 'required|integer|min:1',
-            'rule_category' => 'required|string|in:social_media,referral,booking,booking_count',
+            'rule_category' => 'required|string|in:social_media,referral,booking',
             'status' => 'required|boolean',
             'action_type' => 'nullable|string|in:url,invite_friend,rate_service',
             'action_link' => 'nullable|string',
-            'trigger_event' => 'nullable|string',
             'required_booking_count' => 'nullable|integer|min:1',
             'frequency_type' => 'required|string|in:one_time,repeatable',
             'eligible_services' => 'nullable|array',
@@ -135,12 +144,23 @@ class AdminPointsController extends Controller
             'action_text_en' => 'nullable|string|max:255',
         ]);
 
-        $validator->after(function ($validator) use ($request) {
-            if ($request->rule_category === 'social_media' && $request->frequency_type !== 'one_time') {
-                $validator->errors()->add('frequency_type', 'Social media rules must have a "one_time" frequency.');
+        $validator->after(function ($validator) use ($request, $id) {
+            if ($request->rule_category === 'social_media') {
+                if ($request->frequency_type !== 'one_time') {
+                    $validator->errors()->add('frequency_type', 'Social media rules must have a "one_time" frequency.');
+                }
+                if ($request->action_type !== 'url') {
+                    $validator->errors()->add('action_type', 'Social media rules action type must always be "url" (open link).');
+                }
             }
-            if ($request->rule_category === 'referral' && $request->frequency_type !== 'repeatable') {
-                $validator->errors()->add('frequency_type', 'Referral rules must have a "repeatable" frequency.');
+            if ($request->rule_category === 'referral') {
+                if ($request->frequency_type !== 'repeatable') {
+                    $validator->errors()->add('frequency_type', 'Referral rules must have a "repeatable" frequency.');
+                }
+                $referralExists = RewardTasks::where('rule_category', 'referral')->where('id', '!=', $id)->exists();
+                if ($referralExists) {
+                    $validator->errors()->add('rule_category', 'Only one referral rule is allowed.');
+                }
             }
         });
 

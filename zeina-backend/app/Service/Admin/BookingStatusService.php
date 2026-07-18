@@ -78,8 +78,46 @@ class BookingStatusService
                 'created_by' => $actor->id,
             ]);
 
-            if ($status === BookingStatus::Completed) {
+             if ($status === BookingStatus::Completed) {
                 \App\Service\LoyaltyPointService::awardPointsForCompletedBooking($booking);
+            }
+
+            // Notify customer of status change (In Service or Completed)
+            try {
+                if ($booking->customer) {
+                    $lang = $booking->customer->preferred_language === 'en' ? 'en' : 'ar';
+                    if ($status === BookingStatus::InService) {
+                        $title = $lang === 'en' ? 'Service Started' : 'بدأت الخدمة';
+                        $body = $lang === 'en'
+                            ? "Your service for booking ref: {$booking->booking_ref} is now in service."
+                            : "حجزك رقم {$booking->booking_ref} هو الآن قيد التنفيذ.";
+                        $booking->customer->notify(new \App\Notifications\BookingNotification(
+                            $title,
+                            $body,
+                            $booking->id,
+                            [
+                                'booking_ref' => $booking->booking_ref,
+                                'current_status' => 'inService',
+                            ]
+                        ));
+                    } elseif ($status === BookingStatus::Completed) {
+                        $title = $lang === 'en' ? 'Service Completed' : 'اكتملت الخدمة';
+                        $body = $lang === 'en'
+                            ? "Your service for booking ref: {$booking->booking_ref} has been completed. Thank you!"
+                            : "تم إتمام خدمتك للحجز رقم {$booking->booking_ref} بنجاح. شكراً لك!";
+                        $booking->customer->notify(new \App\Notifications\BookingNotification(
+                            $title,
+                            $body,
+                            $booking->id,
+                            [
+                                'booking_ref' => $booking->booking_ref,
+                                'current_status' => 'completed',
+                            ]
+                        ));
+                    }
+                }
+            } catch (\Exception $ex) {
+                \Illuminate\Support\Facades\Log::error('Status transition notification failure: ' . $ex->getMessage());
             }
 
             return $booking->load(['customer', 'service', 'workers']);

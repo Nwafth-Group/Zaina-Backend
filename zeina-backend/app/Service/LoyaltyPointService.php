@@ -25,124 +25,84 @@ class LoyaltyPointService
             }
 
             DB::transaction(function () use ($booking, $customer) {
-                // 🌟 1. Booking Completed Reward
-                $alreadyAwardedBooking = PointTransaction::where('user_id', $customer->id)
-                    ->where('reference_type', Booking::class)
-                    ->where('reference_id', $booking->id)
-                    ->where('type', 'earn')
-                    ->where('reason', 'booking_completed')
-                    ->exists();
+                // Find all active booking completed rules
+                $bookingRules = RewardTasks::where('status', true)
+                    ->where('rule_category', 'booking')
+                    ->get();
 
-                if (!$alreadyAwardedBooking) {
-                    $bookingTask = RewardTasks::where('status', true)
-                        ->where('rule_category', 'booking')
-                        ->where('trigger_event', 'booking_completed')
-                        ->first();
-
-                    if ($bookingTask) {
-                        $customer->pointTransactions()->create([
-                            'type' => 'earn',
-                            'amount' => $bookingTask->points,
-                            'title_ar' => 'مكافأة إتمام الحجز رقم: ' . $booking->booking_ref,
-                            'title_en' => 'Completed Booking Reward: #' . $booking->booking_ref,
-                            'reference_type' => Booking::class,
-                            'reference_id' => $booking->id,
-                            'reason' => 'booking_completed',
-                        ]);
-
-                        $customer->notify(new PointsNotification(
-                            'حصلت على نقاط جديدة! 🎉',
-                            'تمت إضافة ' . $bookingTask->points . ' نقطة إلى رصيدك لإتمامك الخدمة بنجاح.',
-                            $bookingTask->points,
-                            'earn',
-                            ['booking_ref' => $booking->booking_ref]
-                        ));
-
-                        Log::info("BookingCompleted points awarded: {$bookingTask->points} points to user ID {$customer->id} for booking ID {$booking->id}.");
-                    }
+                if ($bookingRules->isEmpty()) {
+                    return;
                 }
 
-                // 🌟 2. Services Cycle Progress (Complete X services to earn Y points)
-                $bookingCountRule = RewardTasks::where('status', true)
-                    ->where('rule_category', 'booking_count')
-                    ->first();
+                $completedCount = Booking::where('customer_id', $customer->id)
+                    ->where('status', 'completed')
+                    ->count();
 
-                $targetSteps = 0;
-                $rewardPoints = 0;
-                $frequencyType = 'repeatable';
-
-                if ($bookingCountRule) {
-                    $targetSteps = (int) ($bookingCountRule->required_booking_count ?? 3);
-                    $rewardPoints = (int) ($bookingCountRule->points ?? 100);
-                    $frequencyType = $bookingCountRule->frequency_type ?? 'repeatable';
-                } else {
-                    $cycleSetting = DB::table('point_settings')->where('key', 'service_cycle_rules')->first();
-                    if ($cycleSetting && !empty($cycleSetting->value)) {
-                        $targetSteps = (int) ($cycleSetting->target_steps ?? 3);
-                        $rewardPoints = (int) ($cycleSetting->reward_points ?? 100);
+                foreach ($bookingRules as $rule) {
+                    $requiredCount = (int) ($rule->required_booking_count ?? 1);
+                    if ($requiredCount < 1) {
+                        $requiredCount = 1;
                     }
-                }
 
-                if ($targetSteps > 0 && $rewardPoints > 0) {
-                    $completedCount = Booking::where('customer_id', $customer->id)
-                        ->where('status', 'completed')
-                        ->count();
-
-                    if ($frequencyType === 'one_time') {
-                        if ($completedCount >= $targetSteps) {
-                            $alreadyAwardedCycle = PointTransaction::where('user_id', $customer->id)
-                                ->where('reason', 'service_cycle_reward_onetime_' . $targetSteps)
+                    if ($rule->frequency_type === 'one_time') {
+                        if ($completedCount >= $requiredCount) {
+                            $alreadyAwarded = PointTransaction::where('user_id', $customer->id)
+                                ->where('reason', 'booking_completed_rule_' . $rule->id)
                                 ->exists();
 
-                            if (!$alreadyAwardedCycle) {
+                            if (!$alreadyAwarded) {
                                 $customer->pointTransactions()->create([
                                     'type' => 'earn',
-                                    'amount' => $rewardPoints,
-                                    'title_ar' => 'مكافأة إتمام عدد خدمات: ' . $targetSteps,
-                                    'title_en' => 'Complete Bookings Target Reward: ' . $targetSteps,
-                                    'reason' => 'service_cycle_reward_onetime_' . $targetSteps,
+                                    'amount' => $rule->points,
+                                    'title_ar' => 'مكافأة إتمام الخدمة: ' . ($rule->title_ar ?? 'إتمام الحجز'),
+                                    'title_en' => 'Service Completion Reward: ' . ($rule->title_en ?? 'Completed Booking'),
+                                    'reference_type' => Booking::class,
+                                    'reference_id' => $booking->id,
+                                    'reason' => 'booking_completed_rule_' . $rule->id,
                                 ]);
 
                                 $customer->notify(new PointsNotification(
-                                    'مكافأة التقدم في الخدمات! 🏆',
-                                    'رائع! أكملت بنجاح ' . $targetSteps . ' خدمات وحصلت على ' . $rewardPoints . ' نقطة مكافأة.',
-                                    $rewardPoints,
+                                    'حصلت على نقاط جديدة! 🎉',
+                                    'تمت إضافة ' . $rule->points . ' نقطة إلى رصيدك لإتمامك الخدمة بنجاح.',
+                                    $rule->points,
                                     'earn',
-                                    ['target_steps' => $targetSteps]
+                                    ['booking_ref' => $booking->booking_ref]
                                 ));
 
-                                Log::info("ServicesCycle points (one_time) awarded: {$rewardPoints} points to user ID {$customer->id} for reaching {$targetSteps} services.");
+                                Log::info("BookingCompleted points (one_time) awarded: {$rule->points} points to user ID {$customer->id} for rule ID {$rule->id} on booking ID {$booking->id}.");
                             }
                         }
                     } else {
-                        if ($completedCount > 0 && $completedCount % $targetSteps === 0) {
-                            $alreadyAwardedCycle = PointTransaction::where('user_id', $customer->id)
-                                ->where('reason', 'service_cycle_reward_' . $completedCount)
+                        // repeatable cycle
+                        if ($completedCount > 0 && $completedCount % $requiredCount === 0) {
+                            $alreadyAwarded = PointTransaction::where('user_id', $customer->id)
+                                ->where('reason', 'booking_completed_rule_' . $rule->id . '_cycle_' . $completedCount)
                                 ->exists();
 
-                            if (!$alreadyAwardedCycle) {
+                            if (!$alreadyAwarded) {
                                 $customer->pointTransactions()->create([
                                     'type' => 'earn',
-                                    'amount' => $rewardPoints,
-                                    'title_ar' => 'مكافأة إكمال دورة الخدمات (المستوى ' . ($completedCount / $targetSteps) . ')',
-                                    'title_en' => 'Services Cycle Reward (Level ' . ($completedCount / $targetSteps) . ')',
-                                    'reason' => 'service_cycle_reward_' . $completedCount,
+                                    'amount' => $rule->points,
+                                    'title_ar' => 'مكافأة إكمال دورة الخدمات: ' . ($rule->title_ar ?? 'إتمام الحجز'),
+                                    'title_en' => 'Services Cycle Completion Reward: ' . ($rule->title_en ?? 'Completed Booking'),
+                                    'reference_type' => Booking::class,
+                                    'reference_id' => $booking->id,
+                                    'reason' => 'booking_completed_rule_' . $rule->id . '_cycle_' . $completedCount,
                                 ]);
 
                                 $customer->notify(new PointsNotification(
-                                    'مكافأة التقدم في الخدمات! 🏆',
-                                    'رائع! أكملت بنجاح ' . $targetSteps . ' خدمات وحصلت على ' . $rewardPoints . ' نقطة إضافية.',
-                                    $rewardPoints,
+                                    'حصلت على نقاط جديدة! 🎉',
+                                    'تمت إضافة ' . $rule->points . ' نقطة إلى رصيدك لإتمامك الخدمة بنجاح.',
+                                    $rule->points,
                                     'earn',
-                                    ['cycle_completed_level' => ($completedCount / $targetSteps)]
+                                    ['booking_ref' => $booking->booking_ref]
                                 ));
 
-                                Log::info("ServicesCycle points (repeatable) awarded: {$rewardPoints} points to user ID {$customer->id} for completing cycle of {$completedCount} services.");
+                                Log::info("BookingCompleted points (repeatable) awarded: {$rule->points} points to user ID {$customer->id} for rule ID {$rule->id} cycle {$completedCount} on booking ID {$booking->id}.");
                             }
                         }
                     }
                 }
-
             });
 
         } catch (\Throwable $e) {
@@ -170,10 +130,7 @@ class LoyaltyPointService
 
                 if (!$alreadyAwardedReview) {
                     $reviewTask = RewardTasks::where('status', true)
-                        ->where(function ($q) {
-                            $q->where('trigger_event', 'review_submitted')
-                              ->orWhere('action_link', 'rate_service');
-                        })
+                        ->where('action_type', 'rate_service')
                         ->first();
 
                     if ($reviewTask) {

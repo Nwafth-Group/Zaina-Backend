@@ -107,7 +107,55 @@ class UserController extends Controller
 
     public function show(User $user)
     {
-        return $this->successResponse(new UserResource($user->load('roles')));
+        $user->load([
+            'roles', 
+            'referredBy',
+            'addresses',
+            'bookings.service',
+            'bookings.workers',
+            'reviews.booking',
+            'reviews.reviewable',
+            'pointTransactions' => function($q) {
+                $q->latest()->limit(50);
+            }
+        ]);
+
+        return $this->successResponse([
+            'user' => new UserResource($user),
+            'addresses' => $user->addresses,
+            'bookings' => $user->bookings->map(function ($booking) {
+                return [
+                    'id' => $booking->id,
+                    'booking_ref' => $booking->booking_ref,
+                    'service_name' => $booking->service ? (app()->getLocale() == 'ar' ? $booking->service->name_ar : $booking->service->name_en) : '-',
+                    'worker_name' => $booking->workers->isNotEmpty() ? $booking->workers->pluck('name')->implode(', ') : '-',
+                    'booking_date' => $booking->booking_date,
+                    'status' => $booking->status,
+                    'total_amount' => $booking->total_amount,
+                ];
+            }),
+            'reviews' => $user->reviews->map(function ($review) {
+                return [
+                    'id' => $review->id,
+                    'booking_id' => $review->booking_id,
+                    'booking_ref' => $review->booking ? $review->booking->booking_ref : '-',
+                    'rating' => $review->rating,
+                    'comment' => $review->comment,
+                    'created_at' => $review->created_at?->toDateTimeString(),
+                    'reviewable_name' => $review->reviewable ? ($review->reviewable->name ?? $review->reviewable->full_name ?? $review->reviewable->name_en ?? '-') : '-',
+                ];
+            }),
+            'transactions' => $user->pointTransactions->map(function ($tx) {
+                return [
+                    'id' => $tx->id,
+                    'type' => $tx->type,
+                    'amount' => $tx->amount,
+                    'reason' => $tx->reason,
+                    'title' => app()->getLocale() == 'ar' ? $tx->title_ar : $tx->title_en,
+                    'created_at' => $tx->created_at?->toDateTimeString(),
+                ];
+            }),
+        ], 'User details retrieved successfully.');
     }
 
     public function verifyUser(Request $request, User $user)

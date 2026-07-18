@@ -166,4 +166,34 @@ class MobileNotificationController extends Controller
             __('messages.notification_cancel_success')
         );
     }
+
+    /**
+     * Send a mobile notification immediately (Send Now).
+     */
+    public function sendNow(MobileNotification $mobileNotification)
+    {
+        if ($mobileNotification->status === 'sent') {
+            return $this->errorResponse(
+                app()->getLocale() === 'ar' 
+                    ? 'تم إرسال هذا الإشعار بالفعل.' 
+                    : 'This notification has already been sent.', 
+                422
+            );
+        }
+
+        $mobileNotification->status = 'scheduled';
+        $mobileNotification->send_date = now()->toDateString();
+        $mobileNotification->send_time = now()->toTimeString();
+        $mobileNotification->updated_by = auth()->id();
+        $mobileNotification->save();
+
+        SendMobileNotificationJob::dispatch($mobileNotification->id);
+
+        Log::info("Mobile Notification sent immediately (send-now): ID {$mobileNotification->id} by user ID " . auth()->id());
+
+        return $this->successResponse(
+            new MobileNotificationResource($mobileNotification),
+            app()->getLocale() === 'ar' ? 'تم إرسال الإشعار بنجاح.' : 'Notification sent successfully.'
+        );
+    }
 }
