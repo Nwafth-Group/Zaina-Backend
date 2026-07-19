@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\MobileNotification;
 use App\Models\User;
+use App\Notifications\GeneralPushNotification;
 use App\Service\NotificationService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -51,7 +52,6 @@ class SendMobileNotificationJob implements ShouldQueue
             $userIds = User::query()->where('type', 'customer')->whereDoesntHave('bookings')->pluck('id')->toArray();
         }
 
-        $service = app(NotificationService::class);
         $sentCount = 0;
 
         foreach ($userIds as $userId) {
@@ -68,10 +68,8 @@ class SendMobileNotificationJob implements ShouldQueue
                 $body = $user->language === 'en' ? ($notification->content_en ?? $notification->content_ar) : ($notification->content_ar ?? $notification->content_en);
 
                 if ($title && $body) {
-                    $sent = $service->sendPushNotification($userId, $title, $body);
-                    if ($sent) {
-                        $sentCount++;
-                    }
+                    $user->notify(new GeneralPushNotification($title, $body, $notification->id));
+                    $sentCount++;
                 }
             }
         }

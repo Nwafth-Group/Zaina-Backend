@@ -33,6 +33,7 @@ class AutoUpdateBookingStatusCommand extends Command
      */
     public function handle()
     {
+        $this->info('Start running Auto Update Booking Status Command...');
         Log::info('Start running Auto Update Booking Status Command...');
         $now = Carbon::now();
 
@@ -81,9 +82,56 @@ class AutoUpdateBookingStatusCommand extends Command
                         ]
                     ));
                 }
+                $this->info("Booking Visit ID {$visit->id} (Booking ID {$booking->id}) transitioned to inService.");
                 Log::info("Booking Visit ID {$visit->id} (Booking ID {$booking->id}) transitioned to inService.");
             } catch (\Exception $e) {
+                $this->error("Failed to transition Booking Visit ID {$visit->id} to inService: " . $e->getMessage());
                 Log::error("Failed to transition Booking Visit ID {$visit->id} to inService: " . $e->getMessage());
+            }
+        }
+
+        // 1b. Transition Upcoming Bookings (without visits) -> inService
+        $upcomingDirectBookings = Booking::where('status', 'Upcoming')
+            ->whereDoesntHave('visits')
+            ->where(function ($query) use ($now) {
+                $query->where('booking_date', '<', $now->toDateString())
+                    ->orWhere(function ($q) use ($now) {
+                        $q->where('booking_date', $now->toDateString())
+                            ->where('start_time', '<=', $now->format('H:i:s'));
+                    });
+            })
+            ->with('customer')
+            ->get();
+
+        foreach ($upcomingDirectBookings as $booking) {
+            try {
+                DB::transaction(function () use ($booking) {
+                    $booking->update(['status' => 'inService']);
+                    BookingHistory::create([
+                        'booking_id' => $booking->id,
+                        'old_status' => 'Upcoming',
+                        'new_status' => 'inService',
+                        'note'       => 'Automated status change: booking service started (direct transition).',
+                        'created_by' => null,
+                    ]);
+                });
+
+                if ($booking->customer) {
+                    $booking->customer->notify(new BookingNotification(
+                        'بدأت خدمتك الآن 🏠',
+                        'تم بدء الخدمة الخاصة بحجزك برقم ' . $booking->booking_ref,
+                        $booking->id,
+                        [
+                            'booking_ref' => $booking->booking_ref,
+                            'current_status' => 'inService',
+                        ]
+                    ));
+                }
+                $this->info("Booking ID {$booking->id} transitioned directly to inService.");
+                Log::info("Booking ID {$booking->id} transitioned directly to inService.");
+            } catch (\Exception $e) {
+                $this->error("Failed to transition Booking ID {$booking->id} directly to inService: " . $e->getMessage());
+                Log::error("Failed to transition Booking ID {$booking->id} directly to inService: " . $e->getMessage());
             }
         }
 
@@ -116,7 +164,6 @@ class AutoUpdateBookingStatusCommand extends Command
 
                     if ($allVisitsCompleted && $booking->status !== 'completed') {
                         $booking->update(['status' => 'completed']);
-                        BookingAssignment::where('booking_id', $booking->id)->update(['status' => 'completed']);
                         BookingHistory::create([
                             'booking_id' => $booking->id,
                             'old_status' => 'inService',
@@ -139,12 +186,61 @@ class AutoUpdateBookingStatusCommand extends Command
                         ]
                     ));
                 }
+                $this->info("Booking Visit ID {$visit->id} (Booking ID {$booking->id}) transitioned to completed.");
                 Log::info("Booking Visit ID {$visit->id} (Booking ID {$booking->id}) transitioned to completed.");
             } catch (\Exception $e) {
+                $this->error("Failed to transition Booking Visit ID {$visit->id} to completed: " . $e->getMessage());
                 Log::error("Failed to transition Booking Visit ID {$visit->id} to completed: " . $e->getMessage());
             }
         }
 
+        // 2b. Transition inService Bookings (without visits) -> completed
+        $inServiceDirectBookings = Booking::where('status', 'inService')
+            ->whereDoesntHave('visits')
+            ->where(function ($query) use ($now) {
+                $query->where('booking_date', '<', $now->toDateString())
+                    ->orWhere(function ($q) use ($now) {
+                        $q->where('booking_date', $now->toDateString())
+                            ->where('end_time', '<=', $now->format('H:i:s'));
+                    });
+            })
+            ->with('customer')
+            ->get();
+
+        foreach ($inServiceDirectBookings as $booking) {
+            try {
+                DB::transaction(function () use ($booking) {
+                    $booking->update(['status' => 'completed']);
+                    BookingHistory::create([
+                        'booking_id' => $booking->id,
+                        'old_status' => 'inService',
+                        'new_status' => 'completed',
+                        'note'       => 'Automated status change: scheduled service completed (direct transition).',
+                        'created_by' => null,
+                    ]);
+                    \App\Service\LoyaltyPointService::awardPointsForCompletedBooking($booking);
+                });
+
+                if ($booking->customer) {
+                    $booking->customer->notify(new BookingNotification(
+                        'اكتملت خدمتك بنجاح ✅',
+                        'تم إتمام الخدمة لحجزك رقم ' . $booking->booking_ref . ' بنجاح. شكراً لك!',
+                        $booking->id,
+                        [
+                            'booking_ref' => $booking->booking_ref,
+                            'current_status' => 'completed',
+                        ]
+                    ));
+                }
+                $this->info("Booking ID {$booking->id} transitioned directly to completed.");
+                Log::info("Booking ID {$booking->id} transitioned directly to completed.");
+            } catch (\Exception $e) {
+                $this->error("Failed to transition Booking ID {$booking->id} directly to completed: " . $e->getMessage());
+                Log::error("Failed to transition Booking ID {$booking->id} directly to completed: " . $e->getMessage());
+            }
+        }
+
+        $this->info('Auto Update Booking Status Command finished successfully.');
         Log::info('Auto Update Booking Status Command finished successfully.');
         return Command::SUCCESS;
     }
