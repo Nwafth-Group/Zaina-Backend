@@ -27,6 +27,9 @@ class CouponResource extends JsonResource
             'end_date' => $this->end_date ? $this->end_date->toDateTimeString() : null,
             'is_expired' => $this->end_date ? $this->end_date->isPast() : false,
             'status' => $this->status,
+            'is_used' => $this->is_used ?? false,
+            'is_available' => $this->is_available ?? false,
+            'user_usage_count' => $this->user_usage_count ?? 0,
 
             // Count summaries for admin table
             'users_count' => $this->users_count ?? ($this->relationLoaded('users') ? $this->users->count() : 0),

@@ -286,6 +286,8 @@ return [
     'notification_invalid_format' => 'Invalid date or time format.',
 
     // Report Notifications
+    'report_notification_title_assigned' => 'Report Assigned: :number',
+    'report_notification_body_assigned' => 'You have been assigned to handle booking report #:number.',
     'report_notification_title_status_changed' => 'Report Status Updated: :number',
     'report_notification_body_status_changed' => 'Your booking report status has been updated to: :status',
     'report_notification_title_note_added' => 'New Reply on Report: :number',
@@ -293,4 +295,15 @@ return [
     'report_status_submitted' => 'Submitted',
     'report_status_under_review' => 'Under Review',
     'report_status_resolved' => 'Resolved',
+
+    'coupon_expired_cannot_modify' => 'This coupon has expired and cannot be modified.',
+    'coupon_expired_cannot_delete' => 'This coupon has expired and cannot be deleted.',
+    'coupon_used_cannot_delete' => 'This coupon has already been used and cannot be deleted.',
+    'coupon_cannot_reduce_duration' => 'Cannot reduce the duration of a used coupon.',
+    'coupon_usage_limit_below_used' => 'Usage limit cannot be less than the current usage count.',
+    'coupon_used_cannot_change_conditions' => 'Cannot modify conditions/rules of a used coupon.',
+    'coupon_used_cannot_change_audience' => 'Cannot change target users for a used coupon.',
+    'coupon_used_cannot_change_cities' => 'Cannot change cities for a used coupon.',
+    'coupon_used_cannot_change_areas' => 'Cannot change areas for a used coupon.',
+    'coupon_used_cannot_change_services' => 'Cannot change services for a used coupon.',
 ];

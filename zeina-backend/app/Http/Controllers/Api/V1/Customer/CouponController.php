@@ -36,70 +36,86 @@ class CouponController extends Controller
                 ->first();
         }
 
-        // Build elegant Eloquent query
-        $query = Coupon::where('status', 'active')
-            ->where('start_date', '<=', $now)
-            ->where('end_date', '>=', $now)
-            ->where('completed_bookings_count', '<=', $completedBookingsCount)
-            ->where(function ($q) use ($user) {
-                $q->where('is_for_all_users', true);
-                if ($user) {
-                    $q->orWhereHas('users', function ($uQ) use ($user) {
-                        $uQ->where('users.id', $user->id);
+        // Build elegant Eloquent query to fetch available OR used coupons
+        $query = Coupon::query();
+
+        $query->where(function ($mainQ) use ($user, $now, $completedBookingsCount, $defaultAddress) {
+            // available coupons (Option A)
+            $mainQ->where(function ($availQ) use ($user, $now, $completedBookingsCount, $defaultAddress) {
+                $availQ->where('status', 'active')
+                    ->where('start_date', '<=', $now)
+                    ->where('end_date', '>=', $now)
+                    ->where('completed_bookings_count', '<=', $completedBookingsCount)
+                    ->where(function ($userQ) use ($user) {
+                        $userQ->where('is_for_all_users', true);
+                        if ($user) {
+                            $userQ->orWhereHas('users', function ($uQ) use ($user) {
+                                $uQ->where('users.id', $user->id);
+                            });
+                        }
+                    });
+
+                // Location filtering
+                if ($user && $defaultAddress) {
+                    $areaId = $defaultAddress->area_id;
+                    $cityId = $defaultAddress->area ? $defaultAddress->area->city_id : null;
+
+                    $availQ->where(function ($locQ) use ($cityId, $areaId) {
+                        $locQ->where('is_for_all_cities', true)
+                            ->orWhere(function ($subQ) use ($cityId, $areaId) {
+                                $subQ->where('is_for_all_cities', false)
+                                    ->where(function ($locSubQ) use ($cityId, $areaId) {
+                                        if ($areaId) {
+                                            $locSubQ->whereHas('areas', function ($aQ) use ($areaId) {
+                                                $aQ->where('areas.id', $areaId);
+                                            });
+                                        }
+                                        if ($cityId) {
+                                            $locSubQ->orWhere(function ($citySubQ) use ($cityId) {
+                                                $citySubQ->whereHas('cities', function ($cQ) use ($cityId) {
+                                                    $cQ->where('cities.id', $cityId);
+                                                })->whereDoesntHave('areas');
+                                            });
+                                        }
+                                    });
+                            });
                     });
                 }
             });
 
-        // Location filtering based on user default address
-        if ($user && $defaultAddress) {
-            $areaId = $defaultAddress->area_id;
-            $cityId = $defaultAddress->area ? $defaultAddress->area->city_id : null;
-
-            $query->where(function ($q) use ($cityId, $areaId) {
-                $q->where('is_for_all_cities', true)
-                    ->orWhere(function ($subQ) use ($cityId, $areaId) {
-                        $subQ->where('is_for_all_cities', false)
-                            ->where(function ($locQ) use ($cityId, $areaId) {
-                                if ($areaId) {
-                                    $locQ->whereHas('areas', function ($aQ) use ($areaId) {
-                                        $aQ->where('areas.id', $areaId);
-                                    });
-                                }
-                                if ($cityId) {
-                                    $locQ->orWhere(function ($citySubQ) use ($cityId) {
-                                        $citySubQ->whereHas('cities', function ($cQ) use ($cityId) {
-                                            $cQ->where('cities.id', $cityId);
-                                        })->whereDoesntHave('areas');
-                                    });
-                                }
-                            });
-                    });
-            });
-        }
+            // used coupons (Option B)
+            if ($user) {
+                $mainQ->orWhereHas('bookings', function ($bQ) use ($user) {
+                    $bQ->where('customer_id', $user->id)
+                       ->where('status', '!=', 'cancelled');
+                });
+            }
+        });
 
         $coupons = $query->with(['services', 'cities', 'areas'])->get();
 
-        if ($user) {
-            $coupons = $coupons->filter(function ($coupon) use ($user) {
-                // 1. Check total usage limit
-                if ($coupon->usage_limit !== null && $coupon->used_count >= $coupon->usage_limit) {
-                    return false;
-                }
+        $coupons->each(function ($coupon) use ($user, $now, $completedBookingsCount) {
+            $userUsageCount = 0;
+            if ($user) {
+                $userUsageCount = Booking::where('customer_id', $user->id)
+                    ->where('coupon_id', $coupon->id)
+                    ->where('status', '!=', 'cancelled')
+                    ->count();
+            }
 
-                // 2. Check user-specific usage limit
-                if ($coupon->user_usage_limit !== null) {
-                    $userUsageCount = Booking::where('customer_id', $user->id)
-                        ->where('coupon_id', $coupon->id)
-                        ->where('status', '!=', 'cancelled')
-                        ->count();
-                    if ($userUsageCount >= $coupon->user_usage_limit) {
-                        return false;
-                    }
-                }
+            $isExpired = $coupon->end_date ? $coupon->end_date->isPast() : false;
 
-                return true;
-            });
-        }
+            $isAvailable = $coupon->status === 'active' &&
+                !$isExpired &&
+                ($coupon->start_date === null || $coupon->start_date <= $now) &&
+                ($coupon->usage_limit === null || $coupon->used_count < $coupon->usage_limit) &&
+                ($coupon->user_usage_limit === null || $userUsageCount < $coupon->user_usage_limit) &&
+                ($completedBookingsCount >= $coupon->completed_bookings_count);
+
+            $coupon->is_used = $userUsageCount > 0;
+            $coupon->is_available = $isAvailable;
+            $coupon->user_usage_count = $userUsageCount;
+        });
 
         return $this->successResponse(
             CouponResource::collection($coupons),
@@ -130,45 +146,60 @@ class CouponController extends Controller
                 ->first();
         }
 
-        $query = Coupon::where('id', $id)
-            ->where('status', 'active')
-            ->where('start_date', '<=', $now)
-            ->where('end_date', '>=', $now)
-            ->where('completed_bookings_count', '<=', $completedBookingsCount)
-            ->where(function ($q) use ($user) {
-                $q->where('is_for_all_users', true);
-                if ($user) {
-                    $q->orWhereHas('users', function ($uQ) use ($user) {
-                        $uQ->where('users.id', $user->id);
+        $query = Coupon::where('id', $id);
+
+        $query->where(function ($mainQ) use ($user, $now, $completedBookingsCount, $defaultAddress) {
+            // available coupons (Option A)
+            $mainQ->where(function ($availQ) use ($user, $now, $completedBookingsCount, $defaultAddress) {
+                $availQ->where('status', 'active')
+                    ->where('start_date', '<=', $now)
+                    ->where('end_date', '>=', $now)
+                    ->where('completed_bookings_count', '<=', $completedBookingsCount)
+                    ->where(function ($userQ) use ($user) {
+                        $userQ->where('is_for_all_users', true);
+                        if ($user) {
+                            $userQ->orWhereHas('users', function ($uQ) use ($user) {
+                                $uQ->where('users.id', $user->id);
+                            });
+                        }
+                    });
+
+                // Location filtering
+                if ($user && $defaultAddress) {
+                    $areaId = $defaultAddress->area_id;
+                    $cityId = $defaultAddress->area ? $defaultAddress->area->city_id : null;
+
+                    $availQ->where(function ($locQ) use ($cityId, $areaId) {
+                        $locQ->where('is_for_all_cities', true)
+                            ->orWhere(function ($subQ) use ($cityId, $areaId) {
+                                $subQ->where('is_for_all_cities', false)
+                                    ->where(function ($locSubQ) use ($cityId, $areaId) {
+                                        if ($areaId) {
+                                            $locSubQ->whereHas('areas', function ($aQ) use ($areaId) {
+                                                $aQ->where('areas.id', $areaId);
+                                            });
+                                        }
+                                        if ($cityId) {
+                                            $locSubQ->orWhere(function ($citySubQ) use ($cityId) {
+                                                $citySubQ->whereHas('cities', function ($cQ) use ($cityId) {
+                                                    $cQ->where('cities.id', $cityId);
+                                                })->whereDoesntHave('areas');
+                                            });
+                                        }
+                                    });
+                            });
                     });
                 }
             });
 
-        if ($user && $defaultAddress) {
-            $areaId = $defaultAddress->area_id;
-            $cityId = $defaultAddress->area ? $defaultAddress->area->city_id : null;
-
-            $query->where(function ($q) use ($cityId, $areaId) {
-                $q->where('is_for_all_cities', true)
-                    ->orWhere(function ($subQ) use ($cityId, $areaId) {
-                        $subQ->where('is_for_all_cities', false)
-                            ->where(function ($locQ) use ($cityId, $areaId) {
-                                if ($areaId) {
-                                    $locQ->whereHas('areas', function ($aQ) use ($areaId) {
-                                        $aQ->where('areas.id', $areaId);
-                                    });
-                                }
-                                if ($cityId) {
-                                    $locQ->orWhere(function ($citySubQ) use ($cityId) {
-                                        $citySubQ->whereHas('cities', function ($cQ) use ($cityId) {
-                                            $cQ->where('cities.id', $cityId);
-                                        })->whereDoesntHave('areas');
-                                    });
-                                }
-                            });
-                    });
-            });
-        }
+            // used coupons (Option B)
+            if ($user) {
+                $mainQ->orWhereHas('bookings', function ($bQ) use ($user) {
+                    $bQ->where('customer_id', $user->id)
+                       ->where('status', '!=', 'cancelled');
+                });
+            }
+        });
 
         $coupon = $query->with(['services', 'cities', 'areas'])->first();
 
@@ -178,6 +209,27 @@ class CouponController extends Controller
                 404
             );
         }
+
+        $userUsageCount = 0;
+        if ($user) {
+            $userUsageCount = Booking::where('customer_id', $user->id)
+                ->where('coupon_id', $coupon->id)
+                ->where('status', '!=', 'cancelled')
+                ->count();
+        }
+
+        $isExpired = $coupon->end_date ? $coupon->end_date->isPast() : false;
+
+        $isAvailable = $coupon->status === 'active' &&
+            !$isExpired &&
+            ($coupon->start_date === null || $coupon->start_date <= $now) &&
+            ($coupon->usage_limit === null || $coupon->used_count < $coupon->usage_limit) &&
+            ($coupon->user_usage_limit === null || $userUsageCount < $coupon->user_usage_limit) &&
+            ($completedBookingsCount >= $coupon->completed_bookings_count);
+
+        $coupon->is_used = $userUsageCount > 0;
+        $coupon->is_available = $isAvailable;
+        $coupon->user_usage_count = $userUsageCount;
 
         return $this->successResponse(
             new CouponResource($coupon),

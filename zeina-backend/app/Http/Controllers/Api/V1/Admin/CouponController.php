@@ -125,6 +125,132 @@ class CouponController extends Controller
     {
         $coupon = Coupon::findOrFail($id);
 
+        // 1. Check if expired
+        $isExpired = ($coupon->end_date && $coupon->end_date->isPast()) || 
+                     ($coupon->usage_limit !== null && $coupon->used_count >= $coupon->usage_limit);
+
+        if ($isExpired) {
+            return $this->errorResponse(__('messages.coupon_expired_cannot_modify') ?? 'This coupon has expired and cannot be modified.', 422);
+        }
+
+        // 2. Check if used
+        $isUsed = $coupon->used_count > 0;
+        if ($isUsed) {
+            // Check if end_date is reduced
+            if ($request->has('end_date')) {
+                $newEndDate = \Carbon\Carbon::parse($request->input('end_date'));
+                if ($coupon->end_date && $newEndDate->lt($coupon->end_date)) {
+                    return $this->errorResponse(__('messages.coupon_cannot_reduce_duration') ?? 'Cannot reduce the duration of a used coupon.', 422);
+                }
+            }
+
+            // Check if usage_limit is reduced below current used count
+            if ($request->has('usage_limit')) {
+                $newUsageLimit = $request->input('usage_limit');
+                if ($newUsageLimit !== null && $newUsageLimit < $coupon->used_count) {
+                    return $this->errorResponse(__('messages.coupon_usage_limit_below_used') ?? 'Usage limit cannot be less than the current usage count.', 422);
+                }
+            }
+
+            // Check for any changed forbidden fields
+            $forbiddenFields = [
+                'code', 'type', 'value', 'is_for_all_users', 
+                'is_for_all_services', 'is_for_all_cities', 
+                'completed_bookings_count', 'allowed_visit_types'
+            ];
+            
+            foreach ($forbiddenFields as $field) {
+                if ($request->has($field)) {
+                    $oldVal = $coupon->{$field};
+                    $newVal = $request->input($field);
+                    
+                    if ($field === 'is_for_all_users' || $field === 'is_for_all_services' || $field === 'is_for_all_cities') {
+                        $oldVal = (bool)$oldVal;
+                        $newVal = (bool)$newVal;
+                    }
+                    if ($field === 'value') {
+                        $oldVal = (float)$oldVal;
+                        $newVal = (float)$newVal;
+                    }
+                    if ($field === 'allowed_visit_types' && is_array($newVal)) {
+                        $oldVal = $oldVal ?? [];
+                        sort($oldVal);
+                        sort($newVal);
+                    }
+
+                    if ($oldVal != $newVal) {
+                        return $this->errorResponse(
+                            __('messages.coupon_used_cannot_change_conditions') ?? 'Cannot modify conditions/rules of a used coupon.', 
+                            422
+                        );
+                    }
+                }
+            }
+
+            // Check relations
+            if ($request->has('users')) {
+                $newUsers = $request->input('users', []);
+                $oldUsers = $coupon->users()->pluck('users.id')->toArray();
+                sort($newUsers);
+                sort($oldUsers);
+                if ($newUsers != $oldUsers) {
+                    return $this->errorResponse(__('messages.coupon_used_cannot_change_audience') ?? 'Cannot change target users for a used coupon.', 422);
+                }
+            }
+
+            if ($request->has('cities')) {
+                $newCities = $request->input('cities', []);
+                $oldCities = $coupon->cities()->pluck('cities.id')->toArray();
+                sort($newCities);
+                sort($oldCities);
+                if ($newCities != $oldCities) {
+                    return $this->errorResponse(__('messages.coupon_used_cannot_change_cities') ?? 'Cannot change cities for a used coupon.', 422);
+                }
+            }
+
+            if ($request->has('areas')) {
+                $newAreas = $request->input('areas', []);
+                $oldAreas = $coupon->areas()->pluck('areas.id')->toArray();
+                sort($newAreas);
+                sort($oldAreas);
+                if ($newAreas != $oldAreas) {
+                    return $this->errorResponse(__('messages.coupon_used_cannot_change_areas') ?? 'Cannot change areas for a used coupon.', 422);
+                }
+            }
+
+            if ($request->has('services')) {
+                $newServices = $request->input('services', []);
+                $oldServices = $coupon->services()->get()->map(function($s) {
+                    $allowed = is_string($s->pivot->allowed_visit_types) 
+                        ? json_decode($s->pivot->allowed_visit_types, true) 
+                        : $s->pivot->allowed_visit_types;
+                    return [
+                        'id' => $s->id,
+                        'allowed_visit_types' => $allowed ?? []
+                    ];
+                })->toArray();
+
+                $newSvcMap = [];
+                foreach ($newServices as $ns) {
+                    $newSvcMap[$ns['id']] = $ns['allowed_visit_types'] ?? [];
+                    sort($newSvcMap[$ns['id']]);
+                }
+                
+                $oldSvcMap = [];
+                foreach ($oldServices as $os) {
+                    $oldSvcMap[$os['id']] = $os['allowed_visit_types'] ?? [];
+                    sort($oldSvcMap[$os['id']]);
+                }
+
+                ksort($newSvcMap);
+                ksort($oldSvcMap);
+
+                if ($newSvcMap != $oldSvcMap) {
+                    return $this->errorResponse(__('messages.coupon_used_cannot_change_services') ?? 'Cannot change services for a used coupon.', 422);
+                }
+            }
+        }
+
         DB::beginTransaction();
         try {
             // 1. Update Coupon
@@ -191,6 +317,18 @@ class CouponController extends Controller
     public function destroy(string $id)
     {
         $coupon = Coupon::findOrFail($id);
+
+        $isExpired = ($coupon->end_date && $coupon->end_date->isPast()) || 
+                     ($coupon->usage_limit !== null && $coupon->used_count >= $coupon->usage_limit);
+
+        if ($isExpired) {
+            return $this->errorResponse(__('messages.coupon_expired_cannot_delete') ?? 'Expired coupons cannot be deleted.', 422);
+        }
+
+        if ($coupon->used_count > 0) {
+            return $this->errorResponse(__('messages.coupon_used_cannot_delete') ?? 'Used coupons cannot be deleted.', 422);
+        }
+
         $coupon->delete();
 
         return $this->successResponse(

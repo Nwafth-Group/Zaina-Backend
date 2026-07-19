@@ -91,6 +91,8 @@ class ReportController extends Controller
             'assigned_admin_id' => $adminId,
         ]);
 
+        $adminUser->notify(new ReportNotification($report, 'assigned'));
+
         return $this->successResponse(
             new AdminReportDetailResource($report->load(['booking', 'customer', 'service', 'worker', 'assignedAdmin', 'histories.createdBy'])),
             'Report assigned successfully'

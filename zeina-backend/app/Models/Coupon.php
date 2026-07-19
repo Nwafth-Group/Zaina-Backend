@@ -55,6 +55,11 @@ class Coupon extends Model implements Auditable
             ->withTimestamps();
     }
 
+    public function bookings()
+    {
+        return $this->hasMany(Booking::class);
+    }
+
     /**
      * Check if a coupon is eligible for a customer, service, visit type, start/end times and address.
      * Returns null if eligible, or an error translation key if not.

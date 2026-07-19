@@ -50,8 +50,9 @@ Route::prefix('admin')->group(function () {
         Route::get('company-info', [CompanyInfoController::class, 'show']);
         Route::post('company-info', [CompanyInfoController::class, 'update']);
 
-        // Current admin's live identity/roles/permissions (keeps the UI in sync).
         Route::get('me', [ProfileController::class, 'me']);
+        Route::get('me/notifications', [ProfileController::class, 'notifications']);
+        Route::post('me/notifications/read', [ProfileController::class, 'markNotificationsAsRead']);
 
         // Current admin's own profile (self-service).
         Route::get('profile', [ProfileController::class, 'show']);
@@ -162,9 +163,9 @@ Route::prefix('admin')->group(function () {
         // Workers
         Route::middleware('permission:workers.view')->group(function () {
             Route::get('workers', [WorkerController::class, 'index']);
+            Route::get('workers/nationalities', [WorkerController::class, 'nationalities']);
             Route::get('workers/{worker}', [WorkerController::class, 'show']);
             Route::get('workers/{worker}/details', [WorkerController::class, 'details']);
-            Route::get('workers/nationalities', [WorkerController::class, 'nationalities']);
         });
         Route::middleware('permission:workers.create')->group(function () {
             Route::post('workers', [WorkerController::class, 'store']);

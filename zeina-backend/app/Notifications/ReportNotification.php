@@ -28,6 +28,9 @@ class ReportNotification extends Notification implements ShouldQueue
         if ($type === 'submitted') {
             $this->title = 'New Booking Report: '.$report->report_number;
             $this->body = 'A new issue report was submitted by client for booking #'.($report->booking->booking_ref ?? $report->booking_id);
+        } elseif ($type === 'assigned') {
+            $this->title = __('messages.report_notification_title_assigned', ['number' => $report->report_number]);
+            $this->body = __('messages.report_notification_body_assigned', ['number' => $report->report_number]);
         } elseif ($type === 'note_added') {
             $this->title = __('messages.report_notification_title_note_added', ['number' => $report->report_number]);
             $this->body = __('messages.report_notification_body_note_added');

@@ -58,4 +58,20 @@ class ProfileController extends Controller
 
         return $this->successResponse(null, __('messages.password_changed'));
     }
+
+    public function notifications(Request $request)
+    {
+        $user = $request->user();
+        // Return latest 20 notifications (read & unread) for this admin
+        $notifications = $user->notifications()->latest()->limit(20)->get();
+
+        return $this->successResponse($notifications);
+    }
+
+    public function markNotificationsAsRead(Request $request)
+    {
+        $request->user()->unreadNotifications->markAsRead();
+
+        return $this->successResponse(null, __('messages.notifications_marked_read') ?? 'Marked as read');
+    }
 }

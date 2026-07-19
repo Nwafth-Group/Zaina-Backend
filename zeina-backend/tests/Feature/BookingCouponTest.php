@@ -262,6 +262,41 @@ class BookingCouponTest extends TestCase
         $response->assertJsonFragment(['code' => $coupon->code]);
     }
 
+    public function test_customer_coupon_index_includes_already_used_coupons(): void
+    {
+        $user = $this->actingAsCustomer(['status' => 'active', 'verification_status' => 'approved']);
+
+        // Create an inactive or expired coupon that the user has already used in a booking
+        $coupon = Coupon::factory()->create([
+            'is_for_all_users' => true,
+            'status' => 'inactive', 
+            'start_date' => now()->subDays(10),
+            'end_date' => now()->subDays(5), 
+        ]);
+
+        Booking::factory()->create([
+            'customer_id' => $user->id,
+            'coupon_id' => $coupon->id,
+            'status' => 'completed',
+        ]);
+
+        $response = $this->getJson('/api/v1/customer/coupons');
+        $response->assertStatus(200);
+
+        // Verify that the coupon is retrieved because it was used by the customer
+        $response->assertJsonFragment(['code' => $coupon->code]);
+        
+        // Also check that it has correct attributes
+        $data = $response->json('data.items');
+        $this->assertNotEmpty($data);
+        
+        // The coupon should be tagged as used and NOT available
+        $item = collect($data)->firstWhere('code', $coupon->code);
+        $this->assertNotNull($item);
+        $this->assertTrue($item['is_used']);
+        $this->assertFalse($item['is_available']);
+    }
+
     public function test_customer_can_apply_coupon_to_booking_draft(): void
     {
         $user = $this->actingAsCustomer(['status' => 'active', 'verification_status' => 'approved']);

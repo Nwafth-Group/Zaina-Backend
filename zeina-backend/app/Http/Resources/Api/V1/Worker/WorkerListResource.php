@@ -30,6 +30,7 @@ class WorkerListResource extends JsonResource
             'status' => $this->status,
             'assigned_service' => $assignedService,
             'image' => $media ? (new MediaResource($media))->getFileUrl() : null,
+            'bookings_count' => $this->bookings()->count(),
         ];
     }
 }
