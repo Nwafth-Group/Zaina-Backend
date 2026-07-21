@@ -306,4 +306,7 @@ return [
     'coupon_used_cannot_change_cities' => 'Cannot change cities for a used coupon.',
     'coupon_used_cannot_change_areas' => 'Cannot change areas for a used coupon.',
     'coupon_used_cannot_change_services' => 'Cannot change services for a used coupon.',
+    'points_payment_disabled' => 'Loyalty points payment is not enabled for this service.',
+    'insufficient_points' => 'Sorry, your current points balance (:current points) is insufficient. The booking requires :required points.',
+    'no_workers_available' => 'No available worker was found for the selected service, date, and time.',
 ];

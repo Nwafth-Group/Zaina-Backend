@@ -300,4 +300,7 @@ return [
     'coupon_used_cannot_change_cities' => 'لا يمكن تعديل المدن لكوبون مستخدم بالفعل.',
     'coupon_used_cannot_change_areas' => 'لا يمكن تعديل المناطق لكوبون مستخدم بالفعل.',
     'coupon_used_cannot_change_services' => 'لا يمكن تعديل الخدمات لكوبون مستخدم بالفعل.',
+    'points_payment_disabled' => 'الدفع بالنقاط غير متاح لهذه الخدمة.',
+    'insufficient_points' => 'عذراً، رصيد نقاطك الحالي (:current نقطة) غير كافٍ. يتطلب الحجز :required نقطة.',
+    'no_workers_available' => 'لم يتم العثور على عاملة متاحة للخدمة والتاريخ والوقت المحدد.',
 ];

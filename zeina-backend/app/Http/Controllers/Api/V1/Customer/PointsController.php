@@ -41,8 +41,9 @@ class PointsController extends Controller
             ->where('reason', 'referral_approved')
             ->sum('amount');
 
+        $referralCard = null;
         if ($referralRule) {
-            $progressCards[] = [
+            $referralCard = [
                 'title' => app()->getLocale() == 'ar' ? ($referralRule->title_ar ?? 'دعوة الأصدقاء') : ($referralRule->title_en ?? 'Invite Friends'),
                 'current_step' => $successfulReferralCount,
                 'target_step' => $successfulReferralCount + 1,
@@ -152,6 +153,7 @@ class PointsController extends Controller
             'app_store_link' => $appStoreLink,
             'share_message_ar' => $shareMessageAr,
             'share_message_en' => $shareMessageEn,
+            'referral_card' => $referralCard,
             'progress_card' => $progressCards,
             'earn_points' => $tasks,
             'history' => $recentHistory,

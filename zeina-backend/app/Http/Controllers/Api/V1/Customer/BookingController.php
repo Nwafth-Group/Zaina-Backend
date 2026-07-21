@@ -91,29 +91,12 @@ class BookingController extends Controller
 
         if ($service->service_code === 'BABYSITTER_HOURLY') {
             $childAgeGroups = $data['child_age_groups'] ?? [];
-            $validGroups = $service->childAgeGroups()->where('status', 'active')->get();
-            $calculatedMinWorkers = 0;
-            $groupedCounts = array_count_values($childAgeGroups);
-
-            foreach ($groupedCounts as $groupId => $count) {
-                $group = $validGroups->firstWhere('id', $groupId);
-                if (! $group) {
-                    return $this->errorResponse('Babysitter calculation rule is not configured.', 422);
-                }
-
-                $childrenCountRule = $group->children_count ?? 1;
-                $requiredWorkerCountRule = $group->required_worker_count ?? 1;
-
-                if ($group->calculation_type === 'per_child') {
-                    $calculatedMinWorkers += $count * $requiredWorkerCountRule;
-                } else {
-                    $calculatedMinWorkers += (int) ceil($count / $childrenCountRule) * $requiredWorkerCountRule;
-                }
-            }
+            $bookingService = app(CustomerBookingService::class);
+            $calculatedMinWorkers = $bookingService->calculateMinimumBabysitters($service, $childAgeGroups);
 
             $maxWorkers = $service->max_workers ?? 5;
             if ($calculatedMinWorkers > $maxWorkers) {
-                return $this->errorResponse('The required number of babysitters exceeds the service limit.', 422);
+                return $this->errorResponse(__('validation.create_booking.babysitters_count_max', ['max' => $maxWorkers]), 422);
             }
 
             if (empty($data['workers_count'])) {
@@ -121,40 +104,16 @@ class BookingController extends Controller
             } else {
                 $data['workers_count'] = (int) $data['workers_count'];
                 if ($data['workers_count'] < $calculatedMinWorkers) {
-                    $breakdown = [];
-                    $isArabic = app()->getLocale() === 'ar';
-                    foreach ($groupedCounts as $groupId => $count) {
-                        $group = $validGroups->firstWhere('id', $groupId);
-                        if (! $group) {
-                            continue;
-                        }
-                        $childrenCountRule = $group->children_count ?? 1;
-                        $requiredWorkerCountRule = $group->required_worker_count ?? 1;
-                        if ($group->calculation_type === 'per_child') {
-                            $needed = $count * $requiredWorkerCountRule;
-                            if ($isArabic) {
-                                $breakdown[] = "{$group->name_ar} ({$count} أطفال) يحتاج {$needed} مربيات";
-                            } else {
-                                $breakdown[] = "{$group->name_en} ({$count} children) requires {$needed} workers";
-                            }
-                        } else {
-                            $needed = (int) ceil($count / $childrenCountRule) * $requiredWorkerCountRule;
-                            if ($isArabic) {
-                                $breakdown[] = "{$group->name_ar} ({$count} أطفال) يحتاج {$needed} مربيات (بمعدل مربية لكل {$childrenCountRule} أطفال)";
-                            } else {
-                                $breakdown[] = "{$group->name_en} ({$count} children) requires {$needed} workers (ratio: {$requiredWorkerCountRule} per {$childrenCountRule} children)";
-                            }
-                        }
+                    $breakdown = $bookingService->getBabysitterBreakdown($service, $childAgeGroups);
+                    $msg = __('validation.create_booking.babysitters_count_min', ['min' => $calculatedMinWorkers]);
+                    if (! empty($breakdown)) {
+                        $msg .= ' ('.$breakdown.')';
                     }
-                    $breakdownText = implode($isArabic ? ' ، ' : ', ', $breakdown);
-                    $msg = $isArabic
-                        ? "لا يمكن أن يقل عدد جليسات الأطفال عن الحد الأدنى المحسوب وهو {$calculatedMinWorkers}. التفاصيل: ({$breakdownText})"
-                        : "The number of babysitters cannot be less than the calculated minimum of {$calculatedMinWorkers}. Breakdown: ({$breakdownText})";
 
                     return $this->errorResponse($msg, 422);
                 }
                 if ($data['workers_count'] > $maxWorkers) {
-                    return $this->errorResponse('The required number of babysitters exceeds the service limit.', 422);
+                    return $this->errorResponse(__('validation.create_booking.babysitters_count_max', ['max' => $maxWorkers]), 422);
                 }
             }
 

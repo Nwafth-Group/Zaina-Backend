@@ -487,7 +487,7 @@ class CustomerBookingService
             $remaining = $availableWorkers->whereNotIn('id', $allocated->pluck('id'))->values();
             if ($remaining->count() < $needed) {
                 throw ValidationException::withMessages([
-                    'workers_count' => 'No available worker was found for the selected service, date, and time.',
+                    'workers_count' => __('messages.no_workers_available'),
                 ]);
             }
             $randomPicked = $remaining->random($needed)->values();
@@ -617,14 +617,14 @@ class CustomerBookingService
     {
         if ($paymentMethod === 'points') {
             if (!$service->points_redemption_enabled) {
-                throw new \Exception("Loyalty points payment is not enabled for this service. / الدفع بالنقاط غير متاح لهذه الخدمة.", 422);
+                throw new \Exception(__('messages.points_payment_disabled'), 422);
             }
 
             $userPointsBalance = \App\Models\PointTransaction::getUserPointsBalance($user->id);
             $pointsRequired = $this->calculateRequiredPoints($service, $totalAmount);
 
             if ($userPointsBalance < $pointsRequired) {
-                throw new \Exception("عذراً، رصيد نقاطك الحالي ({$userPointsBalance} نقطة) غير كافٍ. يتطلب الحجز {$pointsRequired} نقطة.", 422);
+                throw new \Exception(__('messages.insufficient_points', ['current' => $userPointsBalance, 'required' => $pointsRequired]), 422);
             }
         } elseif ($paymentMethod === 'wallet') {
             if ($user->wallet_balance < $totalAmount) {

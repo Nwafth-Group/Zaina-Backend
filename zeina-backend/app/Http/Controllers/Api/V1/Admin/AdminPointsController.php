@@ -206,6 +206,10 @@ class AdminPointsController extends Controller
             return $this->errorResponse('Rule not found.', 404);
         }
 
+        if ($rule->rule_category === 'referral') {
+            return $this->errorResponse('Referral category rule cannot be deleted.', 422);
+        }
+
         $rule->delete();
 
         return $this->successResponse(null, 'Earning rule deleted successfully.');
