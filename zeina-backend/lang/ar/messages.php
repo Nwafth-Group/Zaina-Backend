@@ -261,8 +261,11 @@ return [
     'coupon_service_ineligible' => 'هذا الكوبون لا يشمل الخدمة المحددة.',
     'coupon_visit_type_ineligible' => 'هذا الكوبون لا يشمل نوع الزيارة المحدد.',
     'coupon_shift_ineligible' => 'هذا الكوبون غير متاح لفترة الخدمة أو الشفت المحدد.',
+    'coupon_min_workers_ineligible' => 'هذا الكوبون يتطلب عدداً أكبر من العاملات لتطبيقه.',
     'coupon_updated_successfully' => 'تم تحديث الكوبون بنجاح.',
     'coupon_deleted_successfully' => 'تم حذف الكوبون بنجاح.',
+    'review_approved_successfully' => 'تم اعتماد التقييم بنجاح.',
+    'review_rejected_successfully' => 'تم رفض التقييم بنجاح.',
 
     // Mobile Notifications
     'notification_list_fetch_success' => 'تم جلب قائمة الإشعارات بنجاح.',

@@ -39,6 +39,7 @@ class CategoryAndServiceSeeder extends Seeder
             'hospitality' => ['en' => 'Hospitality Services', 'ar' => 'خدمات الضيافة', 'icon' => 'Babysitting.webp'],
             'beauty' => ['en' => 'Beauty & Care', 'ar' => 'التجميل والعناية', 'icon' => 'Beauty&Spa.avif'],
             'maintenance' => ['en' => 'Home Maintenance', 'ar' => 'الصيانة المنزلية', 'icon' => 'Maintenance.avif'],
+            'other' => ['en' => 'Other Services', 'ar' => 'خدمات أخرى', 'icon' => 'Beauty&Spa.avif'],
         ];
 
         $categories = [];
@@ -50,11 +51,11 @@ class CategoryAndServiceSeeder extends Seeder
             $categories[$key] = $category;
 
             // رفع الميديا للقسم
-            $dummyIconPath = public_path('dummy/'.$data['icon']);
+            $dummyIconPath = public_path('dummy/' . $data['icon']);
             if (file_exists($dummyIconPath)) {
                 $extension = pathinfo($dummyIconPath, PATHINFO_EXTENSION);
-                $iconName = 'category_'.$category->id.'_icon.'.$extension;
-                $iconPath = 'categories/icons/'.$iconName;
+                $iconName = 'category_' . $category->id . '_icon.' . $extension;
+                $iconPath = 'categories/icons/' . $iconName;
 
                 Storage::disk('public')->put($iconPath, file_get_contents($dummyIconPath));
 
@@ -78,13 +79,8 @@ class CategoryAndServiceSeeder extends Seeder
             ['cat' => 'hospitality', 'type' => 'hourly', 'en' => 'Hospitality Worker (Hourly)', 'ar' => 'عاملة ضيافة بالساعة', 'price' => 90, 'period' => 2, 'code' => 'HOSPITALITY_WORKER_HOURLY'],
             ['cat' => 'babysitting', 'type' => 'hourly', 'en' => 'Babysitter (Hourly)', 'ar' => 'جليسة اطفال بالساعة', 'price' => 100, 'period' => 3, 'code' => 'BABYSITTER_HOURLY'],
 
-            // خدمات أخرى (6)
-            // ['cat' => 'beauty',      'type' => 'other',  'en' => 'Manicure & Pedicure', 'ar' => 'مناكير و بدكير', 'price' => 150, 'period' => 1, 'code' => 'MANICURE_PEDICURE'],
-            // ['cat' => 'cleaning',    'type' => 'other',  'en' => 'Sofa Cleaning', 'ar' => 'تنظيف الكنب', 'price' => 130, 'period' => 2, 'code' => 'SOFA_CLEANING'],
-            // ['cat' => 'maintenance', 'type' => 'other',  'en' => 'AC Cleaning', 'ar' => 'تنظيف المكيفات', 'price' => 200, 'period' => 2, 'code' => 'AC_CLEANING'],
-            // ['cat' => 'maintenance', 'type' => 'other',  'en' => 'Pest Control', 'ar' => 'مكافحة الحشرات', 'price' => 180, 'period' => 2, 'code' => 'PEST_CONTROL'],
-            // ['cat' => 'cleaning',    'type' => 'other',  'en' => 'Cleaning of Stairs, Roofs & Yards', 'ar' => 'تنظيف السلالم والاسطح والاحواش', 'price' => 250, 'period' => 3, 'code' => 'OUTDOOR_CLEANING'],
-            // ['cat' => 'cleaning',    'type' => 'other',  'en' => 'Water Tank Cleaning', 'ar' => 'تنظيف خزانات المياه', 'price' => 300, 'period' => 4, 'code' => 'WATER_TANK_CLEANING'],
+            // خدمات أخرى (1)
+            ['cat' => 'other', 'type' => 'other', 'en' => 'Pedicure & Manicure Service', 'ar' => 'خدمة العناية بالأقدام واليدين', 'price' => 150, 'period' => 2, 'code' => 'PEDICURE_MANICURE', 'covered_persons_per_worker' => 1],
         ];
 
         // 3. إدخال الخدمات وتركيب القواعد والأسعار والمناطق
@@ -119,8 +115,9 @@ class CategoryAndServiceSeeder extends Seeder
             $isFirstService = ($data['code'] === 'DOMESTIC_HELPER_HOURLY');
             $isSecondService = ($data['code'] === 'HOSPITALITY_WORKER_HOURLY');
             $isThirdService = ($data['code'] === 'BABYSITTER_HOURLY');
+            $isPedicureManicure = ($data['code'] === 'PEDICURE_MANICURE');
 
-            $genderAttr = ($isFirstService || $isThirdService) ? 'female' : fake()->randomElement(['male', 'female']);
+            $genderAttr = ($isFirstService || $isThirdService || $isPedicureManicure) ? 'female' : fake()->randomElement(['male', 'female']);
 
             // Sync workers to this service
             $newWorkers = Worker::factory(3)->create([
@@ -136,13 +133,13 @@ class CategoryAndServiceSeeder extends Seeder
                 'type' => $data['type'],
                 'name_ar' => $data['ar'],
                 'name_en' => $data['en'],
-                'description_ar' => 'وصف تفصيلي لخدمة '.$data['ar'],
-                'description_en' => 'Detailed description for '.$data['en'],
+                'description_ar' => 'وصف تفصيلي لخدمة ' . $data['ar'],
+                'description_en' => 'Detailed description for ' . $data['en'],
                 'features' => $features,
                 'status' => 'active',
                 'workers' => $workerIds,
 
-                'available_visit_types' => ($isSecondService || $isThirdService)
+                'available_visit_types' => ($isSecondService || $isThirdService || $isPedicureManicure)
                     ? [['type' => 'single_visit', 'discount' => 0]]
                     : [
                         ['type' => 'single_visit', 'discount' => 0],
@@ -150,7 +147,7 @@ class CategoryAndServiceSeeder extends Seeder
                     ],
                 'base_price' => $data['price'],
                 'start_time' => '08:00',
-                'end_time' => ($isSecondService || $isThirdService) ? '20:00' : '22:00',
+                'end_time' => ($isSecondService || $isThirdService || $isPedicureManicure) ? '20:00' : '22:00',
                 'duration_unit' => 'Hours',
                 'default_duration' => ($isSecondService || $isThirdService) ? 4 : $data['period'],
                 'has_duration_range' => ($isSecondService || $isThirdService),
@@ -160,11 +157,12 @@ class CategoryAndServiceSeeder extends Seeder
                 'max_workers' => 6,
                 'min_children' => $isThirdService ? 1 : null,
                 'max_children' => $isThirdService ? 6 : null,
+                'covered_persons_per_worker' => $data['covered_persons_per_worker'] ?? null,
 
                 'coverages' => $coverages,
 
                 'working_days' => ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'saturday'],
-                'shifts' => ($isSecondService || $isThirdService) ? [] : [
+                'shifts' => ($isSecondService || $isThirdService || $isPedicureManicure) ? [] : [
                     ['start_time' => '09:00'],
                     ['start_time' => '12:00'],
                     ['start_time' => '14:00'],
@@ -197,6 +195,9 @@ class CategoryAndServiceSeeder extends Seeder
             } elseif ($isSecondService) {
                 $payload['worker_gender_options'] = ['Female', 'Male'];
                 $payload['pricing_type'] = 'per_hour';
+            } elseif ($isPedicureManicure) {
+                $payload['worker_gender_options'] = ['Female'];
+                $payload['pricing_type'] = 'per_service';
             } else {
                 $payload['worker_gender_options'] = [];
                 $payload['pricing_type'] = 'per_service';
@@ -250,15 +251,15 @@ class CategoryAndServiceSeeder extends Seeder
 
             // Sync media icon
             $dummyIconPath = public_path("assist/services/{$service->id}.webp");
-            if (! file_exists($dummyIconPath)) {
+            if (!file_exists($dummyIconPath)) {
                 $selectedIcon = Arr::random($dummyIconsList);
-                $dummyIconPath = public_path('dummy/'.$selectedIcon);
+                $dummyIconPath = public_path('dummy/' . $selectedIcon);
             }
 
             if (file_exists($dummyIconPath)) {
                 $extension = pathinfo($dummyIconPath, PATHINFO_EXTENSION);
-                $iconName = 'service_'.$service->id.'_icon.'.$extension;
-                $iconPath = 'services/icons/'.$iconName;
+                $iconName = 'service_' . $service->id . '_icon.' . $extension;
+                $iconPath = 'services/icons/' . $iconName;
 
                 Storage::disk('public')->put($iconPath, file_get_contents($dummyIconPath));
 

@@ -115,6 +115,28 @@ class BookingNotification extends Notification implements ShouldQueue
                 }
             }
 
+            $bookingLink = '';
+            if ($this->bookingId) {
+                try {
+                    $bookingLink = \Illuminate\Support\Facades\URL::temporarySignedRoute(
+                        'bookings.public_contract',
+                        now()->addDays(30),
+                        ['booking' => $this->bookingId]
+                    );
+                } catch (\Exception $urlEx) {
+                    Log::error('Failed to generate signed URL for contract: ' . $urlEx->getMessage());
+                }
+            }
+
+            if ($bookingLink) {
+                $lang = $notifiable->preferred_language === 'ar' ? 'ar' : 'en';
+                if ($lang === 'ar') {
+                    $smsMessage .= "\nرابط العقد: " . $bookingLink;
+                } else {
+                    $smsMessage .= "\nContract link: " . $bookingLink;
+                }
+            }
+
             Log::info('[SMS Notification] Generated SMS Message Content: '.$smsMessage);
             $smsService->send($notifiable->phone_number, $smsMessage);
 

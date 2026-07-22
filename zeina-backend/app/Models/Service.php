@@ -19,7 +19,7 @@ class Service extends Model implements Auditable
         'terms_en', 'acceptance_required', 'start_time', 'end_time',
         'default_duration', 'duration_unit', 'has_duration_range',
         'min_duration', 'max_duration', 'min_workers', 'max_workers', 'base_price',
-        'min_children', 'max_children',
+        'min_children', 'max_children', 'covered_persons_per_worker',
         'points_redemption_enabled', 'points_redemption_method', 'points_required_fixed', 'points_conversion_rate',
     ];
 
@@ -33,6 +33,7 @@ class Service extends Model implements Auditable
         'base_price' => 'decimal:2',
         'min_children' => 'integer',
         'max_children' => 'integer',
+        'covered_persons_per_worker' => 'integer',
         'points_redemption_enabled' => 'boolean',
         'points_required_fixed' => 'integer',
         'points_conversion_rate' => 'integer',

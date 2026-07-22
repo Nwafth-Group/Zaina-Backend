@@ -24,10 +24,8 @@ class PointsController extends Controller
 
         // Fetch active rules from DB to compute target steps and reward points dynamically
         $bookingRules = RewardTasks::where('status', true)->where('rule_category', 'booking')->get();
+        $serviceRules = RewardTasks::with('service')->where('status', true)->where('rule_category', 'service')->get();
         $referralRule = RewardTasks::where('status', true)->where('rule_category', 'referral')->first();
-
-        // Completed bookings count
-        $completedCount = $user->bookings()->where('status', 'completed')->count();
 
         $progressCards = [];
 
@@ -57,8 +55,13 @@ class PointsController extends Controller
             ];
         }
 
-        // 🌟 B. Booking Cards (Dynamically render for each active booking rule based on required_booking_count)
+        // 🌟 B. Booking Cards (General booking completed rules)
         foreach ($bookingRules as $rule) {
+            $completedCount = $user->bookings()
+                ->where('status', 'completed')
+                ->where('created_at', '>=', $rule->created_at)
+                ->count();
+
             $requiredCount = (int) ($rule->required_booking_count ?? 1);
             if ($requiredCount < 1) {
                 $requiredCount = 1;
@@ -89,6 +92,45 @@ class PointsController extends Controller
                 'is_completed' => $isCompleted,
                 'reward_points' => (int) $rule->points,
                 'action_type' => 'complete_booking',
+                'service_id' => null,
+                'footer_text' => $footerText,
+            ];
+        }
+
+        // 🌟 C. Specific Service Cards
+        foreach ($serviceRules as $rule) {
+            $serviceCompletedCount = $user->bookings()
+                ->where('status', 'completed')
+                ->where('service_id', $rule->service_id)
+                ->where('created_at', '>=', $rule->created_at)
+                ->count();
+
+            $requiredCount = (int) ($rule->required_booking_count ?? 1);
+            if ($requiredCount < 1) {
+                $requiredCount = 1;
+            }
+
+            $currentStep = $serviceCompletedCount % $requiredCount;
+            $remaining = max($requiredCount - $currentStep, 0);
+
+            $serviceName = $rule->service ? (app()->getLocale() == 'ar' ? $rule->service->name_ar : $rule->service->name_en) : '';
+            $titleText = app()->getLocale() == 'ar' 
+                ? ($rule->title_ar ?: "إتمام خدمة {$serviceName}")
+                : ($rule->title_en ?: "Complete {$serviceName}");
+
+            $footerText = app()->getLocale() == 'ar'
+                ? ($remaining > 0 ? "اكسب {$rule->points} نقطة عند إتمام {$requiredCount} حجوزات لخدمة {$serviceName} (متبقي {$remaining})" : "لقد حصلت على نقاط المكافأة الخاصة بك!")
+                : ($remaining > 0 ? "Earn {$rule->points} points upon completing {$requiredCount} {$serviceName} bookings ({$remaining} remaining)" : "You have earned your reward points!");
+
+            $progressCards[] = [
+                'title' => $titleText,
+                'current_step' => $currentStep,
+                'target_step' => $requiredCount,
+                'steps_remaining' => $remaining,
+                'is_completed' => false,
+                'reward_points' => (int) $rule->points,
+                'action_type' => 'complete_service',
+                'service_id' => $rule->service_id,
                 'footer_text' => $footerText,
             ];
         }

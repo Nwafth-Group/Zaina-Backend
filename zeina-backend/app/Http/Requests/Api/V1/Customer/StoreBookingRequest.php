@@ -36,8 +36,10 @@ class StoreBookingRequest extends FormRequest
                 $mergeData['duration'] = $service->min_duration ?: ($service->default_duration ?? 4);
             }
 
-            if (! $this->filled('worker_gender')) {
-                $genderOptions = $service->worker_gender_options ?? [];
+            $genderOptions = $service->worker_gender_options ?? [];
+            if ($service->service_code === 'DOMESTIC_HELPER_HOURLY' || $service->service_code === 'BABYSITTER_HOURLY' || $service->service_code === 'PEDICURE_MANICURE' || (count($genderOptions) === 1 && $genderOptions[0] === 'Female')) {
+                $mergeData['worker_gender'] = 'Female';
+            } elseif (! $this->filled('worker_gender')) {
                 $mergeData['worker_gender'] = count($genderOptions) > 0 ? $genderOptions[0] : 'Female';
             }
         }
@@ -55,6 +57,7 @@ class StoreBookingRequest extends FormRequest
         $serviceId = $this->input('service_id');
         $service = $serviceId ? Service::find($serviceId) : null;
         $isBabysitter = $service && $service->service_code === 'BABYSITTER_HOURLY';
+        $isPedicureManicure = $service && $service->service_code === 'PEDICURE_MANICURE';
 
         return [
             'service_id' => ['required', 'exists:services,id'],
@@ -70,6 +73,7 @@ class StoreBookingRequest extends FormRequest
             'duration' => ['nullable', 'integer'],
             'worker_gender' => ['nullable', 'string', 'in:Male,Female'],
             'number_of_children' => [$isBabysitter ? 'required' : 'nullable', 'integer', 'min:1'],
+            'number_of_persons' => [$isPedicureManicure ? 'required' : 'nullable', 'integer', 'min:1'],
             'child_age_groups' => $isBabysitter ? ['required', 'array', 'min:1'] : ['nullable', 'array'],
             'child_age_groups.*' => ['integer', 'exists:service_child_age_groups,id'],
             'note' => ['nullable', 'string'],

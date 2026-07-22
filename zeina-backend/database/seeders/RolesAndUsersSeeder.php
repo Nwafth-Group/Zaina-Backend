@@ -53,7 +53,7 @@ class RolesAndUsersSeeder extends Seeder
             'legal_documents.view', 'legal_documents.create', 'legal_documents.edit', 'legal_documents.delete',
             
             // Reviews
-            'reviews.view',
+            'reviews.view', 'reviews.edit',
             
             // Reports / Tickets
             'reports.view', 'reports.edit',

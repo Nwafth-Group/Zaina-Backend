@@ -131,6 +131,49 @@ class GetAvailableDatesRequest extends FormRequest
                         $validator->errors()->add("child_age_groups.{$index}", __('validation.create_booking.child_age_groups_invalid'));
                     }
                 }
+
+                if (!empty($childAgeGroups)) {
+                    $bookingService = app(\App\Service\Customer\CustomerBookingService::class);
+                    $calculatedMinWorkers = $bookingService->calculateMinimumBabysitters($service, $childAgeGroups);
+                    $maxWorkers = $service->max_workers ?? 5;
+
+                    if ($calculatedMinWorkers > $maxWorkers) {
+                        $validator->errors()->add('child_age_groups', __('validation.create_booking.babysitters_count_max', ['max' => $maxWorkers]));
+                    }
+
+                    $workersCount = $this->input('workers_count');
+                    if ($workersCount !== null && $workersCount !== '') {
+                        $workersCount = (int) $workersCount;
+                        if ($workersCount < $calculatedMinWorkers) {
+                            $breakdown = $bookingService->getBabysitterBreakdown($service, $childAgeGroups);
+                            $msg = __('validation.create_booking.babysitters_count_min', ['min' => $calculatedMinWorkers]);
+                            if (!empty($breakdown)) {
+                                $msg .= ' (' . $breakdown . ')';
+                            }
+                            $validator->errors()->add('workers_count', $msg);
+                        }
+                        if ($workersCount > $maxWorkers) {
+                            $validator->errors()->add('workers_count', __('validation.create_booking.babysitters_count_max', ['max' => $maxWorkers]));
+                        }
+                    }
+                }
+
+                if ($service->service_code === 'PEDICURE_MANICURE') {
+                    $numberOfPersons = (int) ($this->input('number_of_persons') ?? 1);
+                    $bookingService = app(\App\Service\Customer\CustomerBookingService::class);
+                    $calculatedMinWorkers = $bookingService->calculateMinimumPedicureWorkers($service, $numberOfPersons);
+                    $workersCount = $this->input('workers_count');
+                    if ($workersCount !== null && $workersCount !== '') {
+                        $workersCount = (int) $workersCount;
+                        if ($workersCount < $calculatedMinWorkers) {
+                            $isArabic = app()->getLocale() === 'ar';
+                            $msg = $isArabic
+                                ? "الحد الأدنى للعمالة المطلوبة لعدد {$numberOfPersons} أشخاص هو {$calculatedMinWorkers} عاملة."
+                                : "Minimum required workers for {$numberOfPersons} person(s) is {$calculatedMinWorkers}.";
+                            $validator->errors()->add('workers_count', $msg);
+                        }
+                    }
+                }
             },
         ];
     }

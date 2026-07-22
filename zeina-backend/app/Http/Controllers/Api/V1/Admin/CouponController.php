@@ -58,7 +58,7 @@ class CouponController extends Controller
                 'name', 'code', 'type', 'value',
                 'usage_limit', 'user_usage_limit', 'start_date', 'end_date',
                 'is_for_all_users', 'is_for_all_services', 'is_for_all_cities',
-                'completed_bookings_count', 'allowed_visit_types', 'status',
+                'completed_bookings_count', 'allowed_visit_types', 'min_workers', 'status',
             ]));
 
             // 2. Sync Users (Audience)
@@ -82,6 +82,7 @@ class CouponController extends Controller
                 foreach ($request->services as $svc) {
                     $syncData[$svc['id']] = [
                         'allowed_visit_types' => isset($svc['allowed_visit_types']) ? json_encode($svc['allowed_visit_types']) : null,
+                        'min_workers' => isset($svc['min_workers']) && $svc['min_workers'] !== '' ? (int) $svc['min_workers'] : null,
                     ];
                 }
                 $coupon->services()->sync($syncData);
@@ -156,7 +157,7 @@ class CouponController extends Controller
             $forbiddenFields = [
                 'code', 'type', 'value', 'is_for_all_users', 
                 'is_for_all_services', 'is_for_all_cities', 
-                'completed_bookings_count', 'allowed_visit_types'
+                'completed_bookings_count', 'allowed_visit_types', 'min_workers'
             ];
             
             foreach ($forbiddenFields as $field) {
@@ -226,20 +227,29 @@ class CouponController extends Controller
                         : $s->pivot->allowed_visit_types;
                     return [
                         'id' => $s->id,
-                        'allowed_visit_types' => $allowed ?? []
+                        'allowed_visit_types' => $allowed ?? [],
+                        'min_workers' => $s->pivot->min_workers ? (int) $s->pivot->min_workers : null,
                     ];
                 })->toArray();
 
                 $newSvcMap = [];
                 foreach ($newServices as $ns) {
-                    $newSvcMap[$ns['id']] = $ns['allowed_visit_types'] ?? [];
-                    sort($newSvcMap[$ns['id']]);
+                    $types = $ns['allowed_visit_types'] ?? [];
+                    sort($types);
+                    $newSvcMap[$ns['id']] = [
+                        'types' => $types,
+                        'min_workers' => isset($ns['min_workers']) && $ns['min_workers'] !== '' ? (int) $ns['min_workers'] : null,
+                    ];
                 }
                 
                 $oldSvcMap = [];
                 foreach ($oldServices as $os) {
-                    $oldSvcMap[$os['id']] = $os['allowed_visit_types'] ?? [];
-                    sort($oldSvcMap[$os['id']]);
+                    $types = $os['allowed_visit_types'] ?? [];
+                    sort($types);
+                    $oldSvcMap[$os['id']] = [
+                        'types' => $types,
+                        'min_workers' => $os['min_workers'],
+                    ];
                 }
 
                 ksort($newSvcMap);
@@ -258,7 +268,7 @@ class CouponController extends Controller
                 'name', 'code', 'type', 'value',
                 'usage_limit', 'user_usage_limit', 'start_date', 'end_date',
                 'is_for_all_users', 'is_for_all_services', 'is_for_all_cities',
-                'completed_bookings_count', 'allowed_visit_types', 'status',
+                'completed_bookings_count', 'allowed_visit_types', 'min_workers', 'status',
             ]));
 
             // 2. Sync Users (Audience)
@@ -289,6 +299,7 @@ class CouponController extends Controller
                 foreach ($request->services as $svc) {
                     $syncData[$svc['id']] = [
                         'allowed_visit_types' => isset($svc['allowed_visit_types']) ? json_encode($svc['allowed_visit_types']) : null,
+                        'min_workers' => isset($svc['min_workers']) && $svc['min_workers'] !== '' ? (int) $svc['min_workers'] : null,
                     ];
                 }
                 $coupon->services()->sync($syncData);

@@ -14,9 +14,12 @@ class ReviewController extends Controller
 
     public function index(Request $request, Service $service)
     {
+        $reviews = \App\Models\Review::where('reviewable_type', Service::class)
+            ->where('reviewable_id', $service->id)
+            ->where('status', 'approved')
+            ->latest()
+            ->get();
 
-        $reviews = $service->reviews;
-
-        return $this->successResponse(ReviewResource::collection($reviews), 'Reviews retrieved successfully');
+        return $this->successResponse(ReviewResource::collection($reviews), __('messages.reviews_retrieved') ?? 'Reviews retrieved successfully');
     }
 }

@@ -21,7 +21,7 @@ class AdminPointsController extends Controller
      */
     public function getRules(Request $request)
     {
-        $query = RewardTasks::query();
+        $query = RewardTasks::with('service');
 
         if ($request->filled('category')) {
             $query->where('rule_category', $request->category);
@@ -49,7 +49,8 @@ class AdminPointsController extends Controller
             'subtitle_ar' => 'nullable|string|max:255',
             'subtitle_en' => 'nullable|string|max:255',
             'points' => 'required|integer|min:1',
-            'rule_category' => 'required|string|in:social_media,referral,booking',
+            'rule_category' => 'required|string|in:social_media,referral,booking,service',
+            'service_id' => 'nullable|integer|exists:services,id',
             'status' => 'required|boolean',
             'action_type' => 'nullable|string|in:url,invite_friend,rate_service',
             'action_link' => 'nullable|string',
@@ -79,6 +80,22 @@ class AdminPointsController extends Controller
                 $referralExists = RewardTasks::where('rule_category', 'referral')->exists();
                 if ($referralExists) {
                     $validator->errors()->add('rule_category', 'Only one referral rule is allowed.');
+                }
+            }
+            if ($request->rule_category === 'service') {
+                if (empty($request->service_id)) {
+                    $validator->errors()->add('service_id', 'Please select a service for this service rule.');
+                }
+                if ($request->frequency_type !== 'repeatable') {
+                    $validator->errors()->add('frequency_type', 'Specific service rules must have a "repeatable" frequency.');
+                }
+                if ($request->service_id) {
+                    $serviceRuleExists = RewardTasks::where('rule_category', 'service')
+                        ->where('service_id', $request->service_id)
+                        ->exists();
+                    if ($serviceRuleExists) {
+                        $validator->errors()->add('service_id', 'A loyalty rule for this service already exists. Please choose a different service.');
+                    }
                 }
             }
         });
@@ -111,7 +128,7 @@ class AdminPointsController extends Controller
 
         $rule = RewardTasks::create($data);
 
-        return $this->successResponse($rule, 'Earning rule created successfully.', 201);
+        return $this->successResponse($rule->load('service'), 'Earning rule created successfully.', 201);
     }
 
     /**
@@ -130,7 +147,8 @@ class AdminPointsController extends Controller
             'subtitle_ar' => 'nullable|string|max:255',
             'subtitle_en' => 'nullable|string|max:255',
             'points' => 'required|integer|min:1',
-            'rule_category' => 'required|string|in:social_media,referral,booking',
+            'rule_category' => 'required|string|in:social_media,referral,booking,service',
+            'service_id' => 'nullable|integer|exists:services,id',
             'status' => 'required|boolean',
             'action_type' => 'nullable|string|in:url,invite_friend,rate_service',
             'action_link' => 'nullable|string',
@@ -160,6 +178,23 @@ class AdminPointsController extends Controller
                 $referralExists = RewardTasks::where('rule_category', 'referral')->where('id', '!=', $id)->exists();
                 if ($referralExists) {
                     $validator->errors()->add('rule_category', 'Only one referral rule is allowed.');
+                }
+            }
+            if ($request->rule_category === 'service') {
+                if (empty($request->service_id)) {
+                    $validator->errors()->add('service_id', 'Please select a service for this service rule.');
+                }
+                if ($request->frequency_type !== 'repeatable') {
+                    $validator->errors()->add('frequency_type', 'Specific service rules must have a "repeatable" frequency.');
+                }
+                if ($request->service_id) {
+                    $serviceRuleExists = RewardTasks::where('rule_category', 'service')
+                        ->where('service_id', $request->service_id)
+                        ->where('id', '!=', $id)
+                        ->exists();
+                    if ($serviceRuleExists) {
+                        $validator->errors()->add('service_id', 'A loyalty rule for this service already exists. Please choose a different service.');
+                    }
                 }
             }
         });
@@ -304,6 +339,32 @@ class AdminPointsController extends Controller
     }
 
     /**
+     * Get logged-in user's monthly points quota summary.
+     */
+    public function myQuota(Request $request)
+    {
+        $user = auth()->user();
+        $limit = $user->monthly_points_limit !== null ? (int) $user->monthly_points_limit : null;
+
+        $usedThisMonth = 0;
+        if ($limit !== null && $limit > 0) {
+            $usedThisMonth = (int) PointTransaction::where('type', 'adjustment')
+                ->where('amount', '>', 0)
+                ->where('created_by_user_id', $user->id)
+                ->whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()])
+                ->sum('amount');
+        }
+
+        $remaining = $limit !== null ? max(0, $limit - $usedThisMonth) : null;
+
+        return $this->successResponse([
+            'monthly_limit' => $limit,
+            'used_this_month' => $usedThisMonth,
+            'remaining_quota' => $remaining,
+        ], 'Monthly points quota retrieved successfully.');
+    }
+
+    /**
      * Add or deduct points manually for a specific user.
      */
     public function manualAdjustment(Request $request)
@@ -322,10 +383,17 @@ class AdminPointsController extends Controller
         $user = User::find($request->user_id);
         $amount = (int) $request->amount;
         $balance = PointTransaction::getUserPointsBalance($user->id);
+        $admin = auth()->user();
 
         if ($request->action === 'debit') {
-            if ($balance < $amount) {
-                return $this->errorResponse("Insufficient points balance. Customer only has {$balance} points.", 422);
+            $isAr = app()->getLocale() === 'ar';
+            if ($amount > $balance) {
+                return $this->errorResponse(
+                    $isAr
+                        ? "رصيد النقاط غير كافٍ. العميل يملك فقط {$balance} نقطة."
+                        : "Insufficient points balance. Customer only has {$balance} points.",
+                    422
+                );
             }
 
             $newBalance = $balance - $amount;
@@ -338,9 +406,31 @@ class AdminPointsController extends Controller
                 'title_ar' => 'تعديل نقاط يدوي (خصم)',
                 'title_en' => 'Manual Points Adjustment (Debit)',
                 'reason' => $request->reason,
-                'created_by' => auth()->user()?->full_name ?? 'Admin',
+                'created_by' => $admin?->full_name ?? 'Admin',
+                'created_by_user_id' => $admin?->id,
             ]);
         } else {
+            $isAr = app()->getLocale() === 'ar';
+            // Check employee monthly points limit if configured
+            if ($admin && $admin->monthly_points_limit !== null && $admin->monthly_points_limit > 0) {
+                $usedThisMonth = (int) PointTransaction::where('type', 'adjustment')
+                    ->where('amount', '>', 0)
+                    ->where('created_by_user_id', $admin->id)
+                    ->whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()])
+                    ->sum('amount');
+
+                $remainingQuota = max(0, (int) $admin->monthly_points_limit - $usedThisMonth);
+
+                if ($amount > $remainingQuota) {
+                    return $this->errorResponse(
+                        $isAr
+                            ? "لقد تجاوزت الحد المسموح لك لمنح النقاط هذا الشهر (المتبقي لديك: {$remainingQuota} نقطة من أصل {$admin->monthly_points_limit})."
+                            : "You have exceeded your monthly points grant limit (remaining: {$remainingQuota} of {$admin->monthly_points_limit} pts).",
+                        422
+                    );
+                }
+            }
+
             $newBalance = $balance + $amount;
             $transaction = PointTransaction::create([
                 'user_id' => $user->id,
@@ -351,7 +441,8 @@ class AdminPointsController extends Controller
                 'title_ar' => 'تعديل نقاط يدوي (إضافة)',
                 'title_en' => 'Manual Points Adjustment (Credit)',
                 'reason' => $request->reason,
-                'created_by' => auth()->user()?->full_name ?? 'Admin',
+                'created_by' => $admin?->full_name ?? 'Admin',
+                'created_by_user_id' => $admin?->id,
             ]);
         }
 

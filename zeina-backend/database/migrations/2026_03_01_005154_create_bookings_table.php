@@ -34,6 +34,7 @@ return new class extends Migration
             $table->string('worker_gender', 50)->nullable();
             $table->integer('number_of_workers')->default(1);
             $table->integer('number_of_children')->nullable();
+            $table->integer('number_of_persons')->nullable();
             $table->json('child_age_groups')->nullable();
             $table->string('payment_method')->nullable();
             $table->integer('paid_points')->default(0);

@@ -31,7 +31,7 @@ class CustomerBookingService
         [$address, $service] = $this->validateAddressAndService($user, $data);
 
         $workersCount = $data['workers_count'] ?? null;
-        if ($service->service_code === 'BABYSITTER_HOURLY' || $service->service_code === 'DOMESTIC_HELPER_HOURLY') {
+        if ($service->service_code === 'BABYSITTER_HOURLY' || $service->service_code === 'DOMESTIC_HELPER_HOURLY' || $service->service_code === 'PEDICURE_MANICURE') {
             $data['worker_gender'] = 'Female';
         }
         if ($service->service_code === 'BABYSITTER_HOURLY') {
@@ -51,6 +51,23 @@ class CustomerBookingService
                 }
                 if ($workersCount > $maxWorkers) {
                     throw new \Exception(__('validation.create_booking.babysitters_count_max', ['max' => $maxWorkers]), 422);
+                }
+            }
+            $data['workers_count'] = $workersCount;
+        } elseif ($service->service_code === 'PEDICURE_MANICURE') {
+            $numberOfPersons = (int) ($data['number_of_persons'] ?? 1);
+            $calculatedMinWorkers = $this->calculateMinimumPedicureWorkers($service, $numberOfPersons);
+            $maxWorkers = $service->max_workers ?? 10;
+            if ($workersCount === null) {
+                $workersCount = $calculatedMinWorkers;
+            } else {
+                $workersCount = (int) $workersCount;
+                if ($workersCount < $calculatedMinWorkers) {
+                    $isArabic = app()->getLocale() === 'ar';
+                    $msg = $isArabic
+                        ? "الحد الأدنى للعمالة المطلوبة لعدد {$numberOfPersons} أشخاص هو {$calculatedMinWorkers} عاملة."
+                        : "Minimum required workers for {$numberOfPersons} person(s) is {$calculatedMinWorkers}.";
+                    throw new \Exception($msg, 422);
                 }
             }
             $data['workers_count'] = $workersCount;
@@ -82,14 +99,18 @@ class CustomerBookingService
         // 5. Query busy workers across ALL dates (combines database overlaps & temporary cache locks)
         $busyWorkerIds = $this->getBusyWorkerIdsForDates($service, $dates, $times['start_str'], $times['end_str']);
 
-        // 6. Get active, non-busy workers
+        // 6. Get active, non-busy workers (For service 1 and 3, enforce female workers only)
         $gender = $data['worker_gender'] ?? null;
+        if (empty($gender) && ($service->service_code === 'DOMESTIC_HELPER_HOURLY' || $service->service_code === 'BABYSITTER_HOURLY' || (is_array($service->worker_gender_options) && count($service->worker_gender_options) === 1 && in_array('Female', $service->worker_gender_options)))) {
+            $gender = 'Female';
+        }
+
         $availableWorkersQuery = $service->workers()
-            ->where('status', 'active')
+            ->where('workers.status', 'active')
             ->whereNotIn('workers.id', $busyWorkerIds);
 
         if ($gender) {
-            $availableWorkersQuery->where('gender', strtolower($gender));
+            $availableWorkersQuery->where('workers.gender', strtolower($gender));
         }
 
         $availableWorkers = $availableWorkersQuery->get();
@@ -107,7 +128,8 @@ class CustomerBookingService
             $data['coupon_code'] ?? null,
             $user,
             $times['start_str'],
-            $times['end_str']
+            $times['end_str'],
+            (int) ($data['number_of_persons'] ?? 1)
         );
 
         return [
@@ -149,6 +171,20 @@ class CustomerBookingService
             if (empty($data['worker_gender'])) {
                 $data['worker_gender'] = 'Female';
             }
+        } elseif ($service->service_code === 'PEDICURE_MANICURE') {
+            $numberOfPersons = (int) ($data['number_of_persons'] ?? 1);
+            $calculatedMinWorkers = $this->calculateMinimumPedicureWorkers($service, $numberOfPersons);
+            $workerIdsCount = count($data['worker_ids'] ?? []);
+            if ($workerIdsCount < $calculatedMinWorkers) {
+                $isArabic = app()->getLocale() === 'ar';
+                $msg = $isArabic
+                    ? "الحد الأدنى للعمالة المطلوبة لعدد {$numberOfPersons} أشخاص هو {$calculatedMinWorkers} عاملة."
+                    : "Minimum required workers for {$numberOfPersons} person(s) is {$calculatedMinWorkers}.";
+                throw new \Exception($msg, 422);
+            }
+            if (empty($data['worker_gender'])) {
+                $data['worker_gender'] = 'Female';
+            }
         }
 
         // 2. Enforce wallet checks
@@ -183,6 +219,10 @@ class CustomerBookingService
                 ->where('workers.status', 'active');
 
             $gender = $data['worker_gender'] ?? null;
+            if (empty($gender) && ($service->service_code === 'DOMESTIC_HELPER_HOURLY' || $service->service_code === 'BABYSITTER_HOURLY' || (is_array($service->worker_gender_options) && count($service->worker_gender_options) === 1 && in_array('Female', $service->worker_gender_options)))) {
+                $gender = 'Female';
+            }
+
             if ($gender) {
                 $workerQuery->where('gender', strtolower($gender));
             }
@@ -220,7 +260,8 @@ class CustomerBookingService
             $data['coupon_code'] ?? null,
             $user,
             $times['start_str'],
-            $times['end_str']
+            $times['end_str'],
+            (int) ($data['number_of_persons'] ?? 1)
         );
         $totalAmount = $pricing['pricing']['total'];
 
@@ -260,6 +301,7 @@ class CustomerBookingService
                 'worker_gender' => $data['worker_gender'] ?? null,
                 'number_of_workers' => count($workerIds),
                 'number_of_children' => $service->service_code === 'BABYSITTER_HOURLY' ? ($data['number_of_children'] ?? null) : null,
+                'number_of_persons' => $service->service_code === 'PEDICURE_MANICURE' ? ($data['number_of_persons'] ?? 1) : null,
                 'child_age_groups' => $service->service_code === 'BABYSITTER_HOURLY' ? ($data['child_age_groups'] ?? null) : null,
                 'customer_notes' => $data['note'] ?? null,
                 'price_subtotal' => $pricing['pricing']['subtotal'],
@@ -500,12 +542,15 @@ class CustomerBookingService
     /**
      * Calculate price calculations: subtotal, service discount, coupon discount, tax (VAT=0), and total.
      */
-    public function calculatePricing(Service $service, CustomerAddress $address, int $workersCount, int $visitsCount, string $visitType, ?string $couponCode = null, $user = null, $startTime = null, $endTime = null): array
+    public function calculatePricing(Service $service, CustomerAddress $address, int $workersCount, int $visitsCount, string $visitType, ?string $couponCode = null, $user = null, $startTime = null, $endTime = null, int $numberOfPersons = 1): array
     {
         $pricePerPeriod = (float) ($service->base_price ?? 0);
         $isFirstService = ($service->service_code === 'DOMESTIC_HELPER_HOURLY');
+        $isPedicureManicure = ($service->service_code === 'PEDICURE_MANICURE');
 
-        if ($service->pricing_type === 'per_hour' && ! $isFirstService && $startTime && $endTime) {
+        if ($isPedicureManicure) {
+            $subtotal = $pricePerPeriod * $workersCount * max(1, $numberOfPersons);
+        } elseif ($service->pricing_type === 'per_hour' && ! $isFirstService && $startTime && $endTime) {
             $start = Carbon::parse($startTime);
             $end = Carbon::parse($endTime);
             if ($end->lt($start)) {
@@ -545,9 +590,7 @@ class CustomerBookingService
                 throw new \Exception(__('messages.coupon_not_found_or_expired'), 422);
             }
 
-            // dd($coupon, now());
-
-            $errCode = $coupon->checkEligibility($user, $service, $visitType, $startTime ?? '00:00', $endTime ?? '00:00', $address);
+            $errCode = $coupon->checkEligibility($user, $service, $visitType, $startTime ?? '00:00', $endTime ?? '00:00', $address, (int) ($workersCount ?? 1));
             if ($errCode) {
                 throw new \Exception(__('messages.'.$errCode), 422);
             }
@@ -772,5 +815,15 @@ class CustomerBookingService
         }
 
         return implode($isArabic ? ' ، ' : ', ', $breakdownParts);
+    }
+
+    public function calculateMinimumPedicureWorkers(Service $service, int $numberOfPersons = 1): int
+    {
+        $duration = (int) ($service->default_duration ?? 2);
+        if ($duration <= 0) {
+            $duration = 2;
+        }
+        $totalHours = max(1, $numberOfPersons) * $duration;
+        return (int) max(1, ceil($totalHours / 8));
     }
 }

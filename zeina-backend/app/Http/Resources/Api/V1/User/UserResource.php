@@ -64,6 +64,7 @@ class UserResource extends JsonResource
             'all_roles'              => $roles,
             'type'                   => $this->type,
             'status'                 => $this->status, // active, inactive
+            'monthly_points_limit'   => $this->monthly_points_limit !== null ? (int) $this->monthly_points_limit : null,
             'image'                  => $profileImage ? (new MediaResource($profileImage))->getFileUrl() : null,
             
             // 🌟 مصفوفة مستندات التحقق الخاصة بالأدمن (تظهر فقط إذا كانت الصور مرفوعة فعلياً)

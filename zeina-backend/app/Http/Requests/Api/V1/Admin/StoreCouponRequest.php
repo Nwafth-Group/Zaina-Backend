@@ -43,8 +43,8 @@ class StoreCouponRequest extends CustomFormRequest
                 'min:1',
                 function ($attribute, $value, $fail) {
                     $usageLimit = $this->input('usage_limit');
-                    if (! is_null($usageLimit) && $value > $usageLimit) {
-                        $fail('The user usage limit field must not be greater than '.$usageLimit.'.');
+                    if (!is_null($usageLimit) && $value > $usageLimit) {
+                        $fail('The user usage limit field must not be greater than ' . $usageLimit . '.');
                     }
                 },
             ],
@@ -61,6 +61,7 @@ class StoreCouponRequest extends CustomFormRequest
             'areas.*' => ['exists:areas,id'],
 
             'completed_bookings_count' => ['nullable', 'integer', 'min:0'],
+            'min_workers' => ['nullable', 'integer', 'min:0'],
 
             'is_for_all_services' => ['required', 'boolean'],
 
@@ -71,6 +72,7 @@ class StoreCouponRequest extends CustomFormRequest
             'services' => ['required_if:is_for_all_services,false', 'array'],
             'services.*.id' => ['required_with:services', 'exists:services,id'],
             'services.*.allowed_visit_types' => ['nullable', 'array'],
+            'services.*.min_workers' => ['nullable', 'integer', 'min:0'],
 
             'status' => ['required', 'in:active,inactive'],
         ];

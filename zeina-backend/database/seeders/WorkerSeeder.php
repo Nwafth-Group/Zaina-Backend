@@ -25,7 +25,7 @@ class WorkerSeeder extends Seeder
 
             foreach ($workers as $index => $worker) {
                 $randomService = $services->random();
-                if ($randomService->service_code === 'DOMESTIC_HELPER_HOURLY' || $randomService->service_code === 'BABYSITTER_HOURLY') {
+                if (in_array($randomService->service_code, ['DOMESTIC_HELPER_HOURLY', 'BABYSITTER_HOURLY', 'PEDICURE_MANICURE'])) {
                     $worker->update(['gender' => 'female']);
                 }
                 $worker->services()->attach([$randomService->id]);
@@ -55,6 +55,16 @@ class WorkerSeeder extends Seeder
                     ]);
                 }
             }
+
+            // Ensure Pedicure & Manicure service (Service 4) has dedicated female workers attached
+            $pedicureService = $services->firstWhere('service_code', 'PEDICURE_MANICURE') ?? $services->firstWhere('code', 'PEDICURE_MANICURE');
+            if ($pedicureService) {
+                $femaleWorkers = Worker::where('status', 'active')->where('gender', 'female')->get();
+                foreach ($femaleWorkers->take(5) as $w) {
+                    $w->services()->syncWithoutDetaching([$pedicureService->id]);
+                }
+            }
+
             $this->command->info('تم إنشاء 30 عاملاً وربط كل منهم بخدمة واحدة بنجاح مع الصور.');
         } else {
             $this->command->error('لم يتم ربط العمال! جدول الخدمات (services) فارغ. يرجى تشغيل ServiceSeeder أولاً.');

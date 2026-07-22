@@ -44,8 +44,9 @@ class StoreEmployeeRequest extends FormRequest
             'type'         => 'required|in:operation,super_admin,driver', // استثناء customer
             'job_title'    => 'nullable|string|max:100',
             'gender'       => 'nullable|in:Male,Female',
-            'status'       => 'required|in:active,inactive,suspended',
-            'roles'        => 'required|array|min:1', // BR-02: يجب إعطاء دور واحد على الأقل
+            'status'               => 'required|in:active,inactive,suspended',
+            'monthly_points_limit' => 'nullable|integer|min:0',
+            'roles'                => 'required|array|min:1', // BR-02: يجب إعطاء دور واحد على الأقل
             'roles.*'      => 'exists:roles,name', // التأكد أن الدور موجود في قاعدة البيانات
             'image'        => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ];

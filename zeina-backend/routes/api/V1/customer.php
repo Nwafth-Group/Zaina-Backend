@@ -29,6 +29,8 @@ Route::prefix('customer')->group(function () {
     Route::get('test', [TestController::class, 'test']);
     Route::get('search', [SearchController::class, 'index']);
     Route::get('filter', [SearchController::class, 'filter']);
+    Route::get('/bookings/public-contract/{booking}', [BookingContractController::class, 'viewContractPublicly'])
+        ->name('bookings.public_contract');
 
     Route::prefix('auth')->group(function () {
         // Route::post('register', [AuthController::class, 'register']);

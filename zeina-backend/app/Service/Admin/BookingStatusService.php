@@ -26,9 +26,9 @@ class BookingStatusService
     {
         $currentStatus = $booking->status;
 
-        // Prevent moving backwards (sequential transition)
-        if ($currentStatus === 'inService' && $status === BookingStatus::Upcoming) {
-            throw new \Exception('Cannot change status from In Service back to Upcoming. / لا يمكن إرجاع حالة الحجز من قيد التنفيذ إلى قادمة.', 400);
+        // Prevent cancelling or moving backwards if inService, completed, or cancelled
+        if ($currentStatus === 'inService' && ($status === BookingStatus::Upcoming || $status === BookingStatus::Cancelled)) {
+            throw new \Exception('Cannot cancel or revert a booking that is currently in service. / لا يمكن إلغاء أو تعديل حالة حجز قيد التنفيذ.', 400);
         }
         if ($currentStatus === 'completed') {
             throw new \Exception('Cannot change status of a completed booking. / لا يمكن تغيير حالة حجز مكتمل بالفعل.', 400);

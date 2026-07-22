@@ -108,6 +108,7 @@ class UpdateServiceRequest extends FormRequest
             'max_workers' => 'sometimes|required|integer|min:1|gte:min_workers',
             'min_children' => 'sometimes|nullable|integer|min:1',
             'max_children' => 'sometimes|nullable|integer|min:1|gte:min_children',
+            'covered_persons_per_worker' => 'sometimes|nullable|integer|min:1',
             'child_age_groups' => 'sometimes|nullable|array',
             'child_age_groups.*.name_ar' => 'required_with:child_age_groups|string|max:100',
             'child_age_groups.*.name_en' => 'required_with:child_age_groups|string|max:100',
@@ -162,17 +163,20 @@ class UpdateServiceRequest extends FormRequest
             'acceptance_required' => 'sometimes|nullable|boolean',
         ];
 
+        $service = $this->route('service');
         $serviceCode = $this->input('service_code') ?? ($service ? (is_object($service) ? $service->service_code : Service::find($service)?->service_code) : null);
+        $categoryId = $this->input('category_id') ?? ($service ? (is_object($service) ? $service->category_id : Service::find($service)?->category_id) : null);
 
         $isSecondOrThird = false;
-        if ($serviceCode === 'HOSPITALITY_WORKER_HOURLY' || $serviceCode === 'BABYSITTER_HOURLY') {
+        if ($serviceCode === 'HOSPITALITY_WORKER_HOURLY' || $serviceCode === 'BABYSITTER_HOURLY' || $serviceCode === 'PEDICURE_MANICURE' || $this->input('type') === 'other') {
             $isSecondOrThird = true;
         } elseif ($categoryId) {
             $category = Category::find($categoryId);
             if ($category) {
                 $catEn = strtolower($category->name_en);
                 if (str_contains($catEn, 'hospitality') || str_contains($category->name_ar, 'ضيافة') ||
-                    str_contains($catEn, 'babysitting') || str_contains($catEn, 'nanny') || str_contains($category->name_ar, 'أطفال') || str_contains($catEn, 'babysitter')
+                    str_contains($catEn, 'babysitting') || str_contains($catEn, 'nanny') || str_contains($category->name_ar, 'أطفال') || str_contains($catEn, 'babysitter') ||
+                    str_contains($catEn, 'other') || str_contains($category->name_ar, 'أخرى') || str_contains($catEn, 'pedicure') || str_contains($category->name_ar, 'أقدام')
                 ) {
                     $isSecondOrThird = true;
                 }
@@ -232,11 +236,14 @@ class UpdateServiceRequest extends FormRequest
 
                 $isSecondService = false;
                 $isThirdService = false;
+                $isPedicureManicure = false;
 
                 if ($serviceCode === 'HOSPITALITY_WORKER_HOURLY') {
                     $isSecondService = true;
                 } elseif ($serviceCode === 'BABYSITTER_HOURLY') {
                     $isThirdService = true;
+                } elseif ($serviceCode === 'PEDICURE_MANICURE' || $this->input('type') === 'other') {
+                    $isPedicureManicure = true;
                 } elseif ($categoryId) {
                     $category = Category::find($categoryId);
                     if ($category) {
@@ -247,14 +254,21 @@ class UpdateServiceRequest extends FormRequest
                         if (str_contains($catEn, 'babysitting') || str_contains($catEn, 'nanny') || str_contains($category->name_ar, 'أطفال') || str_contains($catEn, 'babysitter')) {
                             $isThirdService = true;
                         }
+                        if (str_contains($catEn, 'other') || str_contains($category->name_ar, 'أخرى') || str_contains($catEn, 'pedicure') || str_contains($category->name_ar, 'أقدام')) {
+                            $isPedicureManicure = true;
+                        }
                     }
                 }
+
+                $isAr = app()->getLocale() === 'ar';
 
                 if ($isSecondService) {
                     if ($this->has('worker_gender_options')) {
                         $genders = $this->input('worker_gender_options', []);
                         if (empty($genders)) {
-                            $validator->errors()->add('worker_gender_options', 'At least one worker gender option must be enabled for the Hourly Hospitality Worker service.');
+                            $validator->errors()->add('worker_gender_options', $isAr 
+                                ? 'يجب اختيار خيار جنس واحد على الأقل لخدمة الضيافة.' 
+                                : 'At least one worker gender option must be enabled for the Hourly Hospitality Worker service.');
                         }
                     }
                 }
@@ -263,37 +277,47 @@ class UpdateServiceRequest extends FormRequest
                     $minWorkers = $this->input('min_workers') ?? ($service ? $service->min_workers : null);
                     $maxWorkers = $this->input('max_workers') ?? ($service ? $service->max_workers : null);
                     if ($minWorkers !== null && $minWorkers < 1) {
-                        $validator->errors()->add('min_workers', 'Minimum worker count must be greater than 0.');
+                        $validator->errors()->add('min_workers', $isAr ? 'يجب أن يكون الحد الأدنى للعمال أكثر من 0.' : 'Minimum worker count must be greater than 0.');
                     }
                     if ($isSecondService) {
                         if ($maxWorkers !== null && $maxWorkers > 12) {
-                            $validator->errors()->add('max_workers', 'The maximum number of workers for this service must be 12.');
+                            $validator->errors()->add('max_workers', $isAr ? 'الحد الأقصى لعدد العمال لهذه الخدمة هو 12.' : 'The maximum number of workers for this service must be 12.');
                         }
                     }
                     if ($minWorkers !== null && $maxWorkers !== null && $minWorkers > $maxWorkers) {
-                        $validator->errors()->add('min_workers', 'Minimum worker count cannot be greater than maximum worker count.');
+                        $validator->errors()->add('min_workers', $isAr ? 'الحد الأدنى للعمال لا يمكن أن يكون أكبر من الحد الأقصى.' : 'Minimum worker count cannot be greater than maximum worker count.');
+                    }
+
+                    $workersInput = $this->input('workers', []);
+                    if (is_array($workersInput) && !empty($workersInput) && $maxWorkers !== null && $maxWorkers > 0) {
+                        if (count($workersInput) > $maxWorkers) {
+                            $msg = $isAr
+                                ? "عدد العمال المحددين (" . count($workersInput) . ") يتجاوز الحد الأقصى المسموح به للعمال لهذا الخدمة ({$maxWorkers})."
+                                : "Selected workers count (" . count($workersInput) . ") exceeds the maximum allowed limit for this service ({$maxWorkers}).";
+                            $validator->errors()->add('workers', $msg);
+                        }
                     }
 
                     $minDuration = $this->input('min_duration') ?? ($service ? $service->min_duration : null);
                     $maxDuration = $this->input('max_duration') ?? ($service ? $service->max_duration : null);
                     if ($minDuration !== null && $minDuration < 4) {
-                        $validator->errors()->add('min_duration', 'The minimum service duration for this service must be 4 hours.');
+                        $validator->errors()->add('min_duration', $isAr ? 'الحد الأدنى لمدة هذه الخدمة هو 4 ساعات.' : 'The minimum service duration for this service must be 4 hours.');
                     }
                     if ($maxDuration !== null && $maxDuration > 6) {
-                        $validator->errors()->add('max_duration', 'The maximum service duration for this service must be 6 hours.');
+                        $validator->errors()->add('max_duration', $isAr ? 'الحد الأقصى لمدة هذه الخدمة هو 6 ساعات.' : 'The maximum service duration for this service must be 6 hours.');
                     }
                     if ($minDuration !== null && $maxDuration !== null && $minDuration > $maxDuration) {
-                        $validator->errors()->add('min_duration', 'Minimum duration cannot be greater than maximum duration.');
+                        $validator->errors()->add('min_duration', $isAr ? 'الحد الأدنى للمدة لا يمكن أن يكون أكبر من الحد الأقصى.' : 'Minimum duration cannot be greater than maximum duration.');
                     }
 
                     if ($startTime !== null && $startTime < '08:00') {
-                        $validator->errors()->add('start_time', 'The allowed service start time must be between 8:00 AM and 8:00 PM.');
+                        $validator->errors()->add('start_time', $isAr ? 'وقت بداية الخدمة يجب أن يكون بين 8:00 صباحاً و 8:00 مساءً.' : 'The allowed service start time must be between 8:00 AM and 8:00 PM.');
                     }
                     if ($endTime !== null && $endTime > '20:00') {
-                        $validator->errors()->add('end_time', 'The allowed service end time must be between 8:00 AM and 8:00 PM.');
+                        $validator->errors()->add('end_time', $isAr ? 'وقت نهاية الخدمة يجب أن يكون بين 8:00 صباحاً و 8:00 مساءً.' : 'The allowed service end time must be between 8:00 AM and 8:00 PM.');
                     }
                     if ($startTime !== null && $endTime !== null && $startTime >= $endTime) {
-                        $validator->errors()->add('start_time', 'Start time must be strictly before end time.');
+                        $validator->errors()->add('start_time', $isAr ? 'وقت البداية يجب أن يكون قبل وقت النهاية.' : 'Start time must be strictly before end time.');
                     }
 
                     if ($this->has('available_visit_types')) {
@@ -340,7 +364,17 @@ class UpdateServiceRequest extends FormRequest
                     }
                 }
 
-                if ($this->filled('pricing_type') && ! $isSecondService && ! $isThirdService) {
+                if ($isPedicureManicure) {
+                    if ($this->filled('pricing_type') && $this->input('pricing_type') !== 'per_service') {
+                        $validator->errors()->add('pricing_type', $isAr ? 'نوع التسعير لهذه الخدمة يجب أن يكون دائماً بالزيارة/الخدمة وليس بالساعة.' : 'For this service, the pricing type must always be per service.');
+                    }
+                    if ($this->has('worker_gender_options')) {
+                        $genderOpts = $this->input('worker_gender_options', []);
+                        if (empty($genderOpts) || count($genderOpts) !== 1 || !in_array('Female', $genderOpts)) {
+                            $validator->errors()->add('worker_gender_options', $isAr ? 'خيار الجنس لهذه الخدمة يجب أن يكون للإناث فقط.' : 'Worker gender option for this service must be Female only.');
+                        }
+                    }
+                } elseif ($this->filled('pricing_type') && ! $isSecondService && ! $isThirdService) {
                     $validator->errors()->add('pricing_type', 'Pricing type configuration is only allowed for the Hospitality and Babysitting services.');
                 }
             },

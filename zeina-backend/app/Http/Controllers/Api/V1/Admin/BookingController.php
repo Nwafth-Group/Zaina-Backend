@@ -74,6 +74,121 @@ class BookingController extends Controller
         return $this->successResponse(AdminBookingResource::collection($bookings), __('messages.bookings_retrieved'));
     }
 
+    /**
+     * Export bookings to CSV / Excel spreadsheet based on applied filters.
+     */
+    public function export(Request $request)
+    {
+        $query = app(Pipeline::class)
+            ->send(Booking::query()->with(['customer', 'service', 'workers', 'address.city', 'address.area']))
+            ->through([
+                SearchFilter::class,
+                StatusFilter::class,
+                PaymentStatusFilter::class,
+                ServiceFilter::class,
+                CategoryFilter::class,
+                CityFilter::class,
+                AreaFilter::class,
+                MinAmountFilter::class,
+                MaxAmountFilter::class,
+                DateFromFilter::class,
+                DateToFilter::class,
+            ])
+            ->thenReturn();
+
+        $sortBy = in_array($request->input('sort_by'), self::ALLOWED_SORTS, true) ? $request->input('sort_by') : 'created_at';
+        $sortDir = strtolower($request->input('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
+        $query->orderBy($sortBy, $sortDir);
+
+        $bookings = $query->get();
+
+        $filename = 'bookings_export_'.now()->format('Y-m-d_Hi').'.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
+        ];
+
+        $callback = function () use ($bookings) {
+            $file = fopen('php://output', 'w');
+            // Write UTF-8 BOM so Microsoft Excel opens Arabic text correctly
+            fputs($file, "\xEF\xBB\xBF");
+
+            // CSV Header
+            fputcsv($file, [
+                'ID',
+                'Booking Ref (رقم مرجعي)',
+                'Customer Name (اسم العميل)',
+                'Customer Phone (هاتف العميل)',
+                'Customer Email (إيميل العميل)',
+                'Service Name (اسم الخدمة)',
+                'Service Code (كود الخدمة)',
+                'Assigned Workers (العمال المخصصين)',
+                'City (المدينة)',
+                'Area (المنطقة)',
+                'Detailed Address (العنوان التفصيلي)',
+                'Booking Date (تاريخ الحجز)',
+                'Start Time (وقت البداية)',
+                'End Time (وقت النهاية)',
+                'Duration (المدة بالساعات)',
+                'Visit Type (نوع الزيارة)',
+                'Workers Count (عدد العمال)',
+                'Subtotal (السعر الفرعي)',
+                'Discount (الخصم)',
+                'Tax (الضريبة)',
+                'Total Amount (الإجمالي)',
+                'Payment Method (طريقة الدفع)',
+                'Payment Status (حالة الدفع)',
+                'Booking Status (حالة الحجز)',
+                'Created At (تاريخ الإنشاء)',
+            ]);
+
+            foreach ($bookings as $b) {
+                $customerName = $b->customer ? trim($b->customer->first_name.' '.($b->customer->last_name ?? '')) : 'N/A';
+                $serviceName = $b->service ? ($b->service->name_ar ?: $b->service->name_en) : 'N/A';
+                $workersNames = $b->workers->isNotEmpty() ? $b->workers->pluck('name')->implode(' | ') : 'N/A';
+                $city = $b->address?->city ? ($b->address->city->name_ar ?: $b->address->city->name_en) : 'N/A';
+                $area = $b->address?->area ? ($b->address->area->name_ar ?: $b->address->area->name_en) : 'N/A';
+                $detailedAddress = $b->address ? trim(($b->address->street ?? '').' '.($b->address->building ?? '').' '.($b->address->floor ?? '')) : 'N/A';
+
+                fputcsv($file, [
+                    $b->id,
+                    $b->booking_ref ?? 'N/A',
+                    $customerName,
+                    $b->customer?->phone ?? 'N/A',
+                    $b->customer?->email ?? 'N/A',
+                    $serviceName,
+                    $b->service?->service_code ?? 'N/A',
+                    $workersNames,
+                    $city,
+                    $area,
+                    $detailedAddress,
+                    $b->booking_date ?? 'N/A',
+                    $b->start_time ?? 'N/A',
+                    $b->end_time ?? 'N/A',
+                    $b->duration_minutes ? round($b->duration_minutes / 60, 1).' hrs' : 'N/A',
+                    $b->visit_type ?? 'N/A',
+                    $b->number_of_workers ?? 1,
+                    $b->price_subtotal ?? 0,
+                    $b->discount_amount ?? 0,
+                    $b->tax_amount ?? 0,
+                    $b->total_amount ?? 0,
+                    $b->payment_method ?? 'N/A',
+                    $b->payment_status ?? 'N/A',
+                    $b->status ?? 'N/A',
+                    $b->created_at ? $b->created_at->toDateTimeString() : 'N/A',
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
     public function show(Booking $booking)
     {
         $booking->load(['customer', 'service', 'workers', 'address', 'histories.createdBy', 'visits']);

@@ -268,10 +268,6 @@
                             <div class="label">{{ $lang === 'ar' ? 'اسم الخدمة' : 'Service Name' }}</div>
                             <div class="value">{{ $serviceName }}</div>
                         </td>
-                        <td>
-                            <div class="label">{{ $lang === 'ar' ? 'قسم الخدمة' : 'Service Category' }}</div>
-                            <div class="value">{{ $serviceCategory }}</div>
-                        </td>
                     </tr>
                     <tr>
                         <td>
@@ -282,6 +278,9 @@
                             @if($isBabysitter)
                                 <div class="label">{{ $lang === 'ar' ? 'عدد الأطفال' : 'Number of Children' }}</div>
                                 <div class="value">{{ $numberOfChildren }}</div>
+                            @elseif(!empty($isPedicureManicure) && !empty($numberOfPersons))
+                                <div class="label">{{ $lang === 'ar' ? 'عدد الأشخاص' : 'Number of Persons' }}</div>
+                                <div class="value">{{ $numberOfPersons }}</div>
                             @elseif(!empty($workerGender))
                                 <div class="label">{{ $lang === 'ar' ? 'جنس العمالة المطلوبة' : 'Preferred Worker Gender' }}</div>
                                 <div class="value">{{ $workerGender }}</div>

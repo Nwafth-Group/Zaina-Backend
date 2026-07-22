@@ -24,7 +24,7 @@ class SubmitVerifyAccountRequest extends FormRequest
         return [
            'id_front' => 'required|image|mimes:jpeg,png,jpg,webp,jfif|max:5120',
            'id_back'  => 'required|image|mimes:jpeg,png,jpg,webp,jfif|max:5120',
-           'selfie'   => 'required|image|mimes:jpeg,png,jpg,webp,jfif|max:5120',
+           'selfie'   => 'nullable|image|mimes:jpeg,png,jpg,webp,jfif|max:5120',
            'referral_code' => [
                'nullable',
                'string',

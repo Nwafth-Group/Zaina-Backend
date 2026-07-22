@@ -132,6 +132,7 @@ class BookingResource extends JsonResource
             'number_of_workers'      => (int) ($this->number_of_workers ?? ($this->relationLoaded('workers') && $this->workers ? $this->workers->count() : 1)),
             'worker_gender'          => $this->worker_gender,
             'number_of_children'     => $this->number_of_children ? (int) $this->number_of_children : null,
+            'number_of_persons'      => $this->number_of_persons ? (int) $this->number_of_persons : null,
             'child_age_groups'       => $childGroupsData,
             'assigned_worker_ids'    => $this->relationLoaded('workers') && $this->workers ? $this->workers->pluck('id')->toArray() : [],
             'payment_transaction_id' => $this->payment_transaction_id ?? '',

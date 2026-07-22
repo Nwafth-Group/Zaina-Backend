@@ -16,7 +16,7 @@ class Coupon extends Model implements Auditable
         'name', 'code', 'type', 'value',
         'usage_limit', 'user_usage_limit', 'used_count',
         'start_date', 'end_date', 'is_for_all_users', 'is_for_all_services',
-        'is_for_all_cities', 'completed_bookings_count', 'allowed_visit_types',
+        'is_for_all_cities', 'completed_bookings_count', 'allowed_visit_types', 'min_workers',
         'status',
     ];
 
@@ -32,7 +32,7 @@ class Coupon extends Model implements Auditable
     public function services()
     {
         return $this->belongsToMany(Service::class, 'coupon_services')
-            ->withPivot('allowed_visit_types')
+            ->withPivot('allowed_visit_types', 'min_workers')
             ->withTimestamps();
     }
 
@@ -64,7 +64,7 @@ class Coupon extends Model implements Auditable
      * Check if a coupon is eligible for a customer, service, visit type, start/end times and address.
      * Returns null if eligible, or an error translation key if not.
      */
-    public function checkEligibility($user, Service $service, string $visitType, string $startTime, string $endTime, ?CustomerAddress $address): ?string
+    public function checkEligibility($user, Service $service, string $visitType, string $startTime, string $endTime, ?CustomerAddress $address, int $workersCount = 1): ?string
     {
         // 1. Check Status
         if ($this->status !== 'active') {
@@ -144,7 +144,7 @@ class Coupon extends Model implements Auditable
             }
         }
 
-        // 8. Check Service and Service-Specific Rules (Visit Types, Shifts)
+        // 8. Check Service and Service-Specific Rules (Visit Types, Minimum Workers)
         if (! $this->is_for_all_services) {
             $pivot = $this->services()->where('services.id', $service->id)->first()?->pivot;
             if (! $pivot) {
@@ -162,8 +162,15 @@ class Coupon extends Model implements Auditable
                 }
             }
 
+            // Check Minimum Workers Constraint for this specific service
+            if (isset($pivot->min_workers) && (int) $pivot->min_workers > 0) {
+                if ($workersCount < (int) $pivot->min_workers) {
+                    return 'coupon_min_workers_ineligible';
+                }
+            }
+
         } else {
-            // General rules for Coupon (if valid for all services but has visit type/shift limitations)
+            // General rules for Coupon (if valid for all services but has visit type or min_workers limitations)
             $allowedVisitTypes = $this->allowed_visit_types;
             if (! empty($allowedVisitTypes)) {
                 // If Admin selected all services + a specific visit type, the service itself must support this visit type
@@ -185,6 +192,12 @@ class Coupon extends Model implements Auditable
                 }
             }
 
+            // Check Minimum Workers Constraint for coupon (all services)
+            if ($this->min_workers !== null && (int) $this->min_workers > 0) {
+                if ($workersCount < (int) $this->min_workers) {
+                    return 'coupon_min_workers_ineligible';
+                }
+            }
         }
 
         return null;

@@ -18,6 +18,13 @@ class Review extends Model
         'rating',
         'rating_percentage',
         'comment',
+        'status',
+        'action_by',
+        'action_at',
+    ];
+
+    protected $casts = [
+        'action_at' => 'datetime',
     ];
 
     protected static function booted()
@@ -37,8 +44,28 @@ class Review extends Model
         return $this->belongsTo(User::class, 'customer_id');
     }
 
+    public function actionBy()
+    {
+        return $this->belongsTo(User::class, 'action_by');
+    }
+
     public function reviewable()
     {
         return $this->morphTo();
+    }
+
+    public function scopeApproved($query)
+    {
+        return $query->where('status', 'approved');
+    }
+
+    public function scopePending($query)
+    {
+        return $query->where('status', 'pending');
+    }
+
+    public function scopeRejected($query)
+    {
+        return $query->where('status', 'rejected');
     }
 }

@@ -46,6 +46,10 @@ class WorkerController extends Controller
             ])
             ->thenReturn();
 
+        if ($request->filled('gender')) {
+            $query->whereRaw('LOWER(gender) = ?', [strtolower($request->input('gender'))]);
+        }
+
         if ($request->boolean('unassigned_only')) {
             $query->where(function ($q) use ($request) {
                 $q->whereDoesntHave('services');

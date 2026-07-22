@@ -46,6 +46,7 @@ class SendBookingRemindersCommand extends Command
                     $user->notify(new BookingNotification(
                         __('sms.reminder_1hour_title') ?? 'تذكير بموعد خدمتك ⏰',
                         __('sms.reminder_1hour_message', [
+                            'ref' => $booking->booking_ref,
                             'date' => $visit->visit_date,
                             'time' => $startTimeFormatted,
                         ]),

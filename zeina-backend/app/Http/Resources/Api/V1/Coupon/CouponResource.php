@@ -71,6 +71,7 @@ class CouponResource extends JsonResource
 
             // Completed Booking count
             'completed_bookings_count' => $this->completed_bookings_count,
+            'min_workers' => $this->min_workers ? (int) $this->min_workers : null,
 
             // Services
             'is_for_all_services' => (bool) $this->is_for_all_services,
@@ -87,6 +88,7 @@ class CouponResource extends JsonResource
                                     ? json_decode($service->pivot->allowed_visit_types, true)
                                     : $service->pivot->allowed_visit_types)
                                 : null,
+                            'min_workers' => isset($service->pivot->min_workers) ? (int) $service->pivot->min_workers : null,
                         ],
                     ];
                 });

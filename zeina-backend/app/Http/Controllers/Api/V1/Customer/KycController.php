@@ -48,7 +48,9 @@ class KycController extends Controller
             // 4. رفع الصور الجديدة باستخدام الـ MediaService
             $this->mediaService->upload($request->file('id_front'), $user, 'kyc/id_front', 'private');
             $this->mediaService->upload($request->file('id_back'), $user, 'kyc/id_back', 'private');
-            $this->mediaService->upload($request->file('selfie'), $user, 'kyc/selfie', 'private');
+            if ($request->hasFile('selfie')) {
+                $this->mediaService->upload($request->file('selfie'), $user, 'kyc/selfie', 'private');
+            }
             
             $updateData = [
                 'verification_status' => 'pending',

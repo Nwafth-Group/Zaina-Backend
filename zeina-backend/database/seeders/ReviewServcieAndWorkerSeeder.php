@@ -17,38 +17,42 @@ class ReviewServcieAndWorkerSeeder extends Seeder
         // مثال:
         // Review::factory()->count(50)->create(); // إذا كان لديك Factory معد للمراجعات
 
-        Review::create([
-            'booking_id' => 1, // تأكد من وجود حجز بهذا المعرف
-            'customer_id' => 1, // تأكد من وجود مستخدم بهذا المعرف
-            'reviewable_type' => Service::class, // أو Worker::class حسب ما تريد مراجعته
-            'reviewable_id' => 1, // معرف الخدمة أو العامل الذي تريد مراجعته
+        Review::firstOrCreate([
+            'booking_id' => 1,
+            'reviewable_type' => Service::class,
+            'reviewable_id' => 1,
+        ], [
+            'customer_id' => 1,
             'rating' => 5,
             'comment' => 'خدمة ممتازة!',
         ]);
 
-        Review::create([
-            'booking_id' => 2, // تأكد من وجود حجز بهذا المعرف
-            'customer_id' => 1, // تأكد من وجود مستخدم بهذا المعرف
-            'reviewable_type' => Service::class, // أو Worker::class حسب ما تريد مراجعته
-            'reviewable_id' => 2, // معرف الخدمة أو العامل الذي تريد مراجعته
+        Review::firstOrCreate([
+            'booking_id' => 2,
+            'reviewable_type' => Service::class,
+            'reviewable_id' => 2,
+        ], [
+            'customer_id' => 1,
             'rating' => 4,
             'comment' => 'خدمة جيدة ولكن يمكن تحسينها.',
         ]);
 
-        Review::create([
-            'booking_id' => 3, // تأكد من وجود حجز بهذا المعرف
-            'customer_id' => 2, // تأكد من وجود مستخدم بهذا المعرف
-            'reviewable_type' => Service::class, // أو Worker::class حسب ما تريد مراجعته
-            'reviewable_id' => 1, // معرف الخدمة أو العامل الذي تريد مراجعته
+        Review::firstOrCreate([
+            'booking_id' => 3,
+            'reviewable_type' => Service::class,
+            'reviewable_id' => 1,
+        ], [
+            'customer_id' => 2,
             'rating' => 3,
             'comment' => 'الخدمة كانت متوسطة.',
         ]);
 
-        Review::create([
-            'booking_id' => 4, // تأكد من وجود حجز بهذا المعرف
-            'customer_id' => 2, // تأكد من وجود مستخدم بهذا المعرف
-            'reviewable_type' => Service::class, // أو Worker::class حسب ما تريد مراجعته
-            'reviewable_id' => 2, // معرف الخدمة أو العامل الذي تريد مراجعته
+        Review::firstOrCreate([
+            'booking_id' => 4,
+            'reviewable_type' => Service::class,
+            'reviewable_id' => 2,
+        ], [
+            'customer_id' => 2,
             'rating' => 2,
             'comment' => 'الخدمة لم تكن كما توقعت.',
         ]);

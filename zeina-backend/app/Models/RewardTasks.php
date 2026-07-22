@@ -12,7 +12,7 @@ class RewardTasks extends Model implements Auditable
     protected $fillable = [
         'title_ar', 'title_en', 'subtitle_ar', 'subtitle_en', 'points',
         'action_text_ar', 'action_text_en', 'action_type', 'action_link', 'status',
-        'rule_category', 'required_booking_count', 'frequency_type',
+        'rule_category', 'service_id', 'required_booking_count', 'frequency_type',
         'eligible_services', 'calculation_method', 'points_expiration_months',
     ];
 
@@ -20,4 +20,9 @@ class RewardTasks extends Model implements Auditable
         'eligible_services' => 'array',
         'status' => 'boolean',
     ];
+
+    public function service()
+    {
+        return $this->belongsTo(Service::class, 'service_id');
+    }
 }

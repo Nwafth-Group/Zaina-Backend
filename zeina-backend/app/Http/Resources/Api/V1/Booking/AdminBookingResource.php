@@ -41,6 +41,7 @@ class AdminBookingResource extends JsonResource
             'visit_type' => $this->visit_type ?? 'single_visit',
             'pricing_type' => $this->service?->pricing_type ?? 'per_service',
             'number_of_children' => $this->number_of_children ? (int) $this->number_of_children : null,
+            'number_of_persons' => $this->number_of_persons ? (int) $this->number_of_persons : null,
             'is_reviewed' => \App\Models\Review::where('booking_id', $this->id)->exists(),
             'is_reported' => \App\Models\Report::where('booking_id', $this->id)->exists(),
             'total_amount' => (float) $this->total_amount,

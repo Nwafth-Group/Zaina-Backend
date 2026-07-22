@@ -602,8 +602,9 @@ class BookingService
                 } else {
                     $admins = \App\Models\User::where('type', 'admin')->get();
                     foreach ($admins as $admin) {
+                        $adminTitle = app()->getLocale() === 'ar' ? 'إلغاء حجز من العميل' : 'Customer Booking Cancelled';
                         $admin->notify(new \App\Notifications\BookingNotification(
-                            'Customer Booking Cancelled / إلغاء حجز من العميل',
+                            $adminTitle,
                             "Customer {$booking->customer?->full_name} has cancelled booking ref: {$booking->booking_ref}. Reason: " . ($reason ?? 'None'),
                             $booking->id,
                             [
@@ -635,11 +636,11 @@ class BookingService
             throw new \Exception(__('messages.booking_not_upcoming', ['status' => $booking->status]) ?? 'Booking is not upcoming', 400);
         }
 
-        // Completed visit constraint (blocks both customer and admin)
+        // Completed or inService visit constraint (blocks both customer and admin)
         if ($booking->relationLoaded('visits') && $booking->visits && $booking->visits->isNotEmpty()) {
-            $completedVisits = $booking->visits->where('status', 'completed')->count();
-            if ($completedVisits > 0) {
-                throw new \Exception('Cannot cancel a booking that has already completed visits.', 400);
+            $nonUpcomingCount = $booking->visits->where('status', '!=', 'Upcoming')->count();
+            if ($nonUpcomingCount > 0) {
+                throw new \Exception('Cannot cancel a booking that is in service or has completed visits.', 400);
             }
         }
 
@@ -750,7 +751,7 @@ class BookingService
 
         DB::beginTransaction();
         try {
-            // 2. تقييم الخدمة (Service)
+            // 2. تقييم الخدمة (Service) - يضاف بحالة قيد المراجعة pending
             Review::create([
                 'booking_id' => $booking->id,
                 'customer_id' => $userId,
@@ -758,6 +759,7 @@ class BookingService
                 'reviewable_id' => $booking->service_id,
                 'rating' => $data['service_rating'],
                 'comment' => $data['service_comment'] ?? null,
+                'status' => 'pending',
             ]);
 
             // 3. تقييم العمال (Workers) المخصصين فعلياً للحجز
@@ -774,15 +776,9 @@ class BookingService
                         'reviewable_id' => $workerData['worker_id'],
                         'rating' => $workerData['rating'],
                         'comment' => $workerData['comment'] ?? null,
+                        'status' => 'pending',
                     ]);
                 }
-            }
-
-            // 4. تحديث متوسط التقييمات في جداول الـ Services والـ Workers
-            $this->updateAverageRating(Service::class, $booking->service_id);
-
-            foreach ($data['workers'] as $workerData) {
-                $this->updateAverageRating(Worker::class, $workerData['worker_id']);
             }
 
             \App\Service\LoyaltyPointService::awardPointsForReview($booking);
@@ -798,16 +794,17 @@ class BookingService
     }
 
     /**
-     * دالة مساعدة لتحديث متوسط التقييم بشكل ديناميكي
+     * دالة مساعدة لتحديث متوسط التقييم بشكل ديناميكي (للتقييمات المعتمدة فقط)
      */
-    private function updateAverageRating($modelClass, $modelId)
+    public static function updateAverageRating($modelClass, $modelId)
     {
         $avgRating = Review::where('reviewable_type', $modelClass)
             ->where('reviewable_id', $modelId)
+            ->where('status', 'approved')
             ->avg('rating');
 
         $modelClass::where('id', $modelId)->update([
-            'avg_rating' => round($avgRating, 2),
+            'avg_rating' => round((float) ($avgRating ?: 0), 2),
         ]);
     }
 }

@@ -267,8 +267,11 @@ return [
     'coupon_service_ineligible' => 'This coupon cannot be applied to the selected service.',
     'coupon_visit_type_ineligible' => 'This coupon cannot be applied to the selected visit type.',
     'coupon_shift_ineligible' => 'This coupon cannot be applied to the selected shift or service time.',
+    'coupon_min_workers_ineligible' => 'This coupon requires a higher number of workers to be applied.',
     'coupon_updated_successfully' => 'Coupon updated successfully.',
     'coupon_deleted_successfully' => 'Coupon deleted successfully.',
+    'review_approved_successfully' => 'Review approved successfully.',
+    'review_rejected_successfully' => 'Review rejected successfully.',
 
     // Mobile Notifications
     'notification_list_fetch_success' => 'Notification list retrieved successfully.',

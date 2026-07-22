@@ -527,9 +527,10 @@ class BookingController extends Controller
 
                 // Notify all admins
                 $admins = \App\Models\User::where('type', 'admin')->get();
+                $adminRescheduleTitle = app()->getLocale() === 'ar' ? 'إعادة جدولة حجز من العميل' : 'Customer Booking Rescheduled';
                 foreach ($admins as $admin) {
                     $admin->notify(new BookingNotification(
-                        'Customer Booking Rescheduled / إعادة جدولة حجز من العميل',
+                        $adminRescheduleTitle,
                         "Customer {$user->full_name} has rescheduled booking ref: {$booking->booking_ref} to {$firstDate} at " . $newStart->format('h:i A') . ".",
                         $booking->id,
                         [

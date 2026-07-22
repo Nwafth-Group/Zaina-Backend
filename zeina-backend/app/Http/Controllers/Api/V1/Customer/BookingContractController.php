@@ -73,7 +73,8 @@ class BookingContractController extends Controller
             $request->worker_gender,
             $request->visit_type ?? 'single_visit',
             (int) $request->number_of_children,
-            $request->child_age_groups ?? []
+            $request->child_age_groups ?? [],
+            (int) ($request->number_of_persons ?? 1)
         );
     }
 
@@ -126,7 +127,61 @@ class BookingContractController extends Controller
             $booking->worker_gender,
             $booking->visit_type ?? 'single_visit',
             (int) $booking->number_of_children,
-            $booking->child_age_groups ?? []
+            $booking->child_age_groups ?? [],
+            (int) ($booking->number_of_persons ?? 1)
+        );
+    }
+
+    /**
+     * Show contract PDF publicly via secure signed URL.
+     */
+    public function viewContractPublicly(\Illuminate\Http\Request $request, Booking $booking)
+    {
+        abort_unless($request->hasValidSignature(), 401, 'Invalid or expired signature.');
+
+        $lang = $request->input('lang') === 'ar' || app()->getLocale() === 'ar' ? 'ar' : 'en';
+        $booking->load(['service.category', 'service.rules', 'address', 'customer', 'workers', 'visits']);
+
+        $service = $booking->service;
+        $address = $booking->address;
+        $company = CompanyInfo::first();
+
+        $dates = $booking->visits->pluck('visit_date')->toArray();
+        if (empty($dates)) {
+            $dates = [$booking->booking_date];
+        }
+
+        $durationHours = $booking->duration_minutes ? ($booking->duration_minutes / 60) : 4;
+
+        $pricing = [
+            'subtotal' => (float) $booking->price_subtotal,
+            'discount' => (float) $booking->discount_amount,
+            'tax' => (float) $booking->tax_amount,
+            'total' => (float) $booking->total_amount,
+        ];
+
+        $contractRef = 'CON-'.$booking->created_at->format('Y').'-'.str_pad($booking->id, 6, '0', STR_PAD_LEFT);
+
+        return $this->renderContractPdf(
+            $lang,
+            $booking->customer,
+            $service,
+            $address,
+            $company,
+            $dates,
+            $booking->start_time,
+            (float) $durationHours,
+            $booking->workers,
+            $pricing,
+            $booking->payment_method ?? 'wallet',
+            $booking->booking_ref,
+            $contractRef,
+            $booking->created_at->format('Y-m-d h:i A'),
+            $booking->worker_gender,
+            $booking->visit_type ?? 'single_visit',
+            (int) $booking->number_of_children,
+            $booking->child_age_groups ?? [],
+            (int) ($booking->number_of_persons ?? 1)
         );
     }
 
@@ -176,7 +231,8 @@ class BookingContractController extends Controller
             $booking->worker_gender,
             $booking->visit_type ?? 'single_visit',
             (int) $booking->number_of_children,
-            $booking->child_age_groups ?? []
+            $booking->child_age_groups ?? [],
+            (int) ($booking->number_of_persons ?? 1)
         );
     }
 
@@ -201,7 +257,8 @@ class BookingContractController extends Controller
         ?string $workerGender,
         string $visitType,
         int $numberOfChildren,
-        array $childAgeGroups
+        array $childAgeGroups,
+        int $numberOfPersons = 1
     ) {
         // Customer Address formatting
         $addressParts = [];
@@ -365,7 +422,9 @@ class BookingContractController extends Controller
             'serviceCategory' => $service->category ? ($lang === 'ar' ? $service->category->name_ar : $service->category->name_en) : '—',
             'visitTypeFormatted' => $visitTypeFormatted,
             'isBabysitter' => $isBabysitter,
+            'isPedicureManicure' => ($service->service_code === 'PEDICURE_MANICURE'),
             'numberOfChildren' => $numberOfChildren,
+            'numberOfPersons' => $numberOfPersons,
             'childAgeGroupsList' => $childAgeGroupsList,
             'basePrice' => (float) $service->base_price,
             'currency' => 'EGP',

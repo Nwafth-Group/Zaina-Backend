@@ -107,6 +107,9 @@ Route::prefix('admin')->group(function () {
             Route::apiResource('countries', CountryController::class);
             Route::post('countries/{country}/toggle-status', [CountryController::class, 'toggleStatus']);
 
+            Route::apiResource('govrenrates', GovrenrateController::class)->except('index');
+            Route::post('govrenrates/{govrenrate}/toggle-status', [GovrenrateController::class, 'toggleStatus']);
+
             Route::apiResource('areas', AreaController::class)->except('index');
             Route::post('areas/{area}/toggle-status', [AreaController::class, 'toggleStatus']);
         });
@@ -180,6 +183,7 @@ Route::prefix('admin')->group(function () {
 
         // Bookings
         Route::middleware('permission:bookings.view')->group(function () {
+            Route::get('bookings/export', [BookingController::class, 'export']);
             Route::get('bookings', [BookingController::class, 'index']);
             Route::get('bookings/{booking}', [BookingController::class, 'show']);
             Route::get('bookings/{booking}/contract', [BookingContractController::class, 'downloadContractForAdmin']);
@@ -256,6 +260,7 @@ Route::prefix('admin')->group(function () {
 
         // Loyalty Points Management
         Route::middleware('permission:points.view')->group(function () {
+            Route::get('points/my-quota', [AdminPointsController::class, 'myQuota']);
             Route::get('points/rules', [AdminPointsController::class, 'getRules']);
             Route::get('points/services', [AdminPointsController::class, 'getServices']);
             Route::get('points/transactions', [AdminPointsController::class, 'getTransactions']);
@@ -286,6 +291,10 @@ Route::prefix('admin')->group(function () {
         // Reviews
         Route::middleware('permission:reviews.view')->group(function () {
             Route::get('reviews', [ReviewController::class, 'index']);
+        });
+        Route::middleware('permission:reviews.edit')->group(function () {
+            Route::post('reviews/{review}/approve', [ReviewController::class, 'approve']);
+            Route::post('reviews/{review}/reject', [ReviewController::class, 'reject']);
         });
 
         // Reports

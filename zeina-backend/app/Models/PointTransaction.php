@@ -9,7 +9,7 @@ class PointTransaction extends Model
     protected $fillable = [
         'user_id', 'type', 'amount', 'title_ar', 'title_en',
         'reference_type', 'reference_id', 'points_before',
-        'points_after', 'reason', 'created_by', 'expiration_date',
+        'points_after', 'reason', 'created_by', 'created_by_user_id', 'expiration_date',
     ];
 
     public static function getUserPointsBalance($userId): int
@@ -40,6 +40,11 @@ class PointTransaction extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function createdByUser()
+    {
+        return $this->belongsTo(User::class, 'created_by_user_id');
     }
 
     public function getFormattedAmountAttribute()
