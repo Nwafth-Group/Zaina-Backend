@@ -99,17 +99,23 @@ Route::prefix('admin')->group(function () {
         Route::get('areas', [AreaController::class, 'index']);
         Route::get('govrenrates', [GovrenrateController::class, 'index']);
 
-        // Location management (writes) stays gated behind the location.edit permission.
-        Route::middleware('permission:location.edit')->group(function () {
+        // Location management (writes) gated behind location.edit or module-specific permission.
+        Route::middleware('permission:location.edit|cities.edit')->group(function () {
             Route::apiResource('cities', CityController::class)->except('index');
             Route::post('cities/{city}/toggle-status', [CityController::class, 'toggleStatus']);
+        });
 
+        Route::middleware('permission:location.edit|countries.edit')->group(function () {
             Route::apiResource('countries', CountryController::class);
             Route::post('countries/{country}/toggle-status', [CountryController::class, 'toggleStatus']);
+        });
 
+        Route::middleware('permission:location.edit|governorates.edit')->group(function () {
             Route::apiResource('govrenrates', GovrenrateController::class)->except('index');
             Route::post('govrenrates/{govrenrate}/toggle-status', [GovrenrateController::class, 'toggleStatus']);
+        });
 
+        Route::middleware('permission:location.edit|areas.edit')->group(function () {
             Route::apiResource('areas', AreaController::class)->except('index');
             Route::post('areas/{area}/toggle-status', [AreaController::class, 'toggleStatus']);
         });

@@ -23,6 +23,11 @@ class RolesAndUsersSeeder extends Seeder
             'employees.view', 'employees.create', 'employees.edit',
             'roles.view', 'roles.create', 'roles.edit', 'roles.delete',
             'bookings.view', 'bookings.edit', 'bookings.delete', 'location.edit',
+            'location.view', 'location.create', 'location.delete',
+            'countries.view', 'countries.create', 'countries.edit', 'countries.delete',
+            'governorates.view', 'governorates.create', 'governorates.edit', 'governorates.delete',
+            'cities.view', 'cities.create', 'cities.edit', 'cities.delete',
+            'areas.view', 'areas.create', 'areas.edit', 'areas.delete',
             'providers.view', 'providers.create', 'providers.edit', 'providers.deactivate', 'provider_eligibility.edit',
             
             // Services
