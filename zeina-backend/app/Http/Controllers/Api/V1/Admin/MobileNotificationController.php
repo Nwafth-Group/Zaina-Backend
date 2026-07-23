@@ -49,13 +49,29 @@ class MobileNotificationController extends Controller
             $query->orderBy($sortBy, $sortDir);
         }
 
+        $counts = [
+            'all' => MobileNotification::count(),
+            'scheduled' => MobileNotification::where('status', 'scheduled')->count(),
+            'sent' => MobileNotification::where('status', 'sent')->count(),
+            'failed' => MobileNotification::where('status', 'failed')->count(),
+        ];
+
         $perPage = $request->integer('per_page', 15);
         $notifications = $query->paginate($perPage);
 
-        return $this->successResponse(
-            MobileNotificationResource::collection($notifications),
-            __('messages.notification_list_fetch_success')
-        );
+        $itemsResource = MobileNotificationResource::collection($notifications);
+        $meta = [
+            'total' => $notifications->total(),
+            'per_page' => $notifications->perPage(),
+            'current_page' => $notifications->currentPage(),
+            'last_page' => $notifications->lastPage(),
+        ];
+
+        return $this->successResponse([
+            'items' => $itemsResource,
+            'counts' => $counts,
+            'meta' => $meta,
+        ], __('messages.notification_list_fetch_success'));
     }
 
     /**

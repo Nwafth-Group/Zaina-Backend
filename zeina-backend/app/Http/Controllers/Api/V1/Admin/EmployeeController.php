@@ -47,10 +47,31 @@ class EmployeeController extends Controller
         $sortDir = strtolower($request->input('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
         $query->orderBy($sortBy, $sortDir);
 
+        $baseEmployeeQuery = User::whereIn('type', ['operation', 'super_admin', 'driver']);
+        $counts = [
+            'all' => (clone $baseEmployeeQuery)->count(),
+            'active' => (clone $baseEmployeeQuery)->where('status', 'active')->count(),
+            'inactive' => (clone $baseEmployeeQuery)->where('status', 'inactive')->count(),
+            'operation' => (clone $baseEmployeeQuery)->where('type', 'operation')->count(),
+            'driver' => (clone $baseEmployeeQuery)->where('type', 'driver')->count(),
+        ];
+
         $perPage = (int) $request->input('per_page', 15);
         $employees = $query->paginate($perPage)->withQueryString();
 
-        return $this->successResponse(UserResource::collection($employees), __('messages.employee_fetched_success'));
+        $itemsResource = UserResource::collection($employees);
+        $meta = [
+            'total' => $employees->total(),
+            'per_page' => $employees->perPage(),
+            'current_page' => $employees->currentPage(),
+            'last_page' => $employees->lastPage(),
+        ];
+
+        return $this->successResponse([
+            'items' => $itemsResource,
+            'counts' => $counts,
+            'meta' => $meta,
+        ], __('messages.employee_fetched_success'));
     }
 
     /**

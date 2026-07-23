@@ -20,6 +20,23 @@ class CouponController extends Controller
      */
     public function index(Request $request)
     {
+        $countsQuery = Coupon::query();
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $countsQuery->where(function ($q) use ($search) {
+                $q->where('code', 'like', "%{$search}%")
+                    ->orWhere('name', 'like', "%{$search}%");
+            });
+        }
+
+        $counts = [
+            'all' => (clone $countsQuery)->count(),
+            'active' => (clone $countsQuery)->where('status', 'active')->count(),
+            'inactive' => (clone $countsQuery)->where('status', 'inactive')->count(),
+            'fixed' => (clone $countsQuery)->where('type', 'fixed')->count(),
+            'percentage' => (clone $countsQuery)->where('type', 'percentage')->count(),
+        ];
+
         $query = Coupon::withCount(['users', 'cities', 'areas', 'services']);
 
         // 1. Search filter by code or name
@@ -40,10 +57,16 @@ class CouponController extends Controller
         $perPage = $request->input('per_page', 15);
         $coupons = $query->latest()->paginate($perPage);
 
-        return $this->successResponse(
-            CouponResource::collection($coupons),
-            __('messages.coupons_retrieved') ?? 'Coupons retrieved successfully.'
-        );
+        return $this->successResponse([
+            'items' => CouponResource::collection($coupons),
+            'counts' => $counts,
+            'meta' => [
+                'current_page' => $coupons->currentPage(),
+                'last_page' => $coupons->lastPage(),
+                'per_page' => $coupons->perPage(),
+                'total' => $coupons->total(),
+            ],
+        ], __('messages.coupons_retrieved') ?? 'Coupons retrieved successfully.');
     }
 
     /**

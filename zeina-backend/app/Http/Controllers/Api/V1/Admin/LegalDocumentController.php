@@ -30,10 +30,17 @@ class LegalDocumentController extends Controller
 
         $documents = $query->get();
 
-        return $this->successResponse(
-            AdminLegalDocumentResource::collection($documents),
-            'Legal documents fetched successfully.'
-        );
+        $counts = [
+            'all' => LegalDocument::count(),
+            'terms' => LegalDocument::where('type', 'terms')->count(),
+            'privacy' => LegalDocument::where('type', 'privacy')->count(),
+            'about_us' => LegalDocument::where('type', 'about_us')->count(),
+        ];
+
+        return $this->successResponse([
+            'items' => AdminLegalDocumentResource::collection($documents),
+            'counts' => $counts,
+        ], 'Legal documents fetched successfully.');
     }
 
     /**

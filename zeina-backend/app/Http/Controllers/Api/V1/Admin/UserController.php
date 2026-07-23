@@ -19,9 +19,29 @@ class UserController extends Controller
 
     public function index(Request $request)
     {
-        // التحقق من الصلاحيات إذا كانت مفعلة عندك
-        // abort_if(!auth()->user()->can('users.view'), 403, 'Unauthorized');
         $verification_status = $request->input('verification_status');
+
+        // Compute verification breakdown counts before filtering by verification status
+        $countsQuery = User::query();
+        if ($request->filled('types')) {
+            $types = is_array($request->input('types')) ? $request->input('types') : explode(',', $request->input('types'));
+            $countsQuery->whereIn('type', array_filter($types));
+        } elseif ($request->has('type')) {
+            $countsQuery->where('type', $request->input('type'));
+        }
+        if ($request->filled('search')) {
+            $this->applySearchFilter($countsQuery, $request->input('search'));
+        }
+
+        $counts = [
+            'all' => (clone $countsQuery)->count(),
+            'pending' => (clone $countsQuery)->where('verification_status', 'pending')->count(),
+            'approved' => (clone $countsQuery)->where('verification_status', 'approved')->count(),
+            'rejected' => (clone $countsQuery)->where('verification_status', 'rejected')->count(),
+            'unverified' => (clone $countsQuery)->where(function ($q) {
+                $q->whereNull('verification_status')->orWhere('verification_status', 'unverified')->orWhere('verification_status', '');
+            })->count(),
+        ];
 
         if (in_array($verification_status, ['pending', 'rejected'])) {
             $query = User::with(['roles', 'media']);
@@ -102,7 +122,16 @@ class UserController extends Controller
         $perPage = $request->input('per_page', 15);
         $users = $query->paginate($perPage);
 
-        return $this->successResponse(UserResource::collection($users), __('messages.users_retrieved'));
+        return $this->successResponse([
+            'items' => UserResource::collection($users),
+            'counts' => $counts,
+            'meta' => [
+                'current_page' => $users->currentPage(),
+                'last_page' => $users->lastPage(),
+                'per_page' => $users->perPage(),
+                'total' => $users->total(),
+            ],
+        ], __('messages.users_retrieved'));
     }
 
     public function show(User $user)

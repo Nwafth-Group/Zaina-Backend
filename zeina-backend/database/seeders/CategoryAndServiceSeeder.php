@@ -72,15 +72,16 @@ class CategoryAndServiceSeeder extends Seeder
             }
         }
 
-        // 2. تعريف الخدمات الجديدة المحددة بالصورة (9 خدمات)
+        // 2. تعريف الخدمات الجديدة المحددة بالصورة (5 خدمات)
         $servicesData = [
             // خدمات بالساعة (3)
             ['cat' => 'cleaning', 'type' => 'hourly', 'en' => 'Domestic Helper (Hourly)', 'ar' => 'عاملة منزلية بالساعة', 'price' => 80, 'period' => 2, 'code' => 'DOMESTIC_HELPER_HOURLY'],
             ['cat' => 'hospitality', 'type' => 'hourly', 'en' => 'Hospitality Worker (Hourly)', 'ar' => 'عاملة ضيافة بالساعة', 'price' => 90, 'period' => 2, 'code' => 'HOSPITALITY_WORKER_HOURLY'],
             ['cat' => 'babysitting', 'type' => 'hourly', 'en' => 'Babysitter (Hourly)', 'ar' => 'جليسة اطفال بالساعة', 'price' => 100, 'period' => 3, 'code' => 'BABYSITTER_HOURLY'],
 
-            // خدمات أخرى (1)
+            // خدمات أخرى (2)
             ['cat' => 'other', 'type' => 'other', 'en' => 'Pedicure & Manicure Service', 'ar' => 'خدمة العناية بالأقدام واليدين', 'price' => 150, 'period' => 2, 'code' => 'PEDICURE_MANICURE', 'covered_persons_per_worker' => 1],
+            ['cat' => 'other', 'type' => 'other', 'en' => 'Deep Cleaning Service', 'ar' => 'خدمة النظافة العميقة', 'price' => 500, 'period' => 6, 'code' => 'DEEP_CLEANING'],
         ];
 
         // 3. إدخال الخدمات وتركيب القواعد والأسعار والمناطق
@@ -116,11 +117,12 @@ class CategoryAndServiceSeeder extends Seeder
             $isSecondService = ($data['code'] === 'HOSPITALITY_WORKER_HOURLY');
             $isThirdService = ($data['code'] === 'BABYSITTER_HOURLY');
             $isPedicureManicure = ($data['code'] === 'PEDICURE_MANICURE');
+            $isDeepCleaning = ($data['code'] === 'DEEP_CLEANING');
 
-            $genderAttr = ($isFirstService || $isThirdService || $isPedicureManicure) ? 'female' : fake()->randomElement(['male', 'female']);
+            $genderAttr = ($isFirstService || $isThirdService || $isPedicureManicure) ? 'female' : (($isDeepCleaning) ? 'male' : fake()->randomElement(['male', 'female']));
 
             // Sync workers to this service
-            $newWorkers = Worker::factory(3)->create([
+            $newWorkers = Worker::factory(6)->create([
                 'status' => 'active',
                 'gender' => $genderAttr,
             ]);
@@ -139,7 +141,7 @@ class CategoryAndServiceSeeder extends Seeder
                 'status' => 'active',
                 'workers' => $workerIds,
 
-                'available_visit_types' => ($isSecondService || $isThirdService || $isPedicureManicure)
+                'available_visit_types' => ($isSecondService || $isThirdService || $isPedicureManicure || $isDeepCleaning)
                     ? [['type' => 'single_visit', 'discount' => 0]]
                     : [
                         ['type' => 'single_visit', 'discount' => 0],
@@ -147,14 +149,14 @@ class CategoryAndServiceSeeder extends Seeder
                     ],
                 'base_price' => $data['price'],
                 'start_time' => '08:00',
-                'end_time' => ($isSecondService || $isThirdService || $isPedicureManicure) ? '20:00' : '22:00',
+                'end_time' => '20:00',
                 'duration_unit' => 'Hours',
                 'default_duration' => ($isSecondService || $isThirdService) ? 4 : $data['period'],
                 'has_duration_range' => ($isSecondService || $isThirdService),
                 'min_duration' => ($isSecondService || $isThirdService) ? 4 : null,
                 'max_duration' => ($isSecondService || $isThirdService) ? 6 : null,
-                'min_workers' => 1,
-                'max_workers' => 6,
+                'min_workers' => $isDeepCleaning ? 6 : 1,
+                'max_workers' => $isDeepCleaning ? 6 : 6,
                 'min_children' => $isThirdService ? 1 : null,
                 'max_children' => $isThirdService ? 6 : null,
                 'covered_persons_per_worker' => $data['covered_persons_per_worker'] ?? null,
@@ -163,13 +165,11 @@ class CategoryAndServiceSeeder extends Seeder
 
                 'working_days' => ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'saturday'],
                 'shifts' => ($isSecondService || $isThirdService || $isPedicureManicure) ? [] : [
-                    ['start_time' => '09:00'],
-                    ['start_time' => '12:00'],
+                    ['start_time' => '08:00'],
                     ['start_time' => '14:00'],
-                    ['start_time' => '16:00'],
                 ],
 
-                'terms_ar' => "1. يجب توفير بيئة عمل آمنة ومناسبة للعاملة.\n2. لا يحق للعميل تكليف العاملة بأي أعمال خارج نطاق الخدمة المتفق عليها.\n3. يجب إبلاغ الشركة بأي تغييرات في موعد الخدمة قبل 24 ساعة على الأقل.\n4. الشركة غير مسؤولة عن فقدان المقتنيات الثمينة غير المصرح عنها.",
+                'terms_ar' => "1. يجب توفير بيئة عمل آمنة ومناسبة للعمالة.\n2. لا يحق للعميل تكليف العمال بأي أعمال خارج نطاق الخدمة المتفق عليها.\n3. يجب إبلاغ الشركة بأي تغييرات في موعد الخدمة قبل 24 ساعة على الأقل.\n4. الشركة غير مسؤولة عن فقدان المقتنيات الثمينة غير المصرح عنها.",
                 'terms_en' => "1. A safe and suitable working environment must be provided for the worker.\n2. The client is not entitled to assign any tasks to the worker outside the scope of the agreed service.\n3. The company must be notified of any changes to the service schedule at least 24 hours in advance.\n4. The company is not responsible for the loss of undeclared valuable items.",
                 'acceptance_required' => true,
 
@@ -198,8 +198,11 @@ class CategoryAndServiceSeeder extends Seeder
             } elseif ($isPedicureManicure) {
                 $payload['worker_gender_options'] = ['Female'];
                 $payload['pricing_type'] = 'per_service';
+            } elseif ($isDeepCleaning) {
+                $payload['worker_gender_options'] = ['Male'];
+                $payload['pricing_type'] = 'per_service';
             } else {
-                $payload['worker_gender_options'] = [];
+                $payload['worker_gender_options'] = ['Male'];
                 $payload['pricing_type'] = 'per_service';
             }
 

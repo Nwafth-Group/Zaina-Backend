@@ -17,11 +17,27 @@ class AnnouncementController extends Controller
 
     public function index(Request $request)
     {
-        // Admin management view: list every announcement, newest first.
+        $counts = [
+            'all' => Announcement::count(),
+            'total_recipients' => \Illuminate\Support\Facades\DB::table('announcement_user')->count(),
+        ];
+
         $perPage = $request->integer('per_page', 12);
         $announcements = Announcement::query()->withCount('readers')->latest()->paginate($perPage);
 
-        return $this->successResponse(AnnouncementResource::collection($announcements), __('messages.announ_fetch_success'));
+        $itemsResource = AnnouncementResource::collection($announcements);
+        $meta = [
+            'total' => $announcements->total(),
+            'per_page' => $announcements->perPage(),
+            'current_page' => $announcements->currentPage(),
+            'last_page' => $announcements->lastPage(),
+        ];
+
+        return $this->successResponse([
+            'items' => $itemsResource,
+            'counts' => $counts,
+            'meta' => $meta,
+        ], __('messages.announ_fetch_success'));
     }
 
     /**

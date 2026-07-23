@@ -91,10 +91,19 @@ class KhaledTestUserSeeder extends Seeder
             'completed' => 5
         ];
 
-        $bookingIndex = 1;
-
         DB::beginTransaction();
         try {
+            // Clean up previous test bookings for Khaled to prevent duplicate entry errors
+            $oldBookingIds = Booking::where('customer_id', $user->id)->pluck('id');
+            if ($oldBookingIds->isNotEmpty()) {
+                BookingAssignment::whereIn('booking_id', $oldBookingIds)->delete();
+                BookingVisit::whereIn('booking_id', $oldBookingIds)->delete();
+                BookingHistory::whereIn('booking_id', $oldBookingIds)->delete();
+                Booking::whereIn('id', $oldBookingIds)->delete();
+            }
+
+            $bookingIndex = 1;
+
             foreach ($statusCounts as $status => $count) {
                 for ($i = 0; $i < $count; $i++) {
                     // Pick service sequentially
@@ -130,8 +139,13 @@ class KhaledTestUserSeeder extends Seeder
                     $endTime = '13:00:00';
                     $durationMinutes = 240;
 
+                    $bookingRef = 'KB-' . str_pad(rand(1, 999999), 6, '0', STR_PAD_LEFT);
+                    while (Booking::where('booking_ref', $bookingRef)->exists()) {
+                        $bookingRef = 'KB-' . str_pad(rand(1, 999999), 6, '0', STR_PAD_LEFT);
+                    }
+
                     $booking = Booking::create([
-                        'booking_ref'      => 'KB-' . str_pad($bookingIndex, 6, '0', STR_PAD_LEFT),
+                        'booking_ref'      => $bookingRef,
                         'customer_id'      => $user->id,
                         'service_id'       => $service->id,
                         'address_id'       => $address->id,

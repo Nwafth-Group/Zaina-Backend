@@ -48,6 +48,30 @@ class BookingController extends Controller
      */
     public function index(Request $request)
     {
+        $countsQuery = app(Pipeline::class)
+            ->send(Booking::query())
+            ->through([
+                SearchFilter::class,
+                PaymentStatusFilter::class,
+                ServiceFilter::class,
+                CategoryFilter::class,
+                CityFilter::class,
+                AreaFilter::class,
+                MinAmountFilter::class,
+                MaxAmountFilter::class,
+                DateFromFilter::class,
+                DateToFilter::class,
+            ])
+            ->thenReturn();
+
+        $counts = [
+            'all' => (clone $countsQuery)->count(),
+            'Upcoming' => (clone $countsQuery)->where('status', 'Upcoming')->count(),
+            'inService' => (clone $countsQuery)->where('status', 'inService')->count(),
+            'completed' => (clone $countsQuery)->where('status', 'completed')->count(),
+            'cancelled' => (clone $countsQuery)->where('status', 'cancelled')->count(),
+        ];
+
         $query = app(Pipeline::class)
             ->send(Booking::query()->with(['customer', 'service', 'workers']))
             ->through([
@@ -71,7 +95,16 @@ class BookingController extends Controller
 
         $bookings = $query->paginate((int) $request->input('per_page', 15))->withQueryString();
 
-        return $this->successResponse(AdminBookingResource::collection($bookings), __('messages.bookings_retrieved'));
+        return $this->successResponse([
+            'items' => AdminBookingResource::collection($bookings),
+            'counts' => $counts,
+            'meta' => [
+                'current_page' => $bookings->currentPage(),
+                'last_page' => $bookings->lastPage(),
+                'per_page' => $bookings->perPage(),
+                'total' => $bookings->total(),
+            ],
+        ], __('messages.bookings_retrieved'));
     }
 
     /**

@@ -118,7 +118,37 @@ class PointSystemSeeder extends Seeder
             );
         }
 
-        // 🌟 3. Inject mock balance history to dev users for testing
+        // 🌟 3. Seed specific service rules for each service in the database
+        $services = DB::table('services')->get();
+        foreach ($services as $service) {
+            DB::table('reward_tasks')->updateOrInsert(
+                [
+                    'rule_category' => 'service',
+                    'service_id' => $service->id,
+                ],
+                [
+                    'title_ar' => 'مكافأة إكمال ' . ($service->name_ar ?? $service->name_en),
+                    'title_en' => 'Completion Reward: ' . $service->name_en,
+                    'subtitle_ar' => 'احصل على نقاط عند إكمال حجز خدمة ' . ($service->name_ar ?? $service->name_en),
+                    'subtitle_en' => 'Earn bonus points upon completing ' . $service->name_en,
+                    'points' => 30,
+                    'action_type' => 'url',
+                    'action_text_ar' => 'احجز الآن',
+                    'action_text_en' => 'Book Now',
+                    'action_link' => 'service_completed_' . $service->id,
+                    'status' => true,
+                    'rule_category' => 'service',
+                    'service_id' => $service->id,
+                    'required_booking_count' => 1,
+                    'frequency_type' => 'repeatable',
+                    'calculation_method' => 'fixed',
+                    'points_expiration_months' => 12,
+                    'updated_at' => now(),
+                ]
+            );
+        }
+
+        // 🌟 4. Inject mock balance history to dev users for testing
         $users = User::all();
 
         if ($users->isEmpty()) {

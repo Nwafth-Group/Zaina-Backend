@@ -83,9 +83,12 @@ class BookingController extends Controller
         $data = $request->validated();
         $service = Service::with(['rules', 'schedules', 'childAgeGroups'])->findOrFail($data['service_id']);
 
-        $data['duration'] = (int) $data['duration'];
-
-        if ($service->service_code === 'BABYSITTER_HOURLY' || $service->service_code === 'DOMESTIC_HELPER_HOURLY') {
+        if ($service->service_code === 'DEEP_CLEANING') {
+            $data['workers_count'] = $service->min_workers ?? 6;
+            $data['duration'] = $service->default_duration ?? 6;
+            $genderOptions = $service->worker_gender_options ?? [];
+            $data['worker_gender'] = in_array('Male', $genderOptions) ? 'Male' : (count($genderOptions) > 0 ? $genderOptions[0] : 'Male');
+        } elseif ($service->service_code === 'BABYSITTER_HOURLY' || $service->service_code === 'DOMESTIC_HELPER_HOURLY') {
             $data['worker_gender'] = 'Female';
         }
 
@@ -120,19 +123,25 @@ class BookingController extends Controller
             if (empty($data['worker_gender'])) {
                 $data['worker_gender'] = 'Female';
             }
+        } elseif ($service->service_code === 'DEEP_CLEANING') {
+            $data['workers_count'] = $service->min_workers ?? 6;
         } else {
-            $data['workers_count'] = (int) $data['workers_count'];
-            $minWorkers = $service->min_workers ?? 2;
+            $data['workers_count'] = (int) ($data['workers_count'] ?? 1);
+            $minWorkers = $service->min_workers ?? 1;
             $maxWorkers = $service->max_workers ?? 12;
             if ($data['workers_count'] < $minWorkers || $data['workers_count'] > $maxWorkers) {
                 return $this->errorResponse("Workers count must be between {$minWorkers} and {$maxWorkers} workers.", 422);
             }
         }
 
-        $minDuration = $service->min_duration ?? 4;
-        $maxDuration = $service->max_duration ?? 6;
-        if ($data['duration'] < $minDuration || $data['duration'] > $maxDuration) {
-            return $this->errorResponse("Duration must be between {$minDuration} and {$maxDuration} hours.", 422);
+        if ($service->has_duration_range) {
+            $minDuration = $service->min_duration ?? 4;
+            $maxDuration = $service->max_duration ?? 6;
+            if ($data['duration'] < $minDuration || $data['duration'] > $maxDuration) {
+                return $this->errorResponse("Duration must be between {$minDuration} and {$maxDuration} hours.", 422);
+            }
+        } else {
+            $data['duration'] = $service->default_duration ?? 6;
         }
 
         $genderOptions = $service->worker_gender_options ?? [];

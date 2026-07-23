@@ -50,10 +50,20 @@ class ReportController extends Controller
             $query->whereDate('created_at', '<=', $request->input('date_to'));
         }
 
+        $counts = [
+            'all' => Report::count(),
+            'submitted' => Report::where('status', 'submitted')->count(),
+            'under_review' => Report::where('status', 'under_review')->count(),
+            'in_progress' => Report::where('status', 'in_progress')->count(),
+            'resolved' => Report::where('status', 'resolved')->count(),
+            'rejected' => Report::where('status', 'rejected')->count(),
+        ];
+
         $reports = $query->latest()->paginate($request->input('per_page', 15));
 
         return $this->successResponse([
             'items' => ReportsResource::collection($reports->items()),
+            'counts' => $counts,
             'meta' => [
                 'current_page' => $reports->currentPage(),
                 'last_page' => $reports->lastPage(),

@@ -43,10 +43,28 @@ class AdsController extends Controller
         $sortDir = strtolower($request->input('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
         $query->orderBy($sortBy, $sortDir);
 
+        $counts = [
+            'all' => Ad::count(),
+            'active' => Ad::where('status', 'active')->count(),
+            'inactive' => Ad::where('status', 'inactive')->count(),
+        ];
+
         $perPage = $request->integer('per_page', 12);
         $ads = $query->paginate($perPage)->withQueryString();
 
-        return $this->successResponse(AdminAdResource::collection($ads), __('messages.ads_fetch_success'));
+        $itemsResource = AdminAdResource::collection($ads);
+        $meta = [
+            'total' => $ads->total(),
+            'per_page' => $ads->perPage(),
+            'current_page' => $ads->currentPage(),
+            'last_page' => $ads->lastPage(),
+        ];
+
+        return $this->successResponse([
+            'items' => $itemsResource,
+            'counts' => $counts,
+            'meta' => $meta,
+        ], __('messages.ads_fetch_success'));
     }
 
     /**

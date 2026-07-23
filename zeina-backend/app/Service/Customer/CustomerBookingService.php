@@ -31,9 +31,15 @@ class CustomerBookingService
         [$address, $service] = $this->validateAddressAndService($user, $data);
 
         $workersCount = $data['workers_count'] ?? null;
-        if ($service->service_code === 'BABYSITTER_HOURLY' || $service->service_code === 'DOMESTIC_HELPER_HOURLY' || $service->service_code === 'PEDICURE_MANICURE') {
+        if ($service->service_code === 'DEEP_CLEANING') {
+            $data['workers_count'] = $service->min_workers ?? 6;
+            $data['duration'] = $service->default_duration ?? 6;
+            $genderOpts = $service->worker_gender_options ?? [];
+            $data['worker_gender'] = in_array('Male', $genderOpts) ? 'Male' : (count($genderOpts) > 0 ? $genderOpts[0] : 'Male');
+        } elseif ($service->service_code === 'BABYSITTER_HOURLY' || $service->service_code === 'DOMESTIC_HELPER_HOURLY' || $service->service_code === 'PEDICURE_MANICURE') {
             $data['worker_gender'] = 'Female';
         }
+
         if ($service->service_code === 'BABYSITTER_HOURLY') {
             $calculatedMinWorkers = $this->calculateMinimumBabysitters($service, $data['child_age_groups'] ?? []);
             $maxWorkers = $service->max_workers ?? 5;
@@ -150,7 +156,13 @@ class CustomerBookingService
         // 1. Fetch address and service models
         [$address, $service] = $this->validateAddressAndService($user, $data);
 
-        if ($service->service_code === 'BABYSITTER_HOURLY') {
+        if ($service->service_code === 'DEEP_CLEANING') {
+            $data['duration'] = $service->default_duration ?? 6;
+            if (empty($data['worker_gender'])) {
+                $genderOpts = $service->worker_gender_options ?? [];
+                $data['worker_gender'] = in_array('Male', $genderOpts) ? 'Male' : (count($genderOpts) > 0 ? $genderOpts[0] : 'Male');
+            }
+        } elseif ($service->service_code === 'BABYSITTER_HOURLY') {
             $calculatedMinWorkers = $this->calculateMinimumBabysitters($service, $data['child_age_groups'] ?? []);
             $maxWorkers = $service->max_workers ?? 5;
             if ($calculatedMinWorkers === 1) {
@@ -548,8 +560,12 @@ class CustomerBookingService
         $isFirstService = ($service->service_code === 'DOMESTIC_HELPER_HOURLY');
         $isPedicureManicure = ($service->service_code === 'PEDICURE_MANICURE');
 
+        $isDeepCleaning = ($service->service_code === 'DEEP_CLEANING');
+
         if ($isPedicureManicure) {
             $subtotal = $pricePerPeriod * $workersCount * max(1, $numberOfPersons);
+        } elseif ($isDeepCleaning) {
+            $subtotal = $pricePerPeriod * $visitsCount;
         } elseif ($service->pricing_type === 'per_hour' && ! $isFirstService && $startTime && $endTime) {
             $start = Carbon::parse($startTime);
             $end = Carbon::parse($endTime);

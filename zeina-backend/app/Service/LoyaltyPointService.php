@@ -132,37 +132,74 @@ class LoyaltyPointService
                             $requiredCount = 1;
                         }
 
-                        if ($serviceCompletedCount > 0 && $serviceCompletedCount % $requiredCount === 0) {
-                            $alreadyAwarded = PointTransaction::where('user_id', $customer->id)
-                                ->where('reason', 'service_completed_rule_' . $serviceRule->id . '_cycle_' . $serviceCompletedCount)
-                                ->exists();
+                        if ($serviceRule->frequency_type === 'one_time') {
+                            if ($serviceCompletedCount >= $requiredCount) {
+                                $alreadyAwarded = PointTransaction::where('user_id', $customer->id)
+                                    ->where('reason', 'service_completed_rule_' . $serviceRule->id)
+                                    ->exists();
 
-                            if (!$alreadyAwarded) {
-                                $customer->pointTransactions()->create([
-                                    'type' => 'earn',
-                                    'amount' => $serviceRule->points,
-                                    'title_ar' => 'مكافأة إكمال خدمة مخصصة: ' . ($serviceRule->title_ar ?? 'إتمام الخدمة'),
-                                    'title_en' => 'Specific Service Reward: ' . ($serviceRule->title_en ?? 'Completed Service'),
-                                    'reference_type' => Booking::class,
-                                    'reference_id' => $booking->id,
-                                    'reason' => 'service_completed_rule_' . $serviceRule->id . '_cycle_' . $serviceCompletedCount,
-                                ]);
+                                if (!$alreadyAwarded) {
+                                    $customer->pointTransactions()->create([
+                                        'type' => 'earn',
+                                        'amount' => $serviceRule->points,
+                                        'title_ar' => 'مكافأة إكمال خدمة مخصصة: ' . ($serviceRule->title_ar ?? 'إتمام الخدمة'),
+                                        'title_en' => 'Specific Service Reward: ' . ($serviceRule->title_en ?? 'Completed Service'),
+                                        'reference_type' => Booking::class,
+                                        'reference_id' => $booking->id,
+                                        'reason' => 'service_completed_rule_' . $serviceRule->id,
+                                    ]);
 
-                                $lang = strtolower($customer->preferred_language ?? app()->getLocale()) === 'en' ? 'en' : 'ar';
-                                $notifTitle = $lang === 'en' ? 'New Points Earned! 🎉' : 'حصلت على نقاط جديدة! 🎉';
-                                $notifBody = $lang === 'en'
-                                    ? "{$serviceRule->points} points have been added to your balance for completing your service."
-                                    : "تمت إضافة {$serviceRule->points} نقطة إلى رصيدك لإتمامك الخدمة بنجاح.";
+                                    $lang = strtolower($customer->preferred_language ?? app()->getLocale()) === 'en' ? 'en' : 'ar';
+                                    $notifTitle = $lang === 'en' ? 'New Points Earned! 🎉' : 'حصلت على نقاط جديدة! 🎉';
+                                    $notifBody = $lang === 'en'
+                                        ? "{$serviceRule->points} points have been added to your balance for completing your service."
+                                        : "تمت إضافة {$serviceRule->points} نقطة إلى رصيدك لإتمامك الخدمة بنجاح.";
 
-                                $customer->notify(new PointsNotification(
-                                    $notifTitle,
-                                    $notifBody,
-                                    $serviceRule->points,
-                                    'earn',
-                                    ['booking_ref' => $booking->booking_ref]
-                                ));
+                                    $customer->notify(new PointsNotification(
+                                        $notifTitle,
+                                        $notifBody,
+                                        $serviceRule->points,
+                                        'earn',
+                                        ['booking_ref' => $booking->booking_ref]
+                                    ));
 
-                                Log::info("ServiceCompleted points awarded: {$serviceRule->points} points to user ID {$customer->id} for service rule ID {$serviceRule->id} cycle {$serviceCompletedCount} on booking ID {$booking->id}.");
+                                    Log::info("ServiceCompleted points (one_time) awarded: {$serviceRule->points} points to user ID {$customer->id} for service rule ID {$serviceRule->id} on booking ID {$booking->id}.");
+                                }
+                            }
+                        } else {
+                            // Repeatable cycle
+                            if ($serviceCompletedCount > 0 && $serviceCompletedCount % $requiredCount === 0) {
+                                $alreadyAwarded = PointTransaction::where('user_id', $customer->id)
+                                    ->where('reason', 'service_completed_rule_' . $serviceRule->id . '_cycle_' . $serviceCompletedCount)
+                                    ->exists();
+
+                                if (!$alreadyAwarded) {
+                                    $customer->pointTransactions()->create([
+                                        'type' => 'earn',
+                                        'amount' => $serviceRule->points,
+                                        'title_ar' => 'مكافأة إكمال خدمة مخصصة: ' . ($serviceRule->title_ar ?? 'إتمام الخدمة'),
+                                        'title_en' => 'Specific Service Reward: ' . ($serviceRule->title_en ?? 'Completed Service'),
+                                        'reference_type' => Booking::class,
+                                        'reference_id' => $booking->id,
+                                        'reason' => 'service_completed_rule_' . $serviceRule->id . '_cycle_' . $serviceCompletedCount,
+                                    ]);
+
+                                    $lang = strtolower($customer->preferred_language ?? app()->getLocale()) === 'en' ? 'en' : 'ar';
+                                    $notifTitle = $lang === 'en' ? 'New Points Earned! 🎉' : 'حصلت على نقاط جديدة! 🎉';
+                                    $notifBody = $lang === 'en'
+                                        ? "{$serviceRule->points} points have been added to your balance for completing your service."
+                                        : "تمت إضافة {$serviceRule->points} نقطة إلى رصيدك لإتمامك الخدمة بنجاح.";
+
+                                    $customer->notify(new PointsNotification(
+                                        $notifTitle,
+                                        $notifBody,
+                                        $serviceRule->points,
+                                        'earn',
+                                        ['booking_ref' => $booking->booking_ref]
+                                    ));
+
+                                    Log::info("ServiceCompleted points (repeatable) awarded: {$serviceRule->points} points to user ID {$customer->id} for service rule ID {$serviceRule->id} cycle {$serviceCompletedCount} on booking ID {$booking->id}.");
+                                }
                             }
                         }
                     }

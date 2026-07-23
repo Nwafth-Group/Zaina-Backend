@@ -34,6 +34,23 @@ class WorkerController extends Controller
      */
     public function index(Request $request)
     {
+        $countsQuery = app(Pipeline::class)
+            ->send(Worker::query())
+            ->through([
+                SearchFilter::class,
+                NationalityFilter::class,
+                ServiceFilter::class,
+                MinRatingFilter::class,
+            ])
+            ->thenReturn();
+
+        $counts = [
+            'all' => (clone $countsQuery)->count(),
+            'active' => (clone $countsQuery)->where('status', 'active')->count(),
+            'inactive' => (clone $countsQuery)->where('status', 'inactive')->count(),
+            'female' => (clone $countsQuery)->whereRaw('LOWER(gender) = ?', ['female'])->count(),
+        ];
+
         // 1. تمرير الاستعلام عبر سلسلة الفلاتر (Pipeline Pattern)
         $query = app(Pipeline::class)
             ->send(Worker::query()->with(['media', 'services']))
@@ -71,7 +88,16 @@ class WorkerController extends Controller
         $perPage = (int) $request->input('per_page', 10);
         $workers = $query->paginate($perPage)->withQueryString();
 
-        return $this->successResponse(WorkerListResource::collection($workers), __('messages.workers_retrieved_successfully'));
+        return $this->successResponse([
+            'items' => WorkerListResource::collection($workers),
+            'counts' => $counts,
+            'meta' => [
+                'current_page' => $workers->currentPage(),
+                'last_page' => $workers->lastPage(),
+                'per_page' => $workers->perPage(),
+                'total' => $workers->total(),
+            ],
+        ], __('messages.workers_retrieved_successfully'));
     }
 
     /**

@@ -32,19 +32,26 @@ class ValidateBookingRequest extends FormRequest
         $mergeData['child_age_groups'] = $this->parseChildAgeGroups();
 
         if ($service) {
-            if (! $this->filled('duration')) {
-                $mergeData['duration'] = $service->min_duration ?: ($service->default_duration ?? 4);
-            }
-
-            if (! $this->filled('workers_count')) {
-                $mergeData['workers_count'] = $service->min_workers ?? 1;
-            }
-
             $genderOptions = $service->worker_gender_options ?? [];
-            if ($service->service_code === 'DOMESTIC_HELPER_HOURLY' || $service->service_code === 'BABYSITTER_HOURLY' || $service->service_code === 'PEDICURE_MANICURE' || (count($genderOptions) === 1 && $genderOptions[0] === 'Female')) {
-                $mergeData['worker_gender'] = 'Female';
-            } elseif (! $this->filled('worker_gender')) {
-                $mergeData['worker_gender'] = count($genderOptions) > 0 ? $genderOptions[0] : 'Female';
+            if ($service->service_code === 'DEEP_CLEANING') {
+                $mergeData['duration'] = $service->default_duration ?? 6;
+                $mergeData['workers_count'] = $service->min_workers ?? 6;
+                $mergeData['visit_type'] = 'single_visit';
+                $mergeData['worker_gender'] = in_array('Male', $genderOptions) ? 'Male' : (count($genderOptions) > 0 ? $genderOptions[0] : 'Male');
+            } else {
+                if (! $this->filled('duration')) {
+                    $mergeData['duration'] = $service->min_duration ?: ($service->default_duration ?? 4);
+                }
+
+                if (! $this->filled('workers_count')) {
+                    $mergeData['workers_count'] = $service->min_workers ?? 1;
+                }
+
+                if ($service->service_code === 'DOMESTIC_HELPER_HOURLY' || $service->service_code === 'BABYSITTER_HOURLY' || $service->service_code === 'PEDICURE_MANICURE' || (count($genderOptions) === 1 && $genderOptions[0] === 'Female')) {
+                    $mergeData['worker_gender'] = 'Female';
+                } elseif (! $this->filled('worker_gender')) {
+                    $mergeData['worker_gender'] = count($genderOptions) > 0 ? $genderOptions[0] : 'Female';
+                }
             }
         }
 
@@ -244,7 +251,9 @@ class ValidateBookingRequest extends FormRequest
                     return;
                 }
 
-                if ($service->service_code !== 'BABYSITTER_HOURLY') {
+                $isDeepCleaning = ($service->service_code === 'DEEP_CLEANING');
+
+                if (! $isDeepCleaning && $service->service_code !== 'BABYSITTER_HOURLY') {
                     $workersCount = (int) $this->input('workers_count');
                     $minWorkers = $service->min_workers ?? 1;
                     $maxWorkers = $service->max_workers ?? 3;

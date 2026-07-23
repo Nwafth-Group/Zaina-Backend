@@ -20,7 +20,16 @@ class RoleController extends Controller
     public function index()
     {
         $roles = Role::with('permissions')->withCount('users')->get();
-        return $this->successResponse(RoleResource::collection($roles),__('messages.roles_retrieved'));
+        $counts = [
+            'all' => Role::count(),
+            'active' => Role::where('status', 'active')->count(),
+            'inactive' => Role::where('status', 'inactive')->count(),
+        ];
+
+        return $this->successResponse([
+            'items' => RoleResource::collection($roles),
+            'counts' => $counts,
+        ], __('messages.roles_retrieved'));
     }
 
     /**

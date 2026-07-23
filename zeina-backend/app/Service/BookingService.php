@@ -107,7 +107,11 @@ class BookingService
         $pricePerPeriod = (float) $servicePrice->price_per_service_period;
         $workersCount = count($workerIds);
         $periodsCount = (int) $data['periods_count'];
-        $subtotal = $pricePerPeriod * $periodsCount * $workersCount;
+        if ($service->service_code === 'DEEP_CLEANING') {
+            $subtotal = $pricePerPeriod * $periodsCount;
+        } else {
+            $subtotal = $pricePerPeriod * $periodsCount * $workersCount;
+        }
 
         // 6. ميكانيكية الكوبونات
         $discountAmount = 0;

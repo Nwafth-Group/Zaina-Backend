@@ -237,7 +237,7 @@ class StoreServiceRequest extends CustomFormRequest
                     $isSecondService = true;
                 } elseif ($serviceCode === 'BABYSITTER_HOURLY') {
                     $isThirdService = true;
-                } elseif ($serviceCode === 'PEDICURE_MANICURE' || $this->input('type') === 'other') {
+                } elseif ($serviceCode === 'PEDICURE_MANICURE' || $serviceCode === 'DEEP_CLEANING' || $this->input('type') === 'other') {
                     $isPedicureManicure = true;
                 } elseif ($categoryId) {
                     $category = Category::find($categoryId);
@@ -249,7 +249,7 @@ class StoreServiceRequest extends CustomFormRequest
                         if (str_contains($catEn, 'babysitting') || str_contains($catEn, 'nanny') || str_contains($category->name_ar, 'أطفال') || str_contains($catEn, 'babysitter')) {
                             $isThirdService = true;
                         }
-                        if (str_contains($catEn, 'other') || str_contains($category->name_ar, 'أخرى') || str_contains($catEn, 'pedicure') || str_contains($category->name_ar, 'أقدام')) {
+                        if (str_contains($catEn, 'other') || str_contains($category->name_ar, 'أخرى') || str_contains($catEn, 'pedicure') || str_contains($category->name_ar, 'أقدام') || str_contains($catEn, 'deep') || str_contains($category->name_ar, 'عميق')) {
                             $isPedicureManicure = true;
                         }
                     }
@@ -358,8 +358,8 @@ class StoreServiceRequest extends CustomFormRequest
                         $validator->errors()->add('pricing_type', $isAr ? 'نوع التسعير لهذه الخدمة يجب أن يكون دائماً بالزيارة/الخدمة وليس بالساعة.' : 'For this service, the pricing type must always be per service.');
                     }
                     $genderOpts = $this->input('worker_gender_options', []);
-                    if (empty($genderOpts) || count($genderOpts) !== 1 || !in_array('Female', $genderOpts)) {
-                        $validator->errors()->add('worker_gender_options', $isAr ? 'خيار الجنس لهذه الخدمة يجب أن يكون للإناث فقط.' : 'Worker gender option for this service must be Female only.');
+                    if (empty($genderOpts)) {
+                        $validator->errors()->add('worker_gender_options', $isAr ? 'خيار الجنس لهذه الخدمة يجب تحديده.' : 'Worker gender option must be selected.');
                     }
                 } elseif ($this->filled('pricing_type') && ! $isSecondService && ! $isThirdService) {
                     $validator->errors()->add('pricing_type', 'Pricing type configuration is only allowed for the Hospitality and Babysitting services.');

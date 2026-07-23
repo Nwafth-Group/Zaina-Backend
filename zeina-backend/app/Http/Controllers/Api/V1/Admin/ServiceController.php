@@ -30,7 +30,7 @@ class ServiceController extends Controller
     {
         // Filter the listing through the Pipeline (one class per filter).
         $query = app(Pipeline::class)
-            ->send(Service::query()->with(['category', 'media', 'startingPrice']))
+            ->send(Service::query()->with(['category', 'media', 'startingPrice', 'workers']))
             ->through([
                 SearchFilter::class,
                 StatusFilter::class,
