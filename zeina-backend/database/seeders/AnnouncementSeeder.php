@@ -34,13 +34,13 @@ class AnnouncementSeeder extends Seeder
             ],
             [
                 'title' => 'Announcement. New offer coming 2025',
-                'body' => 'We are thrilled to introduce the launch of our brand-new home luxury packages! Designed to make your seasonal deep cleaning tasks simpler, faster, and more efficient. This marks a significant step toward enhancing your experience with Zeinah.',
+                'body' => 'We are thrilled to introduce the launch of our brand-new home luxury packages! Designed to make your seasonal deep cleaning tasks simpler, faster, and more efficient. This marks a significant step toward enhancing your experience with Ziena.',
                 'created_at' => now()->subDays(1),
                 'updated_at' => now()->subDays(1),
             ],
             [
                 'title' => 'Announcement. New offer coming 2024',
-                'body' => 'Get ready for the biggest discount event of the year. Zeinah Application offers up to 40% off on all premium beauty and home care services for a limited time. Don\'t miss out and schedule your slot today!',
+                'body' => 'Get ready for the biggest discount event of the year. Ziena Application offers up to 40% off on all premium beauty and home care services for a limited time. Don\'t miss out and schedule your slot today!',
                 'created_at' => now()->subYears(1),
                 'updated_at' => now()->subYears(1),
             ],

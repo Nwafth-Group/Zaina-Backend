@@ -2,8 +2,10 @@
 
 namespace Database\Seeders;
 
+use App\Models\Booking;
 use App\Models\Review;
 use App\Models\Service;
+use App\Models\User;
 use Illuminate\Database\Seeder;
 
 class ReviewServcieAndWorkerSeeder extends Seeder
@@ -13,48 +15,49 @@ class ReviewServcieAndWorkerSeeder extends Seeder
      */
     public function run(): void
     {
-        // يمكنك هنا إنشاء مراجعات وهمية للخدمات والعاملين باستخدام Factories أو بشكل يدوي
-        // مثال:
-        // Review::factory()->count(50)->create(); // إذا كان لديك Factory معد للمراجعات
+        $services = Service::all();
+        $customer = User::where('type', 'customer')->first() ?? User::first();
 
-        Review::firstOrCreate([
-            'booking_id' => 1,
-            'reviewable_type' => Service::class,
-            'reviewable_id' => 1,
-        ], [
-            'customer_id' => 1,
-            'rating' => 5,
-            'comment' => 'خدمة ممتازة!',
-        ]);
+        $comments = [
+            'خدمة ممتازة جداً وطاقم عمل احترافي وملتزم بالمواعيد.',
+            'تجربة رائعة وسرعة في الإنجاز، أنصح بالتعامل معهم بشدة.',
+            'نظافة عالية ودقة متناهية في التفاصيل، شكرًا لكم.',
+            'خدمة ممتازة وأسعار مناسبة جداً مقارنة بالجودة المقدمة.',
+            'انضباط تام وأسلوب راقي من فريق العمل.',
+        ];
 
-        Review::firstOrCreate([
-            'booking_id' => 2,
-            'reviewable_type' => Service::class,
-            'reviewable_id' => 2,
-        ], [
-            'customer_id' => 1,
-            'rating' => 4,
-            'comment' => 'خدمة جيدة ولكن يمكن تحسينها.',
-        ]);
+        foreach ($services as $service) {
+            $booking = Booking::where('service_id', $service->id)->first();
+            $bookingId = $booking ? $booking->id : null;
+            $customerId = $booking ? $booking->customer_id : ($customer ? $customer->id : 1);
 
-        Review::firstOrCreate([
-            'booking_id' => 3,
-            'reviewable_type' => Service::class,
-            'reviewable_id' => 1,
-        ], [
-            'customer_id' => 2,
-            'rating' => 3,
-            'comment' => 'الخدمة كانت متوسطة.',
-        ]);
+            for ($i = 1; $i <= 3; $i++) {
+                $rating = rand(4, 5);
+                Review::firstOrCreate(
+                    [
+                        'reviewable_type' => Service::class,
+                        'reviewable_id' => $service->id,
+                        'comment' => $comments[($service->id + $i) % count($comments)],
+                    ],
+                    [
+                        'booking_id' => $bookingId,
+                        'customer_id' => $customerId,
+                        'rating' => $rating,
+                        'rating_percentage' => ($rating / 5) * 100,
+                        'status' => 'approved',
+                    ]
+                );
+            }
 
-        Review::firstOrCreate([
-            'booking_id' => 4,
-            'reviewable_type' => Service::class,
-            'reviewable_id' => 2,
-        ], [
-            'customer_id' => 2,
-            'rating' => 2,
-            'comment' => 'الخدمة لم تكن كما توقعت.',
-        ]);
+            // Sync average rating for the service
+            $avg = Review::where('reviewable_type', Service::class)
+                ->where('reviewable_id', $service->id)
+                ->where('status', 'approved')
+                ->avg('rating');
+
+            if ($avg) {
+                $service->update(['avg_rating' => round((float) $avg, 2)]);
+            }
+        }
     }
 }

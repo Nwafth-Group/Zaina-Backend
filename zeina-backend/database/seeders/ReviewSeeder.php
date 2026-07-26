@@ -85,6 +85,7 @@ class ReviewSeeder extends Seeder
                             'customer_id' => $booking->customer_id,
                             'rating' => $rating,
                             'comment' => $this->commentFor($rating),
+                            'status' => 'approved',
                         ]
                     );
                     $reviewedServiceIds[$booking->service_id] = true;
@@ -104,10 +105,40 @@ class ReviewSeeder extends Seeder
                             'customer_id' => $booking->customer_id,
                             'rating' => $rating,
                             'comment' => $this->commentFor($rating),
+                            'status' => 'approved',
                         ]
                     );
                     $reviewedWorkerIds[$worker->id] = true;
                     $reviewCount++;
+                }
+            }
+
+            // Ensure EVERY service in the database has approved reviews
+            $allServices = Service::all();
+            foreach ($allServices as $svc) {
+                $hasApprovedReview = Review::where('reviewable_type', Service::class)
+                    ->where('reviewable_id', $svc->id)
+                    ->where('status', 'approved')
+                    ->exists();
+
+                if (! $hasApprovedReview) {
+                    $testBooking = Booking::where('service_id', $svc->id)->first();
+                    $customerId = $testBooking ? $testBooking->customer_id : (Booking::first()->customer_id ?? 1);
+
+                    for ($r = 1; $r <= 3; $r++) {
+                        $rating = rand(4, 5);
+                        Review::create([
+                            'booking_id' => $testBooking ? $testBooking->id : null,
+                            'reviewable_type' => Service::class,
+                            'reviewable_id' => $svc->id,
+                            'customer_id' => $customerId,
+                            'rating' => $rating,
+                            'comment' => $this->positiveComments[($svc->id + $r) % count($this->positiveComments)],
+                            'status' => 'approved',
+                        ]);
+                    }
+                    $reviewedServiceIds[$svc->id] = true;
+                    $reviewCount += 3;
                 }
             }
 
@@ -139,6 +170,7 @@ class ReviewSeeder extends Seeder
         foreach ($ids as $id) {
             $average = Review::where('reviewable_type', $reviewableType)
                 ->where('reviewable_id', $id)
+                ->where('status', 'approved')
                 ->avg('rating');
 
             $reviewableType::where('id', $id)->update([
