@@ -12,12 +12,15 @@ class TransportDispatchService
     /**
      * Get aggregated region list for a given service date.
      */
-    public function getDailyOverview(string $date, ?string $governorate = null, ?string $area = null, ?string $startTime = null, ?string $status = null)
+    public function getDailyOverview(?string $date = null, ?string $governorate = null, ?string $area = null, ?string $startTime = null, ?string $status = null)
     {
         $query = Booking::query()
             ->with(['address.serviceZone', 'assignedWorkers', 'workers', 'service'])
-            ->whereDate('booking_date', $date)
-            ->whereIn('status', ['upcoming', 'confirmed', 'in_progress', 'completed', 'pending']);
+            ->whereNotIn('status', ['cancelled', 'Cancelled', 'refunded', 'Refunded']);
+
+        if (!empty($date)) {
+            $query->whereDate('booking_date', $date);
+        }
 
         if ($governorate) {
             $query->whereHas('address', function ($q) use ($governorate) {
@@ -81,7 +84,7 @@ class TransportDispatchService
             $areaName = $data['area'];
 
             // Fetch existing groups for this region and date
-            $existingGroups = TransportGroup::where('service_date', $date)
+            $existingGroups = TransportGroup::when(!empty($date), fn($q) => $q->where('service_date', $date))
                 ->where('governorate', $governorate)
                 ->where('area_name', $areaName)
                 ->get();
@@ -131,7 +134,7 @@ class TransportDispatchService
         $bookings = Booking::query()
             ->with(['address.serviceZone', 'assignedWorkers', 'workers', 'service', 'customer'])
             ->whereDate('booking_date', $date)
-            ->whereIn('status', ['upcoming', 'confirmed', 'in_progress', 'completed', 'pending'])
+            ->whereNotIn('status', ['cancelled', 'Cancelled', 'refunded', 'Refunded'])
             ->get();
 
         // Filter by governorate / area
@@ -176,15 +179,26 @@ class TransportDispatchService
                 if ($workers->count() > 0) {
                     foreach ($workers as $w) {
                         $workersCount++;
+                        $custName = $b->customer?->full_name 
+                            ?? (trim(($b->customer?->first_name ?? '') . ' ' . ($b->customer?->last_name ?? '')) ?: null)
+                            ?? $b->customer?->name 
+                            ?? '—';
+                        $custPhone = $b->customer?->phone_number ?? $b->customer?->mobile ?? $b->customer?->phone ?? $b->address?->phone_number ?? '—';
+                        $workerPhone = $w->phone_number ?? $w->mobile ?? $w->phone ?? '—';
+
                         $workersList[] = [
                             'id' => $w->id,
-                            'name' => $w->name ?? ($w->first_name . ' ' . $w->last_name),
-                            'mobile' => $w->mobile ?? $w->phone ?? '—',
+                            'name' => $w->name ?? trim(($w->first_name ?? '') . ' ' . ($w->last_name ?? '')),
+                            'mobile' => $workerPhone,
+                            'phone' => $workerPhone,
                             'address' => $w->address ?? 'سكن العاملات الرئيسي',
+                            'customer_name' => $custName,
+                            'customer_phone' => $custPhone,
                             'service_name' => $b->service?->name_ar ?? $b->service?->name_en ?? '—',
                             'service_name_ar' => $b->service?->name_ar ?? '—',
                             'service_name_en' => $b->service?->name_en ?? $b->service?->name_ar ?? '—',
                             'service_address' => $serviceAddr,
+                            'visit_time' => substr($b->start_time ?? '09:00', 0, 5) . ($b->end_time ? ' - ' . substr($b->end_time, 0, 5) : ''),
                             'booking_id' => $b->id,
                             'booking_number' => $b->booking_ref ?? ('BKG-' . $b->id),
                         ];
@@ -208,11 +222,16 @@ class TransportDispatchService
                 'notes' => $group->notes,
                 'status' => $group->status,
                 'bookings' => $batchBookings->map(function ($b) {
+                    $custName = $b->customer?->full_name 
+                        ?? (trim(($b->customer?->first_name ?? '') . ' ' . ($b->customer?->last_name ?? '')) ?: null)
+                        ?? $b->customer?->name 
+                        ?? '—';
+                    $custPhone = $b->customer?->phone_number ?? $b->customer?->mobile ?? $b->customer?->phone ?? $b->address?->phone_number ?? '—';
                     return [
                         'id' => $b->id,
                         'booking_number' => $b->booking_ref ?? ('BKG-' . $b->id),
-                        'customer_name' => $b->customer?->name ?? '—',
-                        'customer_phone' => $b->customer?->mobile ?? $b->address?->phone_number ?? '—',
+                        'customer_name' => $custName,
+                        'customer_phone' => $custPhone,
                         'service_name' => $b->service?->name_ar ?? $b->service?->name_en ?? '—',
                         'service_address' => $b->address?->formatted_address ?? $b->address?->street ?? '—',
                         'start_time' => substr($b->start_time ?? '09:00', 0, 5),

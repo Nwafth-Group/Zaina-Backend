@@ -18,7 +18,7 @@ class TransportDispatchController extends Controller
 
     public function dailyOverview(Request $request)
     {
-        $date = $request->input('service_date', date('Y-m-d'));
+        $date = $request->filled('service_date') ? $request->input('service_date') : null;
         $governorate = $request->input('governorate');
         $area = $request->input('area');
         $startTime = $request->input('start_time');

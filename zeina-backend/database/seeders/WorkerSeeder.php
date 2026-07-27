@@ -27,6 +27,8 @@ class WorkerSeeder extends Seeder
                 $randomService = $services->random();
                 if (in_array($randomService->service_code, ['DOMESTIC_HELPER_HOURLY', 'BABYSITTER_HOURLY', 'PEDICURE_MANICURE'])) {
                     $worker->update(['gender' => 'female']);
+                } elseif ($randomService->service_code === 'DEEP_CLEANING' || $index % 5 === 0) {
+                    $worker->update(['gender' => 'male']);
                 }
                 $worker->services()->attach([$randomService->id]);
 

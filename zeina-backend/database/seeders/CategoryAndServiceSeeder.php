@@ -200,18 +200,7 @@ class CategoryAndServiceSeeder extends Seeder
                         'required_worker_count' => 1,
                         'status' => 'active',
                         'note' => '1 babysitter for every 2 children (1 جليسة لكل 2 أطفال)',
-                    ],
-                    [
-                        'name_ar' => 'أكبر من 3 سنوات',
-                        'name_en' => 'Over 3 Years',
-                        'age_from' => 36,
-                        'age_to' => 1200,
-                        'calculation_type' => 'ratio_based',
-                        'children_count' => 3,
-                        'required_worker_count' => 2,
-                        'status' => 'active',
-                        'note' => '2 babysitters for every 3 children (2 جليسة لكل 3 أطفال)',
-                    ],
+                    ]
                 ];
             }
 
