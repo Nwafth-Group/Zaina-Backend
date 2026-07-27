@@ -67,7 +67,7 @@ class BookingService
         $discountAmount = 0;
         $coupon = null;
 
-        if (! empty($data['coupon_code'])) {
+        if (!empty($data['coupon_code'])) {
             $now = now();
             $coupon = Coupon::where('code', $data['coupon_code'])
                 ->where('status', 'active')
@@ -75,7 +75,7 @@ class BookingService
                 ->where('end_date', '>=', $now)
                 ->first();
 
-            if (! $coupon) {
+            if (!$coupon) {
                 throw new \Exception(__('messages.invalid_or_expired_coupon'), 422);
             }
 
@@ -131,7 +131,7 @@ class BookingService
                 ->exists();
 
             $booking = Booking::create([
-                'booking_ref' => 'HC-'.rand(100000, 999999),
+                'booking_ref' => 'HC-' . rand(100000, 999999),
                 'customer_id' => $user->id,
                 'service_id' => $data['service_id'],
                 'address_id' => $data['address_id'],
@@ -155,8 +155,8 @@ class BookingService
                 $user->pointTransactions()->create([
                     'type' => 'redeem',
                     'amount' => (int) ceil($total),
-                    'title_ar' => 'دفع مقابل حجز برقم مرجعي: '.$booking->booking_ref,
-                    'title_en' => 'Payment for Booking Ref: '.$booking->booking_ref,
+                    'title_ar' => 'دفع مقابل حجز برقم مرجعي: ' . $booking->booking_ref,
+                    'title_en' => 'Payment for Booking Ref: ' . $booking->booking_ref,
                 ]);
             } elseif ($paymentMethod === 'wallet') {
                 $user->withdraw($total, 'Payment - Booking', $booking->booking_ref);
@@ -199,7 +199,7 @@ class BookingService
         $booking = Booking::with(['service.rules', 'workers', 'visits', 'customer'])->findOrFail($bookingId);
 
         // Ownership validation (bypassed for admin)
-        if (! $isAdmin && $booking->customer_id !== $userId) {
+        if (!$isAdmin && $booking->customer_id !== $userId) {
             throw new \Exception(__('messages.unauthorized') ?? 'Unauthorized', 403);
         }
 
@@ -258,8 +258,8 @@ class BookingService
                 'old_status' => 'Upcoming',
                 'new_status' => 'Upcoming',
                 'note' => $isAdmin
-                    ? 'Rescheduled by admin. New schedule starts on: '.$sortedDates[0].' at '.$newStart->format('h:i A')
-                    : 'Rescheduled by customer. New schedule starts on: '.$sortedDates[0].' at '.$newStart->format('h:i A'),
+                    ? 'Rescheduled by admin. New schedule starts on: ' . $sortedDates[0] . ' at ' . $newStart->format('h:i A')
+                    : 'Rescheduled by customer. New schedule starts on: ' . $sortedDates[0] . ' at ' . $newStart->format('h:i A'),
                 'created_by' => $isAdmin ? $userId : $booking->customer_id,
             ]);
 
@@ -284,7 +284,7 @@ class BookingService
 
         // Allow reschedule rule check (bypassed for admin)
         $rules = $booking->service->rules;
-        if (! $isAdmin && $rules && isset($rules->allow_reschedule) && ! $rules->allow_reschedule) {
+        if (!$isAdmin && $rules && isset($rules->allow_reschedule) && !$rules->allow_reschedule) {
             throw new \Exception(__('messages.rescheduling_not_allowed'), 400);
         }
 
@@ -297,17 +297,17 @@ class BookingService
         }
 
         // Cut-off timing validation (bypassed for admin)
-        if (! $isAdmin) {
+        if (!$isAdmin) {
             $cutoffHours = $rules ? (int) $rules->reschedule_cutoff_hours : 0;
 
             $earliestVisit = null;
             if ($booking->relationLoaded('visits') && $booking->visits && $booking->visits->isNotEmpty()) {
-                $earliestVisit = $booking->visits->sortBy(fn ($v) => $v->visit_date.' '.$v->start_time)->first();
+                $earliestVisit = $booking->visits->sortBy(fn($v) => $v->visit_date . ' ' . $v->start_time)->first();
             }
 
             $earliestDateTimeStr = $earliestVisit
-                ? ($earliestVisit->visit_date.' '.$earliestVisit->start_time)
-                : ($booking->booking_date.' '.$booking->start_time);
+                ? ($earliestVisit->visit_date . ' ' . $earliestVisit->start_time)
+                : ($booking->booking_date . ' ' . $booking->start_time);
 
             $earliestDateTime = Carbon::parse($earliestDateTimeStr);
 
@@ -323,7 +323,7 @@ class BookingService
                 throw new \Exception(__('messages.select_exactly_3_dates'), 400);
             }
             // Check all 3 belong to the same week
-            $weeks = collect($dates)->map(fn ($d) => Carbon::parse($d)->startOfWeek(Carbon::SATURDAY)->toDateString())->unique();
+            $weeks = collect($dates)->map(fn($d) => Carbon::parse($d)->startOfWeek(Carbon::SATURDAY)->toDateString())->unique();
             if ($weeks->count() > 1) {
                 throw new \Exception(__('messages.dates_must_belong_to_same_week'), 400);
             }
@@ -361,7 +361,7 @@ class BookingService
                 }
             }
 
-            if (! $isValidShift) {
+            if (!$isValidShift) {
                 throw new \Exception(__('messages.time_slot_outside_shifts', ['date' => $date]), 422);
             }
         }
@@ -379,7 +379,7 @@ class BookingService
                         break;
                     }
                 }
-                if (! $isBusy) {
+                if (!$isBusy) {
                     $availableAssigned->push($worker);
                 }
             }
@@ -403,7 +403,7 @@ class BookingService
                         break;
                     }
                 }
-                if (! $isBusy) {
+                if (!$isBusy) {
                     $otherAvailableWorkers->push($worker);
                 }
             }
@@ -451,7 +451,7 @@ class BookingService
         $booking = Booking::with(['service.rules', 'visits', 'customer'])->findOrFail($bookingId);
 
         // 1. Ownership validation (bypassed for admin)
-        if (! $isAdmin && $booking->customer_id !== $userId) {
+        if (!$isAdmin && $booking->customer_id !== $userId) {
             throw new \Exception(__('messages.unauthorized') ?? 'Unauthorized', 403);
         }
 
@@ -511,7 +511,7 @@ class BookingService
                 'booking_id' => $booking->id,
                 'old_status' => 'Upcoming',
                 'new_status' => 'cancelled',
-                'note' => $isAdmin ? 'Cancelled by admin. Reason: '.$reason : 'Cancelled by customer. Reason: '.$reason,
+                'note' => $isAdmin ? 'Cancelled by admin. Reason: ' . $reason : 'Cancelled by customer. Reason: ' . $reason,
                 'created_by' => $isAdmin ? $userId : $booking->customer_id,
             ]);
 
@@ -522,8 +522,8 @@ class BookingService
                     $customer->pointTransactions()->create([
                         'type' => 'earn',
                         'amount' => $refundPoints,
-                        'title_ar' => 'استرداد نقاط للحجز رقم: '.$booking->booking_ref,
-                        'title_en' => 'Refund points for Booking Ref: '.$booking->booking_ref,
+                        'title_ar' => 'استرداد نقاط للحجز رقم: ' . $booking->booking_ref,
+                        'title_en' => 'Refund points for Booking Ref: ' . $booking->booking_ref,
                     ]);
                 } elseif ($refundDestination === 'wallet') {
                     $customer->deposit($refundAmount, 'Refund - Cancelled Booking', $booking->booking_ref);
@@ -541,7 +541,7 @@ class BookingService
                         $body = $lang === 'en'
                             ? "Your booking {$booking->booking_ref} has been cancelled by Admin."
                             : "تم إلغاء حجزك رقم {$booking->booking_ref} بواسطة الإدارة.";
-                        
+
                         $booking->customer->notify(new \App\Notifications\BookingNotification(
                             $title,
                             $body,
@@ -601,19 +601,19 @@ class BookingService
         $rules = $booking->service->rules;
 
         // Cut-off time validation (bypassed for admin)
-        if (! $isAdmin && $rules) {
-            if (! $rules->allow_cancel) {
+        if (!$isAdmin && $rules) {
+            if (!$rules->allow_cancel) {
                 throw new \Exception('Cancellation is not allowed for this service.', 400);
             }
 
             $earliestVisit = null;
             if ($booking->relationLoaded('visits') && $booking->visits && $booking->visits->isNotEmpty()) {
-                $earliestVisit = $booking->visits->sortBy(fn ($v) => $v->visit_date.' '.$v->start_time)->first();
+                $earliestVisit = $booking->visits->sortBy(fn($v) => $v->visit_date . ' ' . $v->start_time)->first();
             }
 
             $earliestDateTimeStr = $earliestVisit
-                ? ($earliestVisit->visit_date.' '.$earliestVisit->start_time)
-                : ($booking->booking_date.' '.$booking->start_time);
+                ? ($earliestVisit->visit_date . ' ' . $earliestVisit->start_time)
+                : ($booking->booking_date . ' ' . $booking->start_time);
 
             $bookingDateTime = Carbon::parse($earliestDateTimeStr);
             $cutoffHours = (int) $rules->free_cancel_cutoff_hours;
@@ -649,7 +649,7 @@ class BookingService
         }
 
         // 3. إنشاء رقم تذكرة فريد
-        $reportNumber = 'REP-'.date('Ymd').'-'.strtoupper(Str::random(4));
+        $reportNumber = 'REP-' . date('Ymd') . '-' . strtoupper(Str::random(4));
 
         // 4. إنشاء ريكورد البلاغ
         $report = Report::create([
@@ -676,7 +676,7 @@ class BookingService
             $admins = User::whereIn('type', ['super_admin', 'operation'])->get();
             Notification::send($admins, new ReportNotification($report, 'submitted'));
         } catch (\Exception $ex) {
-            Log::error('Failed to send report notification to admins: '.$ex->getMessage());
+            Log::error('Failed to send report notification to admins: ' . $ex->getMessage());
         }
 
         return $report;

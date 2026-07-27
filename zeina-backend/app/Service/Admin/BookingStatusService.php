@@ -47,8 +47,8 @@ class BookingStatusService
         }
 
         if ($status === BookingStatus::Completed) {
-            $start = Carbon::parse($booking->booking_date.' '.$booking->start_time, 'Africa/Cairo');
-            $end = Carbon::parse($booking->booking_date.' '.$booking->end_time, 'Africa/Cairo');
+            $start = Carbon::parse($booking->booking_date . ' ' . $booking->start_time, 'Africa/Cairo');
+            $end = Carbon::parse($booking->booking_date . ' ' . $booking->end_time, 'Africa/Cairo');
             if ($end->lt($start)) {
                 $end->addDay();
             }
@@ -78,7 +78,7 @@ class BookingStatusService
                 'created_by' => $actor->id,
             ]);
 
-             if ($status === BookingStatus::Completed) {
+            if ($status === BookingStatus::Completed) {
                 \App\Service\LoyaltyPointService::awardPointsForCompletedBooking($booking);
             }
 

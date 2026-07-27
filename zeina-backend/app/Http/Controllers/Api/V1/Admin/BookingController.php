@@ -20,6 +20,7 @@ use App\Http\Resources\Api\V1\Booking\AdminBookingDetailResource;
 use App\Http\Resources\Api\V1\Booking\AdminBookingResource;
 use App\Notifications\BookingNotification;
 use App\Models\Booking;
+use App\Models\CompanyInfo;
 use App\Models\Worker;
 use App\Models\BookingAssignment;
 use App\Models\BookingHistory;
@@ -110,7 +111,7 @@ class BookingController extends Controller
     public function export(Request $request)
     {
         $query = app(Pipeline::class)
-            ->send(Booking::query()->with(['customer', 'service', 'workers', 'address.serviceZone']))
+            ->send(Booking::query()->with(['customer', 'service', 'workers', 'address.serviceZone', 'visits']))
             ->through([
                 SearchFilter::class,
                 StatusFilter::class,
@@ -131,10 +132,10 @@ class BookingController extends Controller
 
         $bookings = $query->get();
 
-        $filename = 'bookings_export_'.now()->format('Y-m-d_Hi').'.csv';
+        $filename = 'bookings_export_'.now()->format('Y-m-d_Hi').'.xls';
 
         $headers = [
-            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
             'Pragma' => 'no-cache',
             'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
@@ -142,73 +143,116 @@ class BookingController extends Controller
         ];
 
         $callback = function () use ($bookings) {
-            $file = fopen('php://output', 'w');
-            // Write UTF-8 BOM so Microsoft Excel opens Arabic text correctly
-            fputs($file, "\xEF\xBB\xBF");
+            $company = CompanyInfo::first();
+            $companyName = $company?->name_ar ?? 'زينة للخدمات المنزلية';
 
-            // CSV Header
-            fputcsv($file, [
-                'ID',
-                'Booking Ref (رقم مرجعي)',
-                'Customer Name (اسم العميل)',
-                'Customer Phone (هاتف العميل)',
-                'Customer Email (إيميل العميل)',
-                'Service Name (اسم الخدمة)',
-                'Service Code (كود الخدمة)',
-                'Assigned Workers (العمال المخصصين)',
-                'City (المدينة)',
-                'Area (المنطقة)',
-                'Detailed Address (العنوان التفصيلي)',
-                'Booking Date (تاريخ الحجز)',
-                'Start Time (وقت البداية)',
-                'End Time (وقت النهاية)',
-                'Duration (المدة بالساعات)',
-                'Visit Type (نوع الزيارة)',
-                'Workers Count (عدد العمال)',
-                'Subtotal (السعر الفرعي)',
-                'Discount (الخصم)',
-                'Tax (الضريبة)',
-                'Total Amount (الإجمالي)',
-                'Payment Method (طريقة الدفع)',
-                'Payment Status (حالة الدفع)',
-                'Booking Status (حالة الحجز)',
-                'Created At (تاريخ الإنشاء)',
-            ]);
+            $currentDateStr = now()->locale('ar')->isoFormat('dddd، D MMMM YYYY - h:mm A');
+            $totalCount = $bookings->count();
+            $totalAmountSum = number_format($bookings->sum('total_amount'), 2);
 
-            foreach ($bookings as $b) {
-                $customerName = $b->customer ? trim($b->customer->first_name.' '.($b->customer->last_name ?? '')) : 'N/A';
+            echo '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
+            echo '<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8">';
+            echo '<style>';
+            echo 'body { font-family: "Segoe UI", Tahoma, Arial, sans-serif; direction: rtl; }';
+            echo 'table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }';
+            echo 'th, td { border: 1px solid #CBD5E1; padding: 10px 14px; text-align: center; vertical-align: middle; }';
+            echo '.header-brand { background-color: #E91E63; color: #FFFFFF; font-size: 22px; font-weight: bold; text-align: center; padding: 16px; }';
+            echo '.header-meta { background-color: #FDF0F3; color: #881337; font-size: 15px; font-weight: bold; text-align: center; padding: 12px; border: 1px solid #F43F5E; }';
+            echo '.th-column { background-color: #D94A78; color: #FFFFFF; font-size: 14px; font-weight: bold; text-align: center; padding: 12px; }';
+            echo '.tr-even { background-color: #F8FAFC; }';
+            echo '.tr-odd { background-color: #FFFFFF; }';
+            echo '</style></head>';
+            echo '<body dir="rtl">';
+
+            echo '<table>';
+            echo '<tr><td colSpan="33" class="header-brand">👑 '.$companyName.' — Zeina Home Services</td></tr>';
+            echo '<tr><td colSpan="33" class="header-meta">📅 <b>تاريخ ووقت التصدير:</b> '.$currentDateStr.'</td></tr>';
+            echo '<tr><td colSpan="33" class="header-meta">📊 <b>إجمالي عدد الحجوزات:</b> '.$totalCount.' حجز &nbsp;|&nbsp; <b>إجمالي المبالغ:</b> '.$totalAmountSum.' EGP</td></tr>';
+            echo '<tr><td colSpan="33" style="height: 10px; border: none;"></td></tr>';
+            echo '</table>';
+
+            echo '<table>';
+            echo '<thead><tr>';
+            $cols = [
+                '#', 'رقم مرجعي (Booking Ref)', 'اسم العميل (Customer Name)', 'رقم جوال العميل (Customer Phone)',
+                'إيميل العميل (Customer Email)', 'اسم الخدمة (Service Name)', 'كود الخدمة (Service Code)',
+                'العمال المخصصين (Assigned Workers)', 'جنس العاملة (Worker Gender)', 'عدد العمال (Workers Count)',
+                'عدد الأشخاص (Persons Count)', 'عدد الأطفال (Children Count)', 'المدينة (City)', 'المنطقة (Area)',
+                'العنوان التفصيلي (Detailed Address)', 'تاريخ الحجز (Booking Date)', 'وقت البداية (Start Time)',
+                'وقت النهاية (End Time)', 'المدة (Duration)', 'نوع الزيارة (Visit Type)', 'رقم الزيارة الحالية (Current Visit #)',
+                'عدد الزيارات المتعددة (Visits Count)', 'جدول مواعيد الزيارات (Visits Schedule Details)',
+                'المبلغ الفرعي (Subtotal)', 'قيمة الخصم (Discount)', 'الضريبة (Tax)', 'المبلغ الإجمالي (Total Amount)',
+                'النقاط المستخدمة (Paid Points)', 'طريقة الدفع (Payment Method)', 'حالة الدفع (Payment Status)',
+                'حالة الحجز (Booking Status)', 'ملاحظات العميل (Customer Notes)', 'تاريخ الإنشاء (Created At)'
+            ];
+            foreach ($cols as $col) {
+                echo '<th class="th-column">'.$col.'</th>';
+            }
+            echo '</tr></thead>';
+            echo '<tbody>';
+
+            foreach ($bookings as $idx => $b) {
+                $customerName = $b->customer ? trim(($b->customer->first_name ?? '').' '.($b->customer->last_name ?? '')) : 'N/A';
+                $customerPhone = $b->customer?->phone_number ?? $b->customer?->phone ?? 'N/A';
+                $customerEmail = $b->customer?->email ?? 'N/A';
                 $serviceName = $b->service ? ($b->service->name_ar ?: $b->service->name_en) : 'N/A';
                 $workersNames = $b->workers->isNotEmpty() ? $b->workers->pluck('name')->implode(' | ') : 'N/A';
-                $detailedAddress = $b->address ? trim(($b->address->street ?? '').' '.($b->address->building ?? '').' '.($b->address->floor ?? '')) : 'N/A';
+                $city = $b->address?->city ?? $b->address?->serviceZone?->city ?? 'N/A';
+                $area = $b->address?->serviceZone?->name ?? 'N/A';
+                $detailedAddress = $b->address ? ($b->address->formatted_address ?? trim(($b->address->street ?? '').' '.($b->address->building_name ?? ''))) : 'N/A';
+                $duration = $b->duration_minutes ? round($b->duration_minutes / 60, 1).' ساعة' : 'N/A';
+                $rowClass = ($idx % 2 === 0) ? 'tr-even' : 'tr-odd';
 
-                fputcsv($file, [
-                    $b->id,
-                    $b->booking_ref ?? 'N/A',
-                    $customerName,
-                    $b->customer?->phone ?? 'N/A',
-                    $b->customer?->email ?? 'N/A',
-                    $serviceName,
-                    $b->service?->service_code ?? 'N/A',
-                    $workersNames,
-                    $detailedAddress,
-                    $b->booking_date ?? 'N/A',
-                    $b->start_time ?? 'N/A',
-                    $b->end_time ?? 'N/A',
-                    $b->duration_minutes ? round($b->duration_minutes / 60, 1).' hrs' : 'N/A',
-                    $b->visit_type ?? 'N/A',
-                    $b->number_of_workers ?? 1,
-                    $b->price_subtotal ?? 0,
-                    $b->discount_amount ?? 0,
-                    $b->tax_amount ?? 0,
-                    $b->total_amount ?? 0,
-                    $b->payment_method ?? 'N/A',
-                    $b->payment_status ?? 'N/A',
-                    $b->status ?? 'N/A',
-                    $b->created_at ? $b->created_at->toDateTimeString() : 'N/A',
-                ]);
+                $visitsCount = $b->visits->isNotEmpty() ? $b->visits->count() : 1;
+                $visitsScheduleDetails = '—';
+                if ($b->visits->isNotEmpty()) {
+                    $visitsScheduleDetails = $b->visits->map(function ($v, $i) {
+                        $num = $i + 1;
+                        $vDate = $v->visit_date ?? 'N/A';
+                        $vTime = ($v->start_time && $v->end_time) ? "({$v->start_time} - {$v->end_time})" : '';
+                        $vStatus = $v->status ? "[{$v->status}]" : '';
+                        return "زيارة {$num}: {$vDate} {$vTime} {$vStatus}";
+                    })->implode(' | ');
+                }
+
+                echo '<tr class="'.$rowClass.'">';
+                echo '<td>'.$b->id.'</td>';
+                echo '<td><b>'.htmlspecialchars($b->booking_ref ?? 'N/A').'</b></td>';
+                echo '<td>'.htmlspecialchars($customerName).'</td>';
+                echo '<td dir="ltr">'.htmlspecialchars($customerPhone).'</td>';
+                echo '<td>'.htmlspecialchars($customerEmail).'</td>';
+                echo '<td><b>'.htmlspecialchars($serviceName).'</b></td>';
+                echo '<td>'.htmlspecialchars($b->service?->service_code ?? 'N/A').'</td>';
+                echo '<td>'.htmlspecialchars($workersNames).'</td>';
+                echo '<td>'.htmlspecialchars($b->worker_gender ?? 'N/A').'</td>';
+                echo '<td>'.($b->number_of_workers ?? 1).'</td>';
+                echo '<td>'.($b->number_of_persons ?? '—').'</td>';
+                echo '<td>'.($b->number_of_children ?? '—').'</td>';
+                echo '<td>'.htmlspecialchars($city).'</td>';
+                echo '<td>'.htmlspecialchars($area).'</td>';
+                echo '<td>'.htmlspecialchars($detailedAddress).'</td>';
+                echo '<td>'.htmlspecialchars($b->booking_date ?? 'N/A').'</td>';
+                echo '<td dir="ltr">'.htmlspecialchars($b->start_time ?? 'N/A').'</td>';
+                echo '<td dir="ltr">'.htmlspecialchars($b->end_time ?? 'N/A').'</td>';
+                echo '<td>'.htmlspecialchars($duration).'</td>';
+                echo '<td>'.htmlspecialchars($b->visit_type ?? 'single_visit').'</td>';
+                echo '<td>'.($b->visit_number ?? 1).'</td>';
+                echo '<td><b>'.$visitsCount.'</b></td>';
+                echo '<td>'.htmlspecialchars($visitsScheduleDetails).'</td>';
+                echo '<td>'.number_format($b->price_subtotal ?? 0, 2).'</td>';
+                echo '<td>'.number_format($b->discount_amount ?? 0, 2).'</td>';
+                echo '<td>'.number_format($b->tax_amount ?? 0, 2).'</td>';
+                echo '<td><b>'.number_format($b->total_amount ?? 0, 2).' EGP</b></td>';
+                echo '<td>'.($b->paid_points ?? 0).'</td>';
+                echo '<td>'.htmlspecialchars($b->payment_method ?? 'N/A').'</td>';
+                echo '<td>'.htmlspecialchars($b->payment_status ?? 'N/A').'</td>';
+                echo '<td><b>'.htmlspecialchars($b->status ?? 'N/A').'</b></td>';
+                echo '<td>'.htmlspecialchars($b->customer_notes ?? '—').'</td>';
+                echo '<td>'.($b->created_at ? $b->created_at->format('Y-m-d H:i') : 'N/A').'</td>';
+                echo '</tr>';
             }
 
-            fclose($file);
+            echo '</tbody></table></body></html>';
         };
 
         return response()->stream($callback, 200, $headers);

@@ -6,66 +6,87 @@ use App\Enums\Admin\BookingStatus;
 use App\Enums\Admin\PaymentStatus;
 use App\Models\Booking;
 use App\Models\Service;
+use App\Models\ServiceZone;
 use App\Models\User;
 use App\Models\Worker;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
-/**
- * Builds the admin dashboard statistics. Each metric group is its own method so
- * the responsibilities stay separated and individually testable.
- */
 class DashboardService
 {
     private const TREND_DAYS = 14;
-
     private const TOP_SERVICES = 5;
-
     private const UPCOMING_LIMIT = 5;
-
     private const CURRENCY = 'EGP';
 
-    /**
-     * @return array<string, mixed>
-     */
-    public function stats(): array
+    public function stats(?string $governorate = null, ?int $serviceZoneId = null): array
     {
+        // Available locations for filter dropdown
+        $governorates = ServiceZone::distinct()
+            ->whereNotNull('governorate')
+            ->pluck('governorate')
+            ->values()
+            ->all();
+
+        $serviceZones = ServiceZone::select('id', 'name', 'governorate')
+            ->where('status', 'active')
+            ->get()
+            ->toArray();
+
         return [
-            'cards' => $this->cards(),
-            'bookings_by_status' => $this->countByColumn('status', BookingStatus::values()),
-            'payments_by_status' => $this->countByColumn('payment_status', PaymentStatus::values()),
-            'trend' => $this->trend(),
-            'top_services' => $this->topServices(),
-            'upcoming' => $this->upcoming(),
+            'locations' => [
+                'governorates' => $governorates,
+                'service_zones' => $serviceZones,
+            ],
+            'cards' => $this->cards($governorate, $serviceZoneId),
+            'bookings_by_status' => $this->countByColumn('status', BookingStatus::values(), $governorate, $serviceZoneId),
+            'payments_by_status' => $this->countByColumn('payment_status', PaymentStatus::values(), $governorate, $serviceZoneId),
+            'trend' => $this->trend($governorate, $serviceZoneId),
+            'top_services' => $this->topServices($governorate, $serviceZoneId),
+            'upcoming' => $this->upcoming($governorate, $serviceZoneId),
         ];
     }
 
-    /**
-     * @return array<string, mixed>
-     */
-    private function cards(): array
+    private function applyLocationFilter($query, ?string $governorate = null, ?int $serviceZoneId = null)
     {
+        if (!empty($serviceZoneId)) {
+            $query->whereHas('address', function ($q) use ($serviceZoneId) {
+                $q->where('service_zone_id', $serviceZoneId);
+            });
+        } elseif (!empty($governorate)) {
+            $query->whereHas('address', function ($q) use ($governorate) {
+                $q->where('governorate', $governorate)
+                  ->orWhereHas('serviceZone', function ($sq) use ($governorate) {
+                      $sq->where('governorate', $governorate);
+                  });
+            });
+        }
+
+        return $query;
+    }
+
+    private function cards(?string $governorate = null, ?int $serviceZoneId = null): array
+    {
+        $revenueQuery = $this->applyLocationFilter(Booking::where('status', BookingStatus::Completed->value), $governorate, $serviceZoneId);
+        $totalBookingsQuery = $this->applyLocationFilter(Booking::query(), $governorate, $serviceZoneId);
+        $upcomingBookingsQuery = $this->applyLocationFilter(Booking::where('status', BookingStatus::Upcoming->value), $governorate, $serviceZoneId);
+
         return [
-            'revenue' => (float) Booking::where('status', BookingStatus::Completed->value)->sum('total_amount'),
+            'revenue' => (float) $revenueQuery->sum('total_amount'),
             'currency' => self::CURRENCY,
-            'bookings_total' => Booking::count(),
-            'bookings_upcoming' => Booking::where('status', BookingStatus::Upcoming->value)->count(),
+            'bookings_total' => $totalBookingsQuery->count(),
+            'bookings_upcoming' => $upcomingBookingsQuery->count(),
             'active_services' => Service::where('status', 'active')->count(),
             'workers' => Worker::where('status', 'active')->count(),
             'customers' => User::where('type', 'customer')->count(),
         ];
     }
 
-    /**
-     * Count bookings grouped by a column, zero-filling every expected value so
-     * the UI always receives a complete set.
-     *
-     * @param  list<string>  $expected
-     * @return array<string, int>
-     */
-    private function countByColumn(string $column, array $expected): array
+    private function countByColumn(string $column, array $expected, ?string $governorate = null, ?int $serviceZoneId = null): array
     {
-        $counts = Booking::select($column, DB::raw('count(*) as aggregate'))
+        $query = $this->applyLocationFilter(Booking::query(), $governorate, $serviceZoneId);
+
+        $counts = $query->select($column, DB::raw('count(*) as aggregate'))
             ->groupBy($column)
             ->pluck('aggregate', $column);
 
@@ -74,18 +95,14 @@ class DashboardService
             ->all();
     }
 
-    /**
-     * Daily bookings & completed-revenue series for the trend window. Grouped in
-     * PHP so the query stays portable across MySQL (prod) and sqlite (tests).
-     *
-     * @return list<array<string, mixed>>
-     */
-    private function trend(): array
+    private function trend(?string $governorate = null, ?int $serviceZoneId = null): array
     {
         $start = Carbon::today()->subDays(self::TREND_DAYS - 1);
 
-        $byDay = Booking::whereDate('booking_date', '>=', $start->toDateString())
-            ->get(['booking_date', 'total_amount', 'status'])
+        $query = Booking::whereDate('booking_date', '>=', $start->toDateString());
+        $this->applyLocationFilter($query, $governorate, $serviceZoneId);
+
+        $byDay = $query->get(['booking_date', 'total_amount', 'status'])
             ->groupBy(fn (Booking $booking): string => Carbon::parse($booking->booking_date)->toDateString());
 
         return collect(range(0, self::TREND_DAYS - 1))
@@ -103,12 +120,12 @@ class DashboardService
             ->all();
     }
 
-    /**
-     * @return list<array<string, mixed>>
-     */
-    private function topServices(): array
+    private function topServices(?string $governorate = null, ?int $serviceZoneId = null): array
     {
-        return Booking::select('service_id', DB::raw('count(*) as aggregate'))
+        $query = Booking::query();
+        $this->applyLocationFilter($query, $governorate, $serviceZoneId);
+
+        return $query->select('service_id', DB::raw('count(*) as aggregate'))
             ->groupBy('service_id')
             ->orderByDesc('aggregate')
             ->limit(self::TOP_SERVICES)
@@ -122,13 +139,12 @@ class DashboardService
             ->all();
     }
 
-    /**
-     * @return list<array<string, mixed>>
-     */
-    private function upcoming(): array
+    private function upcoming(?string $governorate = null, ?int $serviceZoneId = null): array
     {
-        return Booking::where('status', BookingStatus::Upcoming->value)
-            ->with(['customer', 'service'])
+        $query = Booking::where('status', BookingStatus::Upcoming->value);
+        $this->applyLocationFilter($query, $governorate, $serviceZoneId);
+
+        return $query->with(['customer', 'service'])
             ->orderBy('booking_date')
             ->orderBy('start_time')
             ->limit(self::UPCOMING_LIMIT)
