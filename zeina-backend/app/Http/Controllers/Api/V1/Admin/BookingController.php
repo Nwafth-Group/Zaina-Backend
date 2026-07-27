@@ -110,13 +110,14 @@ class BookingController extends Controller
     public function export(Request $request)
     {
         $query = app(Pipeline::class)
-            ->send(Booking::query()->with(['customer', 'service', 'workers', 'address.city']))
+            ->send(Booking::query()->with(['customer', 'service', 'workers', 'address.serviceZone']))
             ->through([
                 SearchFilter::class,
                 StatusFilter::class,
                 PaymentStatusFilter::class,
                 ServiceFilter::class,
                 CategoryFilter::class,
+                ServiceZoneFilter::class,
                 MinAmountFilter::class,
                 MaxAmountFilter::class,
                 DateFromFilter::class,
