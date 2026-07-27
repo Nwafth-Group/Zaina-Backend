@@ -19,7 +19,7 @@ class AddressController extends Controller
 
     public function index()
     {
-        $addresses = auth()->user()->addresses()->with(['area.city', 'serviceZone'])->latest()->get();
+        $addresses = auth()->user()->addresses()->with(['serviceZone'])->latest()->get();
         return $this->successResponse(AddressResource::collection($addresses), __('messages.addresses_fetched_successfully'));
     }
 

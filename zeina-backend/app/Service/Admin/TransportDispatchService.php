@@ -39,12 +39,12 @@ class TransportDispatchService
 
         foreach ($bookings as $booking) {
             $zone = $booking->address?->serviceZone;
-            
+
             $rawGov = $zone?->governorate ?? $booking->address?->governorate ?? 'القاهرة';
-            $govName = is_object($rawGov) ? ($rawGov->name_ar ?? $rawGov->name_en ?? 'القاهرة') : (string)$rawGov;
+            $govName = is_object($rawGov) ? ($rawGov->name_ar ?? $rawGov->name_en ?? 'القاهرة') : (string) $rawGov;
 
             $rawZone = $zone?->name ?? 'منطقة غير محددة';
-            $zoneName = is_object($rawZone) ? ($rawZone->name_ar ?? $rawZone->name_en ?? 'منطقة غير محددة') : (string)$rawZone;
+            $zoneName = is_object($rawZone) ? ($rawZone->name_ar ?? $rawZone->name_en ?? 'منطقة غير محددة') : (string) $rawZone;
 
             $zoneId = $zone?->id;
             $bStartTime = substr($booking->start_time ?? '09:00', 0, 5);
@@ -179,9 +179,9 @@ class TransportDispatchService
                 if ($workers->count() > 0) {
                     foreach ($workers as $w) {
                         $workersCount++;
-                        $custName = $b->customer?->full_name 
+                        $custName = $b->customer?->full_name
                             ?? (trim(($b->customer?->first_name ?? '') . ' ' . ($b->customer?->last_name ?? '')) ?: null)
-                            ?? $b->customer?->name 
+                            ?? $b->customer?->name
                             ?? '—';
                         $custPhone = $b->customer?->phone_number ?? $b->customer?->mobile ?? $b->customer?->phone ?? $b->address?->phone_number ?? '—';
                         $workerPhone = $w->phone_number ?? $w->mobile ?? $w->phone ?? '—';
@@ -222,9 +222,9 @@ class TransportDispatchService
                 'notes' => $group->notes,
                 'status' => $group->status,
                 'bookings' => $batchBookings->map(function ($b) {
-                    $custName = $b->customer?->full_name 
+                    $custName = $b->customer?->full_name
                         ?? (trim(($b->customer?->first_name ?? '') . ' ' . ($b->customer?->last_name ?? '')) ?: null)
-                        ?? $b->customer?->name 
+                        ?? $b->customer?->name
                         ?? '—';
                     $custPhone = $b->customer?->phone_number ?? $b->customer?->mobile ?? $b->customer?->phone ?? $b->address?->phone_number ?? '—';
                     return [

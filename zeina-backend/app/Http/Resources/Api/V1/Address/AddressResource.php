@@ -2,7 +2,6 @@
 
 namespace App\Http\Resources\Api\V1\Address;
 
-use App\Http\Resources\Api\V1\Area\AreaResource;
 use App\Http\Resources\Api\V1\ServiceZone\ServiceZoneResource;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;

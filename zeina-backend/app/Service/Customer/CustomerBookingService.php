@@ -394,8 +394,7 @@ class CustomerBookingService
         $addressId = $data['address_id'] ?? null;
 
         if (! $addressId) {
-            $address = CustomerAddress::with('area')
-                ->where('user_id', $user->id)
+            $address = CustomerAddress::where('user_id', $user->id)
                 ->where('is_active', true)
                 ->first();
 

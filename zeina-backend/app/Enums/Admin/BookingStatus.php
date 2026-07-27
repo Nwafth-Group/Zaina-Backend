@@ -3,7 +3,7 @@
 namespace App\Enums\Admin;
 
 /**
- * Booking lifecycle statuses as managed by the admin area. Centralises the
+ * Booking lifecycle statuses as managed by the admin. Centralises the
  * values that were previously hard-coded across the dashboard, the status
  * endpoint and its validation.
  */

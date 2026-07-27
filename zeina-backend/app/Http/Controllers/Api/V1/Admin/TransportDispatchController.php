@@ -20,7 +20,6 @@ class TransportDispatchController extends Controller
     {
         $date = $request->filled('service_date') ? $request->input('service_date') : null;
         $governorate = $request->input('governorate');
-        $area = $request->input('area');
         $startTime = $request->input('start_time');
         $status = $request->input('status');
 

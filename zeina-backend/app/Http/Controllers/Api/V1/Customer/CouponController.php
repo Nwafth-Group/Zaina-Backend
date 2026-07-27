@@ -32,7 +32,6 @@ class CouponController extends Controller
             $defaultAddress = $user->addresses()
                 ->where('is_default', true)
                 ->where('is_active', true)
-                ->with('area')
                 ->first();
         }
 
@@ -130,7 +129,6 @@ class CouponController extends Controller
             $defaultAddress = $user->addresses()
                 ->where('is_default', true)
                 ->where('is_active', true)
-                ->with('area')
                 ->first();
         }
 

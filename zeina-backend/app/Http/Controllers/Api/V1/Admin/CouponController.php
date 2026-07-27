@@ -93,8 +93,6 @@ class CouponController extends Controller
             if (! $request->is_for_all_cities) {
                 if ($request->has('service_zone_ids')) {
                     $coupon->serviceZones()->sync($request->service_zone_ids);
-                } elseif ($request->has('areas')) {
-                    $coupon->serviceZones()->sync($request->areas);
                 }
             }
 
@@ -296,8 +294,6 @@ class CouponController extends Controller
             } else {
                 if ($request->has('service_zone_ids')) {
                     $coupon->serviceZones()->sync($request->service_zone_ids);
-                } elseif ($request->has('areas')) {
-                    $coupon->serviceZones()->sync($request->areas);
                 }
             }
 

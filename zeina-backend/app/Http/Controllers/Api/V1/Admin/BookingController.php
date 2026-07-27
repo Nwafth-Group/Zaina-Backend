@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Enums\Admin\BookingStatus;
-use App\Filters\Booking\AreaFilter;
 use App\Filters\Booking\CategoryFilter;
 use App\Filters\Booking\ServiceZoneFilter;
 use App\Filters\Booking\DateFromFilter;
@@ -111,14 +110,13 @@ class BookingController extends Controller
     public function export(Request $request)
     {
         $query = app(Pipeline::class)
-            ->send(Booking::query()->with(['customer', 'service', 'workers', 'address.city', 'address.area']))
+            ->send(Booking::query()->with(['customer', 'service', 'workers', 'address.city']))
             ->through([
                 SearchFilter::class,
                 StatusFilter::class,
                 PaymentStatusFilter::class,
                 ServiceFilter::class,
                 CategoryFilter::class,
-                AreaFilter::class,
                 MinAmountFilter::class,
                 MaxAmountFilter::class,
                 DateFromFilter::class,
@@ -180,8 +178,6 @@ class BookingController extends Controller
                 $customerName = $b->customer ? trim($b->customer->first_name.' '.($b->customer->last_name ?? '')) : 'N/A';
                 $serviceName = $b->service ? ($b->service->name_ar ?: $b->service->name_en) : 'N/A';
                 $workersNames = $b->workers->isNotEmpty() ? $b->workers->pluck('name')->implode(' | ') : 'N/A';
-                $city = $b->address?->city ? ($b->address->city->name_ar ?: $b->address->city->name_en) : 'N/A';
-                $area = $b->address?->area ? ($b->address->area->name_ar ?: $b->address->area->name_en) : 'N/A';
                 $detailedAddress = $b->address ? trim(($b->address->street ?? '').' '.($b->address->building ?? '').' '.($b->address->floor ?? '')) : 'N/A';
 
                 fputcsv($file, [
@@ -193,8 +189,6 @@ class BookingController extends Controller
                     $serviceName,
                     $b->service?->service_code ?? 'N/A',
                     $workersNames,
-                    $city,
-                    $area,
                     $detailedAddress,
                     $b->booking_date ?? 'N/A',
                     $b->start_time ?? 'N/A',

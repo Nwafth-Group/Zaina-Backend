@@ -30,8 +30,7 @@ class BookingService
     public function createBooking($user, array $data)
     {
         // 1. جلب العناوين والخدمة
-        $address = CustomerAddress::with('area')
-            ->where('user_id', $user->id)
+        $address = CustomerAddress::where('user_id', $user->id)
             ->where('is_active', true)
             ->findOrFail($data['address_id']);
 
