@@ -263,14 +263,10 @@ class BookingContractController extends Controller
         // Customer Address formatting
         $addressParts = [];
         if ($address) {
-            $city = $address->city;
-            $area = $address->area;
-
-            if ($city) {
-                $addressParts[] = $lang === 'ar' ? ($city->name_ar ?? '') : ($city->name_en ?? '');
-            }
-            if ($area) {
-                $addressParts[] = $lang === 'ar' ? ($area->name_ar ?? '') : ($area->name_en ?? '');
+            if ($address->formatted_address) {
+                $addressParts[] = $address->formatted_address;
+            } elseif ($address->serviceZone?->name) {
+                $addressParts[] = $address->serviceZone->name;
             }
             if ($address->street) {
                 $addressParts[] = $address->street;
