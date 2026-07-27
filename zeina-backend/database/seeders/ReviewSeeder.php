@@ -10,20 +10,10 @@ use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
-/**
- * Seeds ratings & reviews for workers and services off the back of completed
- * bookings, then recomputes the `avg_rating` column on each reviewed worker and
- * service so the admin tables / details modal show realistic numbers.
- *
- * Reviews are polymorphic (reviewable = Worker|Service) and unique per
- * (booking, reviewable) — a completed booking yields one service review and one
- * review per assigned worker.
- */
 class ReviewSeeder extends Seeder
 {
     use WithoutModelEvents;
 
-    /** @var array<int, string> */
     private array $positiveComments = [
         'خدمة ممتازة وتعامل راقٍ، شكرًا لكم.',
         'كانت في الموعد تمامًا والنتيجة فاقت توقعاتي.',
@@ -33,7 +23,6 @@ class ReviewSeeder extends Seeder
         'أداء مميز واهتمام واضح بالتفاصيل.',
     ];
 
-    /** @var array<int, string> */
     private array $neutralComments = [
         'الخدمة جيدة لكنها تأخرت قليلًا عن الموعد.',
         'لا بأس بها، لكن أتمنى مزيدًا من الاهتمام بالتفاصيل.',
@@ -41,7 +30,6 @@ class ReviewSeeder extends Seeder
         'جيدة، مع وجود مجال للتحسين.',
     ];
 
-    /** @var array<int, string> */
     private array $negativeComments = [
         'الخدمة دون المستوى المتوقع.',
         'تأخر ملحوظ وعدم التزام بالوقت.',
@@ -56,7 +44,6 @@ class ReviewSeeder extends Seeder
 
         if ($completedBookings->isEmpty()) {
             $this->command->warn('لا توجد حجوزات مكتملة لإنشاء تقييمات. شغّل BookingSeeder أولًا.');
-
             return;
         }
 
@@ -67,49 +54,54 @@ class ReviewSeeder extends Seeder
         DB::beginTransaction();
         try {
             foreach ($completedBookings as $booking) {
-                // Not every completed booking gets reviewed (~75% do).
                 if (rand(1, 100) > 75) {
                     continue;
                 }
 
                 // --- Service review (one per booking) ---
                 if ($booking->service) {
-                    $rating = $this->weightedRating();
-                    Review::firstOrCreate(
-                        [
+                    $exists = Review::where('booking_id', $booking->id)
+                        ->where('reviewable_type', Service::class)
+                        ->where('reviewable_id', $booking->service_id)
+                        ->exists();
+
+                    if (! $exists) {
+                        $rating = $this->weightedRating();
+                        Review::create([
                             'booking_id' => $booking->id,
                             'reviewable_type' => Service::class,
                             'reviewable_id' => $booking->service_id,
-                        ],
-                        [
                             'customer_id' => $booking->customer_id,
                             'rating' => $rating,
                             'comment' => $this->commentFor($rating),
                             'status' => 'approved',
-                        ]
-                    );
-                    $reviewedServiceIds[$booking->service_id] = true;
-                    $reviewCount++;
+                        ]);
+                        $reviewedServiceIds[$booking->service_id] = true;
+                        $reviewCount++;
+                    }
                 }
 
                 // --- Worker review(s) — one per active assigned worker ---
                 foreach ($booking->workers as $worker) {
-                    $rating = $this->weightedRating();
-                    Review::firstOrCreate(
-                        [
+                    $exists = Review::where('booking_id', $booking->id)
+                        ->where('reviewable_type', Worker::class)
+                        ->where('reviewable_id', $worker->id)
+                        ->exists();
+
+                    if (! $exists) {
+                        $rating = $this->weightedRating();
+                        Review::create([
                             'booking_id' => $booking->id,
                             'reviewable_type' => Worker::class,
                             'reviewable_id' => $worker->id,
-                        ],
-                        [
                             'customer_id' => $booking->customer_id,
                             'rating' => $rating,
                             'comment' => $this->commentFor($rating),
                             'status' => 'approved',
-                        ]
-                    );
-                    $reviewedWorkerIds[$worker->id] = true;
-                    $reviewCount++;
+                        ]);
+                        $reviewedWorkerIds[$worker->id] = true;
+                        $reviewCount++;
+                    }
                 }
             }
 
@@ -125,20 +117,18 @@ class ReviewSeeder extends Seeder
                     $testBooking = Booking::where('service_id', $svc->id)->first();
                     $customerId = $testBooking ? $testBooking->customer_id : (Booking::first()->customer_id ?? 1);
 
-                    for ($r = 1; $r <= 3; $r++) {
-                        $rating = rand(4, 5);
-                        Review::create([
-                            'booking_id' => $testBooking ? $testBooking->id : null,
-                            'reviewable_type' => Service::class,
-                            'reviewable_id' => $svc->id,
-                            'customer_id' => $customerId,
-                            'rating' => $rating,
-                            'comment' => $this->positiveComments[($svc->id + $r) % count($this->positiveComments)],
-                            'status' => 'approved',
-                        ]);
-                    }
+                    $rating = rand(4, 5);
+                    Review::create([
+                        'booking_id' => $testBooking ? $testBooking->id : null,
+                        'reviewable_type' => Service::class,
+                        'reviewable_id' => $svc->id,
+                        'customer_id' => $customerId,
+                        'rating' => $rating,
+                        'comment' => $this->positiveComments[$svc->id % count($this->positiveComments)],
+                        'status' => 'approved',
+                    ]);
                     $reviewedServiceIds[$svc->id] = true;
-                    $reviewCount += 3;
+                    $reviewCount++;
                 }
             }
 
@@ -159,51 +149,47 @@ class ReviewSeeder extends Seeder
         }
     }
 
-    /**
-     * Recompute and persist `avg_rating` for the given reviewable model ids.
-     *
-     * @param  class-string<\Illuminate\Database\Eloquent\Model>  $reviewableType
-     * @param  array<int, int>  $ids
-     */
-    private function syncAverages(string $reviewableType, array $ids): void
-    {
-        foreach ($ids as $id) {
-            $average = Review::where('reviewable_type', $reviewableType)
-                ->where('reviewable_id', $id)
-                ->where('status', 'approved')
-                ->avg('rating');
-
-            $reviewableType::where('id', $id)->update([
-                'avg_rating' => round((float) $average, 2),
-            ]);
-        }
-    }
-
-    /**
-     * A rating skewed towards happy customers (5s common, 1s rare).
-     */
     private function weightedRating(): int
     {
-        $pool = [5, 5, 5, 5, 4, 4, 4, 3, 3, 2, 1];
+        $roll = rand(1, 100);
 
-        return $pool[array_rand($pool)];
+        return match (true) {
+            $roll <= 60 => 5,
+            $roll <= 85 => 4,
+            $roll <= 93 => 3,
+            $roll <= 97 => 2,
+            default => 1,
+        };
     }
 
-    /**
-     * A comment matching the rating bucket; ~15% leave a rating with no comment.
-     */
-    private function commentFor(int $rating): ?string
+    private function commentFor(int $rating): string
     {
-        if (rand(1, 100) <= 15) {
-            return null;
-        }
-
-        $bucket = match (true) {
+        $pool = match (true) {
             $rating >= 4 => $this->positiveComments,
             $rating === 3 => $this->neutralComments,
             default => $this->negativeComments,
         };
 
-        return $bucket[array_rand($bucket)];
+        return $pool[array_rand($pool)];
+    }
+
+    private function syncAverages(string $modelClass, array $ids): void
+    {
+        if (empty($ids)) {
+            return;
+        }
+
+        foreach ($ids as $id) {
+            $avg = Review::where('reviewable_type', $modelClass)
+                ->where('reviewable_id', $id)
+                ->where('status', 'approved')
+                ->avg('rating');
+
+            if ($avg !== null) {
+                $modelClass::where('id', $id)->update([
+                    'avg_rating' => round((float) $avg, 2),
+                ]);
+            }
+        }
     }
 }

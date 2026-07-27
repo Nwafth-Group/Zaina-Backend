@@ -22,9 +22,8 @@ class MapProviderRequest extends CustomFormRequest
         return [
             'service_ids'   => 'required|array|min:1', // BR-01: Must have at least one service
             'service_ids.*' => 'exists:services,id',
-            'coverages'           => 'required|array|min:1', // BR-02: Must have at least one area
-            'coverages.*.city_id' => 'required|exists:cities,id',
-            'coverages.*.area_id' => 'nullable|exists:areas,id',
+            'service_zone_ids'   => 'nullable|array',
+            'service_zone_ids.*' => 'exists:service_zones,id',
         ];
     }
 }

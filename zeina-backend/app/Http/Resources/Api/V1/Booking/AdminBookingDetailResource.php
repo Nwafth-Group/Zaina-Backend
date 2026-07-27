@@ -115,13 +115,22 @@ class AdminBookingDetailResource extends JsonResource
                 : [],
 
             'address' => $address ? [
+                'id' => $address->id,
                 'label' => $address->label,
+                'formatted_address' => $address->formatted_address,
+                'service_zone' => $address->serviceZone ? [
+                    'id' => $address->serviceZone->id,
+                    'name' => $address->serviceZone->name,
+                    'city' => $address->serviceZone->city,
+                    'governorate' => $address->serviceZone->governorate,
+                ] : null,
                 'line' => trim(implode(', ', array_filter([
                     $address->street,
                     $address->building_name,
                     $address->building_no ? "Bld {$address->building_no}" : null,
                     $address->floor ? "Floor {$address->floor}" : null,
                     $address->apartment_no ? "Apt {$address->apartment_no}" : null,
+                    $address->serviceZone?->name,
                 ]))),
                 'phone' => $address->phone_number,
             ] : null,

@@ -37,7 +37,7 @@ class CouponController extends Controller
             'percentage' => (clone $countsQuery)->where('type', 'percentage')->count(),
         ];
 
-        $query = Coupon::withCount(['users', 'cities', 'areas', 'services']);
+        $query = Coupon::withCount(['users', 'serviceZones', 'services']);
 
         // 1. Search filter by code or name
         if ($request->filled('search')) {
@@ -89,13 +89,12 @@ class CouponController extends Controller
                 $coupon->users()->sync($request->users);
             }
 
-            // 3. Sync Cities & Areas
+            // 3. Sync Service Zones
             if (! $request->is_for_all_cities) {
-                if ($request->has('cities')) {
-                    $coupon->cities()->sync($request->cities);
-                }
-                if ($request->has('areas')) {
-                    $coupon->areas()->sync($request->areas);
+                if ($request->has('service_zone_ids')) {
+                    $coupon->serviceZones()->sync($request->service_zone_ids);
+                } elseif ($request->has('areas')) {
+                    $coupon->serviceZones()->sync($request->areas);
                 }
             }
 
@@ -114,7 +113,7 @@ class CouponController extends Controller
             DB::commit();
 
             // Load relationships for return resource
-            $coupon->load(['users', 'services', 'cities', 'areas']);
+            $coupon->load(['users', 'services', 'serviceZones']);
 
             return $this->successResponse(
                 new CouponResource($coupon),
@@ -134,7 +133,7 @@ class CouponController extends Controller
      */
     public function show(string $id)
     {
-        $coupon = Coupon::with(['users', 'services', 'cities', 'areas'])->findOrFail($id);
+        $coupon = Coupon::with(['users', 'services', 'serviceZones'])->findOrFail($id);
 
         return $this->successResponse(
             new CouponResource($coupon),
@@ -222,23 +221,13 @@ class CouponController extends Controller
                 }
             }
 
-            if ($request->has('cities')) {
-                $newCities = $request->input('cities', []);
-                $oldCities = $coupon->cities()->pluck('cities.id')->toArray();
-                sort($newCities);
-                sort($oldCities);
-                if ($newCities != $oldCities) {
-                    return $this->errorResponse(__('messages.coupon_used_cannot_change_cities') ?? 'Cannot change cities for a used coupon.', 422);
-                }
-            }
-
-            if ($request->has('areas')) {
-                $newAreas = $request->input('areas', []);
-                $oldAreas = $coupon->areas()->pluck('areas.id')->toArray();
-                sort($newAreas);
-                sort($oldAreas);
-                if ($newAreas != $oldAreas) {
-                    return $this->errorResponse(__('messages.coupon_used_cannot_change_areas') ?? 'Cannot change areas for a used coupon.', 422);
+            if ($request->has('service_zone_ids')) {
+                $newZones = $request->input('service_zone_ids', []);
+                $oldZones = $coupon->serviceZones()->pluck('service_zones.id')->toArray();
+                sort($newZones);
+                sort($oldZones);
+                if ($newZones != $oldZones) {
+                    return $this->errorResponse(__('messages.coupon_used_cannot_change_zones') ?? 'Cannot change service zones for a used coupon.', 422);
                 }
             }
 
@@ -301,16 +290,14 @@ class CouponController extends Controller
                 $coupon->users()->sync($request->users);
             }
 
-            // 3. Sync Cities & Areas
+            // 3. Sync Service Zones
             if ($request->is_for_all_cities) {
-                $coupon->cities()->detach();
-                $coupon->areas()->detach();
+                $coupon->serviceZones()->detach();
             } else {
-                if ($request->has('cities')) {
-                    $coupon->cities()->sync($request->cities);
-                }
-                if ($request->has('areas')) {
-                    $coupon->areas()->sync($request->areas);
+                if ($request->has('service_zone_ids')) {
+                    $coupon->serviceZones()->sync($request->service_zone_ids);
+                } elseif ($request->has('areas')) {
+                    $coupon->serviceZones()->sync($request->areas);
                 }
             }
 
@@ -331,7 +318,7 @@ class CouponController extends Controller
             DB::commit();
 
             // Load relationships for return resource
-            $coupon->load(['users', 'services', 'cities', 'areas']);
+            $coupon->load(['users', 'services', 'serviceZones']);
 
             return $this->successResponse(
                 new CouponResource($coupon),

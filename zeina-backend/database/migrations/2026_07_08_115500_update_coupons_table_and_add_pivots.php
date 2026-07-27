@@ -50,23 +50,9 @@ return new class extends Migration
             }
         });
 
-        if (!Schema::hasTable('coupon_cities')) {
-            Schema::create('coupon_cities', function (Blueprint $table) {
-                $table->id();
-                $table->foreignId('coupon_id')->constrained('coupons')->onDelete('cascade');
-                $table->foreignId('city_id')->constrained('cities')->onDelete('cascade');
-                $table->timestamps();
-            });
-        }
 
-        if (!Schema::hasTable('coupon_areas')) {
-            Schema::create('coupon_areas', function (Blueprint $table) {
-                $table->id();
-                $table->foreignId('coupon_id')->constrained('coupons')->onDelete('cascade');
-                $table->foreignId('area_id')->constrained('areas')->onDelete('cascade');
-                $table->timestamps();
-            });
-        }
+
+
     }
 
     /**
@@ -74,7 +60,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('coupon_areas');
+        Schema::dropIfExists('coupon_service_zones');
         Schema::dropIfExists('coupon_cities');
 
         Schema::table('coupon_services', function (Blueprint $table) {

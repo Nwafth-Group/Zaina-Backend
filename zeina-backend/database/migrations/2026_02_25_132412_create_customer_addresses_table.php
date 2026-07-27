@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('customer_addresses', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
-            $table->foreignId('area_id')->constrained('areas')->restrictOnDelete();  // الموقع الجغرافي والمنطقة
+            $table->foreignId('service_zone_id')->nullable();
             $table->decimal('latitude', 10, 8); // من الخريطة
             $table->decimal('longitude', 11, 8); // من الخريطة
             // تفاصيل العنوان (حسب الفيجما)

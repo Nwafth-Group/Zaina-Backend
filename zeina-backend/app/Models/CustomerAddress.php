@@ -7,11 +7,10 @@ use Illuminate\Database\Eloquent\Model;
 
 class CustomerAddress extends Model
 {
-    /** @use HasFactory<\Database\Factories\CustomerAddressFactory> */
     use HasFactory;
 
-   protected $fillable = [
-        'user_id', 'area_id', 'latitude', 'longitude', 
+    protected $fillable = [
+        'user_id', 'service_zone_id', 'latitude', 'longitude', 
         'label', 'street', 'building_name', 'building_no', 
         'floor', 'apartment_no', 'contact_name', 'phone_number', 
         'secondary_phone', 'serviceable_status', 'notes', 
@@ -23,22 +22,32 @@ class CustomerAddress extends Model
         'is_active'  => 'boolean',
     ];
 
+    protected $appends = ['formatted_address'];
+
     public function user()
     {
         return $this->belongsTo(User::class);
     }
 
-    public function area()
+    public function serviceZone()
     {
-        return $this->belongsTo(Area::class);
+        return $this->belongsTo(ServiceZone::class, 'service_zone_id');
     }
 
     public function getCityAttribute() {
-        return $this->area->city;
+        return $this->serviceZone?->city;
     }
 
-    public function city()
-{
-    return $this->hasOneThrough(City::class, Area::class, 'id', 'id', 'area_id', 'city_id');
-}
+    public function getFormattedAddressAttribute(): string
+    {
+        $parts = array_filter([
+            $this->street,
+            $this->building_name ? ('مبنى ' . $this->building_name) : null,
+            $this->building_no ? ('رقم ' . $this->building_no) : null,
+            $this->apartment_no ? ('شقة ' . $this->apartment_no) : null,
+            $this->serviceZone?->name,
+        ]);
+
+        return !empty($parts) ? implode('، ', $parts) : ($this->label ?? $this->notes ?? '—');
+    }
 }

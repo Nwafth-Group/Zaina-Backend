@@ -2,10 +2,9 @@
 
 namespace Database\Seeders;
 
-use App\Models\Area;
 use App\Models\Category;
-use App\Models\City;
 use App\Models\Service;
+use App\Models\ServiceZone;
 use App\Models\User;
 use App\Models\Worker;
 use App\Service\ServiceWriter;
@@ -19,15 +18,8 @@ class CategoryAndServiceSeeder extends Seeder
     {
         $admin = User::first();
 
-        // 🌟 جلب جميع المدن والمناطق المتوفرة لبناء سيناريو توزيع جغرافي حقيقي ومضمون
-        $cities = City::all();
-        $areas = Area::all();
-
-        if ($cities->isEmpty() || $areas->isEmpty()) {
-            $this->command->error('must have cities and areas in the database before running this seeder to ensure proper geographical distribution of services.');
-
-            return;
-        }
+        // Fetch all Geo-Fenced Service Zones
+        $allZoneIds = ServiceZone::pluck('id')->toArray();
 
         // قائمة الصور العشوائية للخدمات
         $dummyIconsList = ['icon_1.jpg', 'icon_2.jpg', 'icon_3.jpg', 'cover_1.jpg', 'cover_2.jpg', 'cover_3.jpeg'];
@@ -92,27 +84,6 @@ class CategoryAndServiceSeeder extends Seeder
                 ['en' => 'High-quality equipment', 'ar' => 'معدات عالية الجودة'],
             ];
 
-            // Build coverages matching the request body format
-            $coverages = [];
-            foreach ($cities as $city) {
-                $coverages[] = [
-                    'city_id' => $city->id,
-                    'area_id' => null,
-                    'status' => 'active',
-                ];
-            }
-
-            if ($index % 2 !== 0) {
-                $randomAreas = $areas->random(min(3, $areas->count()));
-                foreach ($randomAreas as $selectedArea) {
-                    $coverages[] = [
-                        'city_id' => $selectedArea->city_id,
-                        'area_id' => $selectedArea->id,
-                        'status' => 'active',
-                    ];
-                }
-            }
-
             $isFirstService = ($data['code'] === 'DOMESTIC_HELPER_HOURLY');
             $isSecondService = ($data['code'] === 'HOSPITALITY_WORKER_HOURLY');
             $isThirdService = ($data['code'] === 'BABYSITTER_HOURLY');
@@ -161,7 +132,7 @@ class CategoryAndServiceSeeder extends Seeder
                 'max_children' => $isThirdService ? 6 : null,
                 'covered_persons_per_worker' => $data['covered_persons_per_worker'] ?? null,
 
-                'coverages' => $coverages,
+                'service_zone_ids' => $allZoneIds,
 
                 'working_days' => ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'saturday'],
                 'shifts' => ($isSecondService || $isThirdService || $isPedicureManicure) ? [] : [

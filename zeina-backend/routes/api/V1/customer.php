@@ -59,11 +59,10 @@ Route::prefix('customer')->group(function () {
 
     Route::get('company-info', [CompanyInfoController::class, 'show']);
 
-    // fetch counttries and govrenrates and citites and areas ..
+    // fetch countries, governorates and cities
     Route::get('locations/countries', [LocationController::class, 'countries']);
     Route::get('locations/governorates', [LocationController::class, 'governorates']);
     Route::get('locations/cities', [LocationController::class, 'cities']);
-    Route::get('locations/areas', [LocationController::class, 'areas']);
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::middleware(['auth:sanctum', IsCustomer::class])->group(function () {
         // Auth

@@ -23,8 +23,7 @@ class getEstimatedPriceRequest extends FormRequest
     {
         return [
             'service_id' => ['required','integer','exists:services,id'],
-            'city_id' => ['required','numeric'],
-            'area_id' => ['required','numeric']
+            'service_zone_id' => ['nullable','numeric','exists:service_zones,id'],
         ];
     }
 }

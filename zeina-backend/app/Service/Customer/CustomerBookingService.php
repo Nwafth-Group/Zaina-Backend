@@ -405,7 +405,7 @@ class CustomerBookingService
                 ]);
             }
         } else {
-            $address = CustomerAddress::with('area')
+            $address = CustomerAddress::with('serviceZone')
                 ->where('user_id', $user->id)
                 ->where('is_active', true)
                 ->findOrFail($addressId);
@@ -413,15 +413,15 @@ class CustomerBookingService
 
         $service = Service::with('duration')->findOrFail($data['service_id']);
 
-        $hasCoverage = $service->coverages()
-            ->where('city_id', $address->area->city_id)
-            ->where(function ($q) use ($address) {
-                $q->where('area_id', $address->area_id)->orWhereNull('area_id');
-            })
-            ->where('status', 'active')
-            ->exists();
+        $isCovered = false;
+        if ($address->service_zone_id) {
+            $isCovered = $service->serviceZones()
+                ->where('service_zones.id', $address->service_zone_id)
+                ->where('service_zones.status', 'active')
+                ->exists();
+        }
 
-        if (! $hasCoverage) {
+        if (! $isCovered) {
             throw ValidationException::withMessages([
                 'address_id' => __('messages.service_not_available_in_location') ?? 'هذه الخدمة غير متوفرة في موقعك الحالي.',
             ]);

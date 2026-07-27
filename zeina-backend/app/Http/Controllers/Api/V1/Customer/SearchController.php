@@ -90,29 +90,17 @@ public function index(Request $request)
         $query->where('avg_rating', '>=', $request->min_rating);
     }
 
-    // 3. فلتر الموقع (Location: City & Area)
-    if ($request->filled('city_id')) {
-        $query->whereHas('coverages', function ($q) use ($request) {
-            $q->where('city_id', $request->city_id);
-            if ($request->filled('area_id')) {
-                $q->where('area_id', $request->area_id);
-            }
+    // 3. فلتر التغطية الجغرافية (Geo-Fenced Service Zone)
+    if ($request->filled('service_zone_id')) {
+        $query->whereHas('serviceZones', function ($q) use ($request) {
+            $q->where('service_zones.id', $request->service_zone_id)
+              ->where('service_zones.status', 'active');
         });
     }
 
-    // 4. فلتر السعر (Price Range المحدث بناءً على البنية الجديدة لجدول service_prices)
+    // 4. فلتر السعر (Price Range)
     if ($request->filled('min_price') && $request->filled('max_price')) {
-        $query->whereHas('prices', function ($q) use ($request) {
-            $q->whereBetween('price_per_service_period', [$request->min_price, $request->max_price]);
-            
-            // تخصيص السعر حسب المدينة المحددة إن وجدت
-            if ($request->filled('city_id')) {
-                $q->where('city_id', $request->city_id);
-                if ($request->filled('area_id')) {
-                    $q->where('area_id', $request->area_id);
-                }
-            }
-        });
+        $query->whereBetween('base_price', [$request->min_price, $request->max_price]);
     }
 
     // 🌟 5. فلتر التوفر والمواعيد الذكي (Availability Filter) 🌟
@@ -134,13 +122,10 @@ public function index(Request $request)
 
         // ب. فحص تضاربات العمال: نضمن وجود عامل يغطي المنطقة وليس لديه حجز يتداخل مع هذه الفترة
         $query->whereHas('workers', function ($workerQ) use ($request, $bookingDate, $startTimeStr, $endTimeStr) {
-            // الفحص الجغرافي للعامل
-            if ($request->filled('city_id')) {
-                $workerQ->whereHas('coverages', function($cov) use ($request) {
-                    $cov->where('city_id', $request->city_id);
-                    if ($request->filled('area_id')) {
-                        $cov->where('area_id', $request->area_id);
-                    }
+            // الفحص الجغرافي للمنطقة الجغرافية
+            if ($request->filled('service_zone_id')) {
+                $workerQ->whereHas('serviceZones', function($zoneQ) use ($request) {
+                    $zoneQ->where('service_zones.id', $request->service_zone_id);
                 });
             }
 

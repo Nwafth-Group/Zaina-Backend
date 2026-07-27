@@ -58,11 +58,9 @@ class UpdateCouponRequest extends CustomFormRequest
             'users.*' => ['exists:users,id'],
 
             'is_for_all_cities' => ['required', 'boolean'],
-            'cities' => ['required_if:is_for_all_cities,false', 'array'],
-            'cities.*' => ['exists:cities,id'],
-
-            'areas' => ['nullable', 'array'],
-            'areas.*' => ['exists:areas,id'],
+            'service_zone_ids' => ['required_if:is_for_all_cities,false', 'array'],
+            'service_zone_ids.*' => ['exists:service_zones,id'],
+            'cities' => ['nullable', 'array'],
 
             'completed_bookings_count' => ['nullable', 'integer', 'min:0'],
             'min_workers' => ['nullable', 'integer', 'min:0'],

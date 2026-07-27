@@ -9,6 +9,7 @@ class Booking extends Model
 {
     /** @use HasFactory<\Database\Factories\BookingFactory> */
     use HasFactory;
+
     protected $fillable = [
         'booking_ref', 'customer_id', 'service_id', 'address_id', 'provider_id',
         'scheduled_at', 'duration_minutes', 'number_of_workers', 'worker_gender',
@@ -45,12 +46,18 @@ class Booking extends Model
         return $this->hasMany(BookingVisit::class);
     }
 
-   public function workers()
-{
-    return $this->belongsToMany(Worker::class, 'booking_assignments', 'booking_id', 'worker_id')
-                ->wherePivot('status', 'active')
-                ->withTimestamps();
-}
+    public function workers()
+    {
+        return $this->belongsToMany(Worker::class, 'booking_assignments', 'booking_id', 'worker_id')
+                    ->wherePivot('status', 'active')
+                    ->withTimestamps();
+    }
+
+    public function assignedWorkers()
+    {
+        return $this->workers();
+    }
+
     public function address()
     {
         return $this->belongsTo(CustomerAddress::class, 'address_id');
@@ -61,7 +68,6 @@ class Booking extends Model
         return $this->belongsTo(Provider::class);
     }
 
-    // تاريخ التعيينات (لنعرف إذا تغير العامل)
     public function assignments()
     {
         return $this->hasMany(BookingAssignment::class);
@@ -76,5 +82,4 @@ class Booking extends Model
     {
         return $this->belongsTo(Coupon::class);
     }
-
 }

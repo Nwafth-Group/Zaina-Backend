@@ -27,22 +27,20 @@ class ReviewServcieAndWorkerSeeder extends Seeder
         ];
 
         foreach ($services as $service) {
-            $booking = Booking::where('service_id', $service->id)->first();
-            $bookingId = $booking ? $booking->id : null;
-            $customerId = $booking ? $booking->customer_id : ($customer ? $customer->id : 1);
+            $bookings = Booking::where('service_id', $service->id)->get();
 
-            for ($i = 1; $i <= 3; $i++) {
+            foreach ($bookings as $idx => $booking) {
                 $rating = rand(4, 5);
                 Review::firstOrCreate(
                     [
+                        'booking_id' => $booking->id,
                         'reviewable_type' => Service::class,
                         'reviewable_id' => $service->id,
-                        'comment' => $comments[($service->id + $i) % count($comments)],
                     ],
                     [
-                        'booking_id' => $bookingId,
-                        'customer_id' => $customerId,
+                        'customer_id' => $booking->customer_id ?? ($customer ? $customer->id : 1),
                         'rating' => $rating,
+                        'comment' => $comments[($service->id + $idx) % count($comments)],
                         'rating_percentage' => ($rating / 5) * 100,
                         'status' => 'approved',
                     ]

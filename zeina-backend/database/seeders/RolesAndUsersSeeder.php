@@ -22,12 +22,11 @@ class RolesAndUsersSeeder extends Seeder
             'users.verify', 'users.reset-password',
             'employees.view', 'employees.create', 'employees.edit',
             'roles.view', 'roles.create', 'roles.edit', 'roles.delete',
-            'bookings.view', 'bookings.edit', 'bookings.delete', 'location.edit',
-            'location.view', 'location.create', 'location.delete',
-            'countries.view', 'countries.create', 'countries.edit', 'countries.delete',
-            'governorates.view', 'governorates.create', 'governorates.edit', 'governorates.delete',
-            'cities.view', 'cities.create', 'cities.edit', 'cities.delete',
-            'areas.view', 'areas.create', 'areas.edit', 'areas.delete',
+            'bookings.view', 'bookings.edit', 'bookings.delete',
+            'service_zones.view', 'service_zones.create', 'service_zones.edit', 'service_zones.delete',
+            'drivers.view', 'drivers.create', 'drivers.edit', 'drivers.delete',
+            'departure_points.view', 'departure_points.create', 'departure_points.edit', 'departure_points.delete',
+            'transport_dispatch.view', 'transport_dispatch.edit',
             'providers.view', 'providers.create', 'providers.edit', 'providers.deactivate', 'provider_eligibility.edit',
             
             // Services

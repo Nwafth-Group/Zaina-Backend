@@ -43,15 +43,9 @@ class Coupon extends Model implements Auditable
             ->withTimestamps();
     }
 
-    public function cities()
+    public function serviceZones()
     {
-        return $this->belongsToMany(City::class, 'coupon_cities')
-            ->withTimestamps();
-    }
-
-    public function areas()
-    {
-        return $this->belongsToMany(Area::class, 'coupon_areas')
+        return $this->belongsToMany(ServiceZone::class, 'coupon_service_zones')
             ->withTimestamps();
     }
 
@@ -107,23 +101,17 @@ class Coupon extends Model implements Auditable
             }
         }
 
-        // 6. Check Location Eligibility
+        // 6. Check Location Eligibility (Geo-Fenced Service Zones)
         if (! $this->is_for_all_cities) {
             if (! $address) {
                 return 'coupon_address_required';
             }
 
-            // Check area restrictions if any are set
-            $hasAreaRestrictions = $this->areas()->exists();
-            if ($hasAreaRestrictions) {
-                $isAreaEligible = $this->areas()->where('areas.id', $address->area_id)->exists();
-                if (! $isAreaEligible) {
-                    return 'coupon_location_ineligible';
-                }
-            } else {
-                // Otherwise check city restriction
-                $isCityEligible = $this->cities()->where('cities.id', $address->area->city_id)->exists();
-                if (! $isCityEligible) {
+            // Check service zone restrictions if any are set
+            $hasZoneRestrictions = $this->serviceZones()->exists();
+            if ($hasZoneRestrictions) {
+                $isZoneEligible = $this->serviceZones()->where('service_zones.id', $address->service_zone_id)->exists();
+                if (! $isZoneEligible) {
                     return 'coupon_location_ineligible';
                 }
             }

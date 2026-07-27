@@ -24,7 +24,7 @@ class DatabaseSeeder extends Seeder
 
         $this->call([
             RolesAndUsersSeeder::class,
-            LocationSeeder::class,
+            ServiceZoneSeeder::class,
             CategoryAndServiceSeeder::class,
             ProviderSeeder::class,
             AdSeeder::class,
@@ -35,13 +35,14 @@ class DatabaseSeeder extends Seeder
             WalletSeeder::class,
             PointSystemSeeder::class,
             CouponSeeder::class,
-            PointSystemSeeder::class,
             LegalDocumentsSeeder::class,
             ReviewServcieAndWorkerSeeder::class,
             AnnouncementSeeder::class,
             MobileNotificationSeeder::class,
             KhaledTestUserSeeder::class,
             CompanyInfoSeeder::class,
+            DriverSeeder::class,
+            DeparturePointSeeder::class,
         ]);
     }
 }

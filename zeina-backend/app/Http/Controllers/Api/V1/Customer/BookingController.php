@@ -175,6 +175,17 @@ class BookingController extends Controller
             ->map(fn ($d) => strtolower($d))
             ->toArray();
 
+        $address = CustomerAddress::with('serviceZone')->find($data['address_id']);
+        if ($address && $address->service_zone_id) {
+            $isCovered = $service->serviceZones()
+                ->where('service_zones.id', $address->service_zone_id)
+                ->where('service_zones.status', 'active')
+                ->exists();
+            if (! $isCovered) {
+                return $this->errorResponse(__('messages.service_not_available_in_location') ?? 'هذه الخدمة غير متوفرة في موقعك الحالي.', 422);
+            }
+        }
+
         $serviceWorkers = $service->workers()
             ->where('status', 'active')
             ->where('gender', strtolower($data['worker_gender']))

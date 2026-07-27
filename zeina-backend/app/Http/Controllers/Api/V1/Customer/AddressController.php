@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api\V1\Customer;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Customer\CustomerAddressRequest;
 use App\Http\Resources\Api\V1\Address\AddressResource;
+use App\Models\ServiceZone;
+use App\Service\Admin\ServiceZoneService;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -12,25 +14,36 @@ use Illuminate\Support\Facades\DB;
 class AddressController extends Controller
 {
     use ApiResponseTrait;
-    /**
-     * Display a listing of the resource.
-     */
-   public function index()
+
+    public function __construct(public ServiceZoneService $zoneService) {}
+
+    public function index()
     {
-        // استخدام with لجلب تفاصيل المنطقة لتكون جاهزة للعرض
-        $addresses = auth()->user()->addresses()->with('area.city')->latest()->get();
-        
+        $addresses = auth()->user()->addresses()->with(['area.city', 'serviceZone'])->latest()->get();
         return $this->successResponse(AddressResource::collection($addresses), __('messages.addresses_fetched_successfully'));
     }
 
-    // إضافة عنوان جديد
     public function store(CustomerAddressRequest $request)
     {
         $user = auth()->user();
-        
-        // إذا كان هذا أول عنوان للعميل، نجعله افتراضياً إجبارياً
         $isFirstAddress = $user->addresses()->count() === 0;
         $isDefault = $isFirstAddress ? true : ($request->is_default ?? false);
+
+        $validated = $request->validated();
+        $lat = (float) $validated['latitude'];
+        $lng = (float) $validated['longitude'];
+
+        // Automatic spatial Geo-fencing zone lookup
+        $matchedZone = $this->zoneService->findZoneForPoint($lat, $lng);
+        if ($matchedZone) {
+            $validated['service_zone_id'] = $matchedZone->id;
+            $validated['governorate'] = $validated['governorate'] ?? $matchedZone->governorate;
+            $validated['city'] = $validated['city'] ?? $matchedZone->city;
+            $validated['serviceable_status'] = 'serviceable';
+        } else {
+            $validated['service_zone_id'] = null;
+            $validated['serviceable_status'] = 'not_serviceable';
+        }
 
         DB::beginTransaction();
         try {
@@ -39,26 +52,42 @@ class AddressController extends Controller
             }
 
             $address = $user->addresses()->create(array_merge(
-                $request->validated(), 
+                $validated, 
                 ['is_default' => $isDefault]
             ));
 
             DB::commit();
-            return $this->successResponse($address->load('area'), __('messages.address_added_successfully'), 201);
+            $address->load(['area', 'serviceZone']);
+            return $this->successResponse(new AddressResource($address), __('messages.address_added_successfully'), 201);
             
         } catch (\Exception $e) {
             DB::rollBack();
-            return $this->errorResponse(__('messages.error_occurred'), 500);
+            \Illuminate\Support\Facades\Log::error('Address Store Error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            $msg = config('app.debug') ? $e->getMessage() : __('messages.error_occurred');
+            return $this->errorResponse($msg, 500);
         }
     }
 
-    // تعديل عنوان
     public function update(CustomerAddressRequest $request, $id)
     {
         $user = auth()->user();
         $address = $user->addresses()->findOrFail($id);
-
         $isDefault = $request->is_default ?? false;
+
+        $validated = $request->validated();
+        $lat = (float) $validated['latitude'];
+        $lng = (float) $validated['longitude'];
+
+        $matchedZone = $this->zoneService->findZoneForPoint($lat, $lng);
+        if ($matchedZone) {
+            $validated['service_zone_id'] = $matchedZone->id;
+            $validated['governorate'] = $validated['governorate'] ?? $matchedZone->governorate;
+            $validated['city'] = $validated['city'] ?? $matchedZone->city;
+            $validated['serviceable_status'] = 'serviceable';
+        } else {
+            $validated['service_zone_id'] = null;
+            $validated['serviceable_status'] = 'not_serviceable';
+        }
 
         DB::beginTransaction();
         try {
@@ -66,26 +95,27 @@ class AddressController extends Controller
                 $user->addresses()->update(['is_default' => false]);
             }
 
-            // لا نسمح بإلغاء الافتراضي إذا كان هو العنوان الافتراضي الوحيد
             if (!$isDefault && $address->is_default && $user->addresses()->count() > 1) {
                  return $this->errorResponse(__('messages.cannot_remove_default'), 400);
             }
 
             $address->update(array_merge(
-                $request->validated(), 
+                $validated, 
                 ['is_default' => $isDefault]
             ));
 
             DB::commit();
-            return $this->successResponse($address->load('area'), __('messages.address_updated_successfully'));
+            $address->load(['area', 'serviceZone']);
+            return $this->successResponse(new AddressResource($address), __('messages.address_updated_successfully'));
             
         } catch (\Exception $e) {
             DB::rollBack();
-            return $this->errorResponse(__('messages.error_occurred'), 500);
+            \Illuminate\Support\Facades\Log::error('Address Update Error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            $msg = config('app.debug') ? $e->getMessage() : __('messages.error_occurred');
+            return $this->errorResponse($msg, 500);
         }
     }
 
-    // حذف عنوان
     public function destroy($id)
     {
         $user = auth()->user();
@@ -99,7 +129,6 @@ class AddressController extends Controller
         return $this->successResponse(null, __('messages.address_deleted_successfully'));
     }
 
-    // تعيين كعنوان افتراضي (Endpoint منفصل لزر "Set as default")
     public function setDefault($id)
     {
         $user = auth()->user();
@@ -117,6 +146,4 @@ class AddressController extends Controller
             return $this->errorResponse(__('messages.error_occurred'), 500);
         }
     }
-
-
 }

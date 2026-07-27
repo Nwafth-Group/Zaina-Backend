@@ -11,7 +11,7 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Owns the transactional persistence of a Service and all of its related
- * configuration (durations, rules, coverages, prices, worker links, icon),
+ * configuration (durations, rules, service zones, worker links, icon),
  * keeping the controller thin. Create and update share the same relation-sync
  * path; only base-attribute assignment and the returned instance differ.
  */
@@ -39,9 +39,8 @@ class ServiceWriter
      * @var list<string>
      */
     private const RESPONSE_RELATIONS = [
-        'category', 'duration', 'rules', 'coverages', 'coverages.city', 'coverages.area',
-        'priceRules', 'priceRules.city', 'priceRules.area', 'workers', 'media', 'schedules',
-        'childAgeGroups',
+        'category', 'duration', 'rules', 'workers', 'media', 'schedules',
+        'childAgeGroups', 'serviceZones',
     ];
 
     public function __construct(private MediaService $mediaService) {}
@@ -94,7 +93,7 @@ class ServiceWriter
     }
 
     /**
-     * Upsert durations/rules, replace coverages/prices, and sync workers. Each
+     * Upsert durations/rules, sync service zones, and sync workers. Each
      * section is only touched when present in the payload (so partial updates
      * leave the rest intact). For a brand-new service the deletes are no-ops.
      *
@@ -127,16 +126,6 @@ class ServiceWriter
             $service->rules()->updateOrCreate(['service_id' => $service->id], $data['rules']);
         }
 
-        if (array_key_exists('coverages', $data)) {
-            $service->coverages()->delete();
-            $service->coverages()->createMany($data['coverages']);
-        }
-
-        if (array_key_exists('prices', $data)) {
-            $service->priceRules()->delete();
-            $service->priceRules()->createMany($this->normalizePrices($data['prices']));
-        }
-
         if (array_key_exists('workers', $data)) {
             $workerIds = $data['workers'] ?? [];
             if (! empty($workerIds)) {
@@ -152,6 +141,10 @@ class ServiceWriter
                 }
             }
             $service->workers()->sync($workerIds);
+        }
+
+        if (array_key_exists('service_zone_ids', $data)) {
+            $service->serviceZones()->sync($data['service_zone_ids'] ?? []);
         }
 
         if (array_key_exists('working_days', $data) || array_key_exists('shifts', $data)) {
@@ -230,26 +223,5 @@ class ServiceWriter
         }
 
         $this->mediaService->upload($image, $service, 'service/icon', 'public');
-    }
-
-    /**
-     * Normalize price rows to the real DB columns: drop the transient
-     * `pricing_scope` hint and derive the required `city_id` from the area so it
-     * can never be tampered with from the client.
-     *
-     * @param  array<int, array<string, mixed>>  $prices
-     * @return array<int, array<string, mixed>>
-     */
-    private function normalizePrices(array $prices): array
-    {
-        return array_map(function (array $price): array {
-            unset($price['pricing_scope']);
-
-            if (! empty($price['area_id'])) {
-                $price['city_id'] = Area::find($price['area_id'])?->city_id;
-            }
-
-            return $price;
-        }, $prices);
     }
 }

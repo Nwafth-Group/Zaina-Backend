@@ -87,8 +87,6 @@ return [
      ],
 
      'store_citry' => [
-        'country_id_required' => 'Country ID is required.',
-        'country_id_exists' => 'The selected country does not exist.',
         'name_ar_required' => 'Arabic name is required.',
         'name_ar_string' => 'Arabic name must be a string.',
         'name_ar_max' => 'Arabic name must not exceed 100 characters.',
@@ -132,8 +130,6 @@ return [
     ],
 
      'store_area' => [
-        'city_id_required' => 'City ID is required.',
-        'city_id_exists' => 'The selected city does not exist.',
         'name_ar_required' => 'Arabic name is required.',
         'name_ar_string' => 'Arabic name must be a string.',
         'name_ar_max' => 'Arabic name must not exceed 100 characters.',
@@ -289,19 +285,6 @@ return [
     'max_changes_per_booking_required' => 'Maximum changes per booking is required.',
     'max_changes_per_booking_integer'  => 'Maximum changes per booking must be an integer.',
     'max_changes_per_booking_min'      => 'Maximum changes per booking cannot be less than 0.',
-
-    // 4. Coverage
-    'coverages_required' => 'Geographical coverage details are required.',
-    'coverages_array'    => 'Geographical coverage details must be an array.',
-    'coverages_min'      => 'At least one coverage area must be provided.',
-    
-    'coverages_city_id_required' => 'The city is required for coverage.',
-    'coverages_city_id_exists'   => 'The selected city is invalid.',
-    
-    'coverages_area_id_exists' => 'The selected area is invalid.',
-    
-    'coverages_status_required' => 'The coverage status is required.',
-    'coverages_status_in'       => 'The selected coverage status is invalid.',
 ],
 
 
@@ -349,15 +332,6 @@ return [
     'max_changes_per_booking_integer'        => 'The maximum changes per booking must be an integer.',
     'max_changes_per_booking_min'            => 'The maximum changes per booking cannot be less than 0.',
 
-    // Coverages
-    'coverages_required'                     => 'At least one coverage location is required.',
-    'coverages_array'                        => 'The coverages must be an array.',
-    'coverages_min'                          => 'You must provide at least one coverage area.',
-    'coverage_city_required'                 => 'The city field is required for each coverage item.',
-    'coverage_city_exists'                   => 'The selected city is invalid.',
-    'coverage_area_exists'                   => 'The selected area is invalid.',
-    'coverage_status_in'                     => 'The selected coverage status is invalid.',
-
     // Prices
     'prices_required'                        => 'At least one pricing setup is required.',
     'prices_array'                           => 'The prices must be an array.',
@@ -385,8 +359,7 @@ return [
         'service_id_exists' => 'The selected service does not exist.',
         'pricing_scope_required' => 'Pricing scope is required.',
         'pricing_scope_in' => 'Pricing scope must be either city or area.',
-        'city_id_required_if' => 'City ID is required when pricing scope is city.',
-        'city_id_exists' => 'The selected city does not exist.',
+
         'area_id_required_if' => 'Area ID is required when pricing scope is area.',
         'area_id_exists' => 'The selected area does not exist.',
         'base_price_required' => 'Base price is required.',

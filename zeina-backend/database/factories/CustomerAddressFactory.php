@@ -2,7 +2,6 @@
 
 namespace Database\Factories;
 
-use App\Models\Area;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -18,7 +17,7 @@ class CustomerAddressFactory extends Factory
     {
         return [
             'user_id' => User::factory(),
-            'area_id' => Area::factory(),
+            'service_zone_id' => null,
             'latitude' => fake()->latitude(),
             'longitude' => fake()->longitude(),
             'label' => fake()->randomElement(['Home', 'Office']),

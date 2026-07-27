@@ -4,7 +4,7 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\User;
-use App\Models\Area;
+use App\Models\ServiceZone;
 use App\Models\CustomerAddress;
 use Faker\Factory as Faker;
 
@@ -22,19 +22,20 @@ class CustomerAddressSeeder extends Seeder
             $users = User::take(5)->get(); 
         }
 
-        $areas = Area::all();
+        $serviceZones = ServiceZone::all();
 
-        if ($areas->isEmpty() || $users->isEmpty()) {
-            $this->command->info('يرجى التأكد من تشغيل LocationSeeder و UserSeeder أولاً لتواجد Areas و Users.');
+        if ($users->isEmpty()) {
+            $this->command->info('يرجى التأكد من تشغيل UserSeeder أولاً لتواجد Users.');
             return;
         }
 
         foreach ($users as $user) {
+            $zoneId = $serviceZones->isNotEmpty() ? $serviceZones->random()->id : null;
             
             // 1. إنشاء عنوان افتراضي (المنزل)
             CustomerAddress::create([
                 'user_id'            => $user->id,
-                'area_id'            => $areas->random()->id,
+                'service_zone_id'    => $zoneId,
                 'latitude'           => $faker->latitude($min = 29.9, $max = 30.1), // إحداثيات قريبة من القاهرة
                 'longitude'          => $faker->longitude($min = 31.1, $max = 31.4),
                 'label'              => 'Home',
@@ -55,7 +56,7 @@ class CustomerAddressSeeder extends Seeder
             // 2. إنشاء عنوان إضافي (العمل)
             CustomerAddress::create([
                 'user_id'            => $user->id,
-                'area_id'            => $areas->random()->id,
+                'service_zone_id'    => $zoneId,
                 'latitude'           => $faker->latitude($min = 29.9, $max = 30.1),
                 'longitude'          => $faker->longitude($min = 31.1, $max = 31.4),
                 'label'              => 'Work',

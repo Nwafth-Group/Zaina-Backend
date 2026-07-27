@@ -19,8 +19,6 @@ class ServiceResource extends JsonResource
     public function toArray(Request $request): array
     {
         $media = $this->media->where('collection', 'service/icon')->first();
-        $priceObj = $this->getCustomerPrice();
-        $isStartingPrice = $priceObj ? $priceObj->is_fallback : true;
 
         $defaultAddressId = null;
         if (auth('sanctum')->check()) {
@@ -82,8 +80,8 @@ class ServiceResource extends JsonResource
                 'frequency_type' => $serviceRewardRule->frequency_type ?? 'repeatable',
             ] : null,
             'child_age_groups' => ServiceChildAgeGroupResource::collection($this->childAgeGroups),
-            'coverages' => ServiceCoverageResource::collection($this->whenLoaded('coverages')),
-            'prices' => ServicePriceResource::collection($this->whenLoaded('priceRules')),
+            'service_zones' => \App\Http\Resources\Api\V1\ServiceZone\ServiceZoneResource::collection($this->serviceZones),
+            'service_zone_ids' => $this->serviceZones ? $this->serviceZones->pluck('id')->toArray() : [],
             'image' => $media ? MediaResource::make($media)->getFileUrl() : null,
 
             'preferred_workers' => $this->relationLoaded('preferred_workers')

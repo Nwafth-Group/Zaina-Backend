@@ -70,7 +70,7 @@ class ServiceController extends Controller
     {
         $user = auth()->user();
         
-        $query = \App\Models\CustomerAddress::with('area')
+        $query = \App\Models\CustomerAddress::with('serviceZone')
             ->where('user_id', $user->id)
             ->where('is_active', true);
 
@@ -88,13 +88,15 @@ class ServiceController extends Controller
             ], __('messages.no_active_address'));
         }
 
-        $isCovered = $service->coverages()
-            ->where('city_id', $address->area->city_id)
-            ->where(function ($q) use ($address) {
-                $q->where('area_id', $address->area_id)->orWhereNull('area_id');
-            })
-            ->where('status', 'active')
-            ->exists();
+        // Geo-Fenced Service Zone coverage check
+        $isCovered = false;
+
+        if ($address->service_zone_id) {
+            $isCovered = $service->serviceZones()
+                ->where('service_zones.id', $address->service_zone_id)
+                ->where('service_zones.status', 'active')
+                ->exists();
+        }
 
         return $this->successResponse([
             'has_address' => true,

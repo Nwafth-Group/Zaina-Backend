@@ -8,11 +8,9 @@ use App\Models\City;
 use App\Models\Coupon;
 use App\Models\CustomerAddress;
 use App\Models\Service;
-use App\Models\ServiceCoverage;
 use App\Models\ServiceDuration;
 use App\Models\ServiceRule;
 use App\Models\ServiceSchedule;
-use App\Models\User;
 use App\Models\Worker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -329,13 +327,6 @@ class BookingCouponTest extends TestCase
             'start_time' => '08:00:00',
             'end_time' => '16:00:00',
             'is_active' => true,
-        ]);
-
-        ServiceCoverage::factory()->create([
-            'service_id' => $service->id,
-            'city_id' => $city->id,
-            'area_id' => $area->id,
-            'status' => 'active',
         ]);
 
         $worker = Worker::factory()->create(['status' => 'active']);

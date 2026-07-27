@@ -25,7 +25,6 @@ class User extends Authenticatable implements Auditable
      * @var list<string>
      */
     protected $fillable = [
-        'country_id',
         'first_name',
         'id_number',
         'last_name',
@@ -74,11 +73,6 @@ class User extends Authenticatable implements Auditable
     public function addresses()
     {
         return $this->hasMany(CustomerAddress::class, 'user_id');
-    }
-
-    public function country()
-    {
-        return $this->belongsTo(Country::class, 'country_id');
     }
 
     public function media()

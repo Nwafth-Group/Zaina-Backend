@@ -80,21 +80,9 @@ class UpdateServiceRequest extends FormRequest
             // Service Image
             'image' => 'sometimes|nullable|file|mimes:svg|max:2048',
 
-            // Coverage Cities & Areas
-            'coverages' => 'sometimes|required|array|min:1',
-            'coverages.*.city_id' => 'required_with:coverages|exists:cities,id',
-            'coverages.*.area_id' => 'nullable|exists:areas,id',
-            'coverages.*.status' => 'nullable|in:active,inactive,coming_soon',
-
-            // Prices
-            'prices' => 'sometimes|nullable|array',
-            'prices.*.pricing_scope' => 'required_with:prices|in:city,area',
-            'prices.*.city_id' => 'nullable|exists:cities,id',
-            'prices.*.area_id' => 'nullable|exists:areas,id',
-            'prices.*.price_per_service_period' => 'required_with:prices|numeric|min:0',
-            'prices.*.currency' => 'nullable|string|max:10',
-            'prices.*.effective_start' => 'nullable|date',
-            'prices.*.effective_end' => 'nullable|date|after_or_equal:prices.*.effective_start',
+            // Geo-Fenced Service Zones
+            'service_zone_ids' => 'sometimes|nullable|array',
+            'service_zone_ids.*' => 'integer|exists:service_zones,id',
 
             // Service Duration & Time
             'start_time' => 'sometimes|nullable|date_format:H:i',
@@ -426,31 +414,6 @@ class UpdateServiceRequest extends FormRequest
             'rules.no_show_policy.in' => __('validation.update_service.no_show_policy_in'),
             'rules.max_changes_per_booking.integer' => __('validation.update_service.max_changes_per_booking_integer'),
             'rules.max_changes_per_booking.min' => __('validation.update_service.max_changes_per_booking_min'),
-
-            // التغطية الجغرافية
-            'coverages.required' => __('validation.update_service.coverages_required'),
-            'coverages.array' => __('validation.update_service.coverages_array'),
-            'coverages.min' => __('validation.update_service.coverages_min'),
-            'coverages.*.city_id.required_with' => __('validation.update_service.coverage_city_required'),
-            'coverages.*.city_id.exists' => __('validation.update_service.coverage_city_exists'),
-            'coverages.*.area_id.exists' => __('validation.update_service.coverage_area_exists'),
-            'coverages.*.status.in' => __('validation.update_service.coverage_status_in'),
-
-            // التسعير
-            'prices.required' => __('validation.update_service.prices_required'),
-            'prices.array' => __('validation.update_service.prices_array'),
-            'prices.min' => __('validation.update_service.prices_min'),
-            'prices.*.pricing_scope.required_with' => __('validation.update_service.pricing_scope_required'),
-            'prices.*.pricing_scope.in' => __('validation.update_service.pricing_scope_in'),
-            'prices.*.city_id.exists' => __('validation.update_service.price_city_exists'),
-            'prices.*.area_id.exists' => __('validation.update_service.price_area_exists'),
-            'prices.*.price_per_service_period.required_with' => __('validation.update_service.price_required'),
-            'prices.*.price_per_service_period.numeric' => __('validation.update_service.price_numeric'),
-            'prices.*.price_per_service_period.min' => __('validation.update_service.price_min'),
-            'prices.*.currency.max' => __('validation.update_service.currency_max'),
-            'prices.*.effective_start.date' => __('validation.update_service.effective_start_date'),
-            'prices.*.effective_end.date' => __('validation.update_service.effective_end_date'),
-            'prices.*.effective_end.after_or_equal' => __('validation.update_service.effective_end_after'),
 
             // الصور
             'image.image' => __('validation.update_service.image_invalid'),

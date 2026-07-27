@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api\V1\Admin;
 use App\Enums\Admin\BookingStatus;
 use App\Filters\Booking\AreaFilter;
 use App\Filters\Booking\CategoryFilter;
-use App\Filters\Booking\CityFilter;
+use App\Filters\Booking\ServiceZoneFilter;
 use App\Filters\Booking\DateFromFilter;
 use App\Filters\Booking\DateToFilter;
 use App\Filters\Booking\MaxAmountFilter;
@@ -55,8 +55,7 @@ class BookingController extends Controller
                 PaymentStatusFilter::class,
                 ServiceFilter::class,
                 CategoryFilter::class,
-                CityFilter::class,
-                AreaFilter::class,
+                ServiceZoneFilter::class,
                 MinAmountFilter::class,
                 MaxAmountFilter::class,
                 DateFromFilter::class,
@@ -80,8 +79,7 @@ class BookingController extends Controller
                 PaymentStatusFilter::class,
                 ServiceFilter::class,
                 CategoryFilter::class,
-                CityFilter::class,
-                AreaFilter::class,
+                ServiceZoneFilter::class,
                 MinAmountFilter::class,
                 MaxAmountFilter::class,
                 DateFromFilter::class,
@@ -120,7 +118,6 @@ class BookingController extends Controller
                 PaymentStatusFilter::class,
                 ServiceFilter::class,
                 CategoryFilter::class,
-                CityFilter::class,
                 AreaFilter::class,
                 MinAmountFilter::class,
                 MaxAmountFilter::class,

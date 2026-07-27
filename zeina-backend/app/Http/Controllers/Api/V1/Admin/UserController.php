@@ -87,18 +87,11 @@ class UserController extends Controller
             $query->whereDate('created_at', '<=', $request->input('date_to'));
         }
 
-        // Filter by location (default addresses of customers)
-        if ($request->filled('city_id') || $request->filled('area_id')) {
+        // Filter by location (service zone of default customer addresses)
+        if ($request->filled('service_zone_id')) {
             $query->whereHas('addresses', function ($aQuery) use ($request) {
-                $aQuery->where('is_active', true);
-                if ($request->filled('area_id')) {
-                    $aQuery->where('area_id', $request->input('area_id'));
-                } elseif ($request->filled('city_id')) {
-                    $cityIds = is_array($request->input('city_id'))
-                        ? $request->input('city_id')
-                        : explode(',', $request->input('city_id'));
-                    $aQuery->whereIn('city_id', array_filter($cityIds));
-                }
+                $aQuery->where('is_active', true)
+                    ->where('service_zone_id', $request->input('service_zone_id'));
             });
         }
 

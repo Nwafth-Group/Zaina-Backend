@@ -55,56 +55,7 @@ class BookingService
 
         // 4. فحص وتأكيد عمال الخدمة وعدم انشغالهم
         $workerIds = $data['worker_ids'];
-        $areaId = $address->area_id;
-        $cityId = $address->area->city_id;
-
-        foreach ($workerIds as $workerId) {
-            $workerExists = $service->workers()
-                ->where('workers.id', $workerId)
-                ->where('workers.status', 'active')
-                ->exists();
-
-            if (! $workerExists) {
-                throw new \Exception(__('messages.invalid_worker_for_service'), 422);
-            }
-
-            $hasConflict = BookingAssignment::where('worker_id', $workerId)
-                ->where('status', 'active')
-                ->whereHas('booking', function ($q) use ($bookingDate, $startStr, $endStr) {
-                    $q->where('booking_date', $bookingDate)
-                        ->whereIn('status', ['Upcoming', 'inService'])
-                        ->where(function ($timeQ) use ($startStr, $endStr) {
-                            $timeQ->where('start_time', '<', $endStr)->where('end_time', '>', $startStr);
-                        });
-                })
-                ->exists();
-
-            if ($hasConflict) {
-                throw new \Exception(__('messages.worker_already_booked'), 422);
-            }
-        }
-
-        // 5. حساب الأسعار جغرافياً بناءً على النظام الهرمي
-        $today = now()->toDateString();
-        $servicePrice = ServicePrice::where('service_id', $data['service_id'])
-            ->where('city_id', $cityId)
-            ->where(function ($query) use ($areaId) {
-                $query->where('area_id', $areaId)->orWhereNull('area_id');
-            })
-            ->where(function ($q) use ($today) {
-                $q->whereNull('effective_start')->orWhere('effective_start', '<=', $today);
-            })
-            ->where(function ($q) use ($today) {
-                $q->whereNull('effective_end')->orWhere('effective_end', '>=', $today);
-            })
-            ->orderByRaw('area_id IS NULL ASC')
-            ->first();
-
-        if (! $servicePrice) {
-            throw new \Exception(__('messages.service_not_available_in_location'), 400);
-        }
-
-        $pricePerPeriod = (float) $servicePrice->price_per_service_period;
+        $pricePerPeriod = (float) $service->base_price;
         $workersCount = count($workerIds);
         $periodsCount = (int) $data['periods_count'];
         if ($service->service_code === 'DEEP_CLEANING') {

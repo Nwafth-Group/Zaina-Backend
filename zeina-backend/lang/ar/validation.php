@@ -92,8 +92,6 @@ return [
      ],
 
      'store_citry' => [
-        'country_id_required' => 'معرف الدولة مطلوب.',
-        'country_id_exists' => 'الدولة المحددة غير موجودة.',
         'name_ar_required' => 'الاسم العربي مطلوب.',
         'name_ar_string' => 'الاسم العربي يجب أن يكون نصي.',
         'name_ar_max' => 'الاسم العربي لا يجب أن يتجاوز 100 حرف.',
@@ -137,8 +135,6 @@ return [
     ],
 
      'store_area' => [
-        'city_id_required' => 'معرف المدينة مطلوب.',
-        'city_id_exists' => 'المدينة المحددة غير موجودة.',
         'name_ar_required' => 'الاسم العربي مطلوب.',
         'name_ar_string' => 'الاسم العربي يجب أن يكون نصي.',
         'name_ar_max' => 'الاسم العربي لا يجب أن يتجاوز 100 حرف.',
@@ -289,19 +285,6 @@ return [
     'max_changes_per_booking_required' => 'الحد الأقصى للتعديلات لكل حجز مطلوب.',
     'max_changes_per_booking_integer'  => 'الحد الأقصى للتعديلات يجب أن يكون رقماً صحيحاً.',
     'max_changes_per_booking_min'      => 'الحد الأقصى للتعديلات لا يمكن أن يكون أقل من 0.',
-
-    // 4. التغطية الجغرافية (Coverage)
-    'coverages_required' => 'بيانات التغطية الجغرافية مطلوبة.',
-    'coverages_array'    => 'بيانات التغطية الجغرافية يجب أن تكون مصفوفة.',
-    'coverages_min'      => 'يجب إضافة منطقة تغطية واحدة على الأقل.',
-    
-    'coverages_city_id_required' => 'المدينة مطلوبة في التغطية الجغرافية.',
-    'coverages_city_id_exists'   => 'المدينة المحددة في التغطية الجغرافية غير موجودة.',
-    
-    'coverages_area_id_exists' => 'المنطقة المحددة غير موجودة.',
-    
-    'coverages_status_required' => 'حالة التغطية الجغرافية مطلوبة.',
-    'coverages_status_in'       => 'حالة التغطية الجغرافية المحددة غير صحيحة.',
 ],
 
 
@@ -349,14 +332,6 @@ return [
     'max_changes_per_booking_integer'        => 'أقصى عدد تعديلات مسموح بها للحجز يجب أن يكون رقماً صحيحاً.',
     'max_changes_per_booking_min'            => 'أقصى عدد تعديلات لا يمكن أن يكون أقل من 0.',
 
-    // التغطية الجغرافية
-    'coverages_required'                     => 'يجب تحديد نطاق تغطية جغرافية واحد على الأقل.',
-    'coverages_array'                        => 'بيانات التغطية يجب أن تكون مصفوفة.',
-    'coverages_min'                          => 'يجب إضافة منطقة تغطية واحدة على الأقل.',
-    'coverage_city_required'                 => 'حقل المدينة مطلوب لكل منطقة تغطية مضافة.',
-    'coverage_city_exists'                   => 'المدينة المختارة غير موجودة.',
-    'coverage_area_exists'                   => 'المنطقة أو الحي المختار غير موجود.',
-    'coverage_status_in'                     => 'حالة التغطية المحددة غير صالحة.',
 
     // التسعير
     'prices_required'                        => 'يجب إضافة هيكل تسعير واحد على الأقل.',
@@ -385,8 +360,6 @@ return [
         'service_id_exists' => 'الخدمة المحددة غير موجودة.',
         'pricing_scope_required' => 'نطاق التسعير مطلوب.',
         'pricing_scope_in' => 'نطاق التسعير يجب أن يكون إما "city" أو "area".',
-        'city_id_required_if' => 'معرف المدينة مطلوب عندما يكون نطاق التسعير "city".',
-        'city_id_exists' => 'المدينة المحددة غير موجودة.',
         'area_id_required_if' => 'معرف المنطقة مطلوب عندما يكون نطاق التسعير "area".',
         'area_id_exists' => 'المنطقة المحددة غير موجودة.',
         'base_price_required' => 'السعر الأساسي مطلوب.',

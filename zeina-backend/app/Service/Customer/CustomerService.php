@@ -15,7 +15,7 @@ class CustomerService
      */
     public function listServices(array $filters): \Illuminate\Database\Eloquent\Collection
     {
-        $query = Service::with(['category', 'media', 'startingPrice'])
+        $query = Service::with(['category', 'media'])
             ->where('status', 'active');
 
         if (!empty($filters['type'])) {

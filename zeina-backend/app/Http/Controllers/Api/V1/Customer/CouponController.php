@@ -56,27 +56,15 @@ class CouponController extends Controller
                     });
 
                 // Location filtering
-                if ($user && $defaultAddress) {
-                    $areaId = $defaultAddress->area_id;
-                    $cityId = $defaultAddress->area ? $defaultAddress->area->city_id : null;
+                if ($user && $defaultAddress && $defaultAddress->service_zone_id) {
+                    $zoneId = $defaultAddress->service_zone_id;
 
-                    $availQ->where(function ($locQ) use ($cityId, $areaId) {
+                    $availQ->where(function ($locQ) use ($zoneId) {
                         $locQ->where('is_for_all_cities', true)
-                            ->orWhere(function ($subQ) use ($cityId, $areaId) {
+                            ->orWhere(function ($subQ) use ($zoneId) {
                                 $subQ->where('is_for_all_cities', false)
-                                    ->where(function ($locSubQ) use ($cityId, $areaId) {
-                                        if ($areaId) {
-                                            $locSubQ->whereHas('areas', function ($aQ) use ($areaId) {
-                                                $aQ->where('areas.id', $areaId);
-                                            });
-                                        }
-                                        if ($cityId) {
-                                            $locSubQ->orWhere(function ($citySubQ) use ($cityId) {
-                                                $citySubQ->whereHas('cities', function ($cQ) use ($cityId) {
-                                                    $cQ->where('cities.id', $cityId);
-                                                })->whereDoesntHave('areas');
-                                            });
-                                        }
+                                    ->whereHas('serviceZones', function ($zQ) use ($zoneId) {
+                                        $zQ->where('service_zones.id', $zoneId);
                                     });
                             });
                     });
@@ -92,7 +80,7 @@ class CouponController extends Controller
             }
         });
 
-        $coupons = $query->with(['services', 'cities', 'areas'])->get();
+        $coupons = $query->with(['services', 'serviceZones'])->get();
 
         $coupons->each(function ($coupon) use ($user, $now, $completedBookingsCount) {
             $userUsageCount = 0;
@@ -165,27 +153,15 @@ class CouponController extends Controller
                     });
 
                 // Location filtering
-                if ($user && $defaultAddress) {
-                    $areaId = $defaultAddress->area_id;
-                    $cityId = $defaultAddress->area ? $defaultAddress->area->city_id : null;
+                if ($user && $defaultAddress && $defaultAddress->service_zone_id) {
+                    $zoneId = $defaultAddress->service_zone_id;
 
-                    $availQ->where(function ($locQ) use ($cityId, $areaId) {
+                    $availQ->where(function ($locQ) use ($zoneId) {
                         $locQ->where('is_for_all_cities', true)
-                            ->orWhere(function ($subQ) use ($cityId, $areaId) {
+                            ->orWhere(function ($subQ) use ($zoneId) {
                                 $subQ->where('is_for_all_cities', false)
-                                    ->where(function ($locSubQ) use ($cityId, $areaId) {
-                                        if ($areaId) {
-                                            $locSubQ->whereHas('areas', function ($aQ) use ($areaId) {
-                                                $aQ->where('areas.id', $areaId);
-                                            });
-                                        }
-                                        if ($cityId) {
-                                            $locSubQ->orWhere(function ($citySubQ) use ($cityId) {
-                                                $citySubQ->whereHas('cities', function ($cQ) use ($cityId) {
-                                                    $cQ->where('cities.id', $cityId);
-                                                })->whereDoesntHave('areas');
-                                            });
-                                        }
+                                    ->whereHas('serviceZones', function ($zQ) use ($zoneId) {
+                                        $zQ->where('service_zones.id', $zoneId);
                                     });
                             });
                     });
@@ -201,7 +177,7 @@ class CouponController extends Controller
             }
         });
 
-        $coupon = $query->with(['services', 'cities', 'areas'])->first();
+        $coupon = $query->with(['services', 'serviceZones'])->first();
 
         if (! $coupon) {
             return $this->errorResponse(

@@ -68,21 +68,9 @@ class StoreServiceRequest extends CustomFormRequest
             // Service Image
             'image' => 'nullable|file|mimes:svg|max:2048',
 
-            // Coverage Cities & Areas
-            'coverages' => 'required|array|min:1',
-            'coverages.*.city_id' => 'required|exists:cities,id',
-            'coverages.*.area_id' => 'nullable|exists:areas,id',
-            'coverages.*.status' => 'nullable|in:active,inactive,coming_soon',
-
-            // Prices
-            'prices' => 'nullable|array',
-            'prices.*.pricing_scope' => 'required_with:prices|in:city,area',
-            'prices.*.city_id' => 'nullable|exists:cities,id',
-            'prices.*.area_id' => 'nullable|exists:areas,id',
-            'prices.*.price_per_service_period' => 'required_with:prices|numeric|min:0',
-            'prices.*.currency' => 'nullable|string|max:10',
-            'prices.*.effective_start' => 'nullable|date',
-            'prices.*.effective_end' => 'nullable|date|after_or_equal:prices.*.effective_start',
+            // Geo-Fenced Service Zones
+            'service_zone_ids' => 'sometimes|nullable|array',
+            'service_zone_ids.*' => 'integer|exists:service_zones,id',
 
             // Service Duration & Time
             'start_time' => 'nullable|date_format:H:i',
@@ -448,19 +436,6 @@ class StoreServiceRequest extends CustomFormRequest
             'rules.max_changes_per_booking.required' => __('validation.create_service.max_changes_per_booking_required'),
             'rules.max_changes_per_booking.integer' => __('validation.create_service.max_changes_per_booking_integer'),
             'rules.max_changes_per_booking.min' => __('validation.create_service.max_changes_per_booking_min'),
-
-            // 4. التغطية الجغرافية (Coverage)
-            'coverages.required' => __('validation.create_service.coverages_required'),
-            'coverages.array' => __('validation.create_service.coverages_array'),
-            'coverages.min' => __('validation.create_service.coverages_min'),
-
-            'coverages.*.city_id.required' => __('validation.create_service.coverages_city_id_required'),
-            'coverages.*.city_id.exists' => __('validation.create_service.coverages_city_id_exists'),
-
-            'coverages.*.area_id.exists' => __('validation.create_service.coverages_area_id_exists'),
-
-            'coverages.*.status.required' => __('validation.create_service.coverages_status_required'),
-            'coverages.*.status.in' => __('validation.create_service.coverages_status_in'),
 
             // 5. الصورة
             'image.image' => __('validation.create_category.image_image'),

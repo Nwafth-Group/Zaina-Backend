@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
+use App\Models\ServiceZone;
+
 class KhaledTestUserSeeder extends Seeder
 {
     public function run(): void
@@ -43,6 +45,11 @@ class KhaledTestUserSeeder extends Seeder
             $user->assignRole($customerRole);
         }
 
+        // Fetch matching or default Service Zone
+        $serviceZone = ServiceZone::where('name', 'LIKE', '%Abbas%')
+            ->orWhere('name', 'LIKE', '%عباس%')
+            ->first() ?? ServiceZone::first();
+
         // 2. Create Address
         $address = CustomerAddress::updateOrCreate(
             [
@@ -50,7 +57,7 @@ class KhaledTestUserSeeder extends Seeder
                 'label'   => 'Home 2',
             ],
             [
-                'area_id'            => 2,
+                'service_zone_id'    => $serviceZone?->id,
                 'latitude'           => 30.0583,
                 'longitude'          => 31.3361,
                 'street'             => 'Abbas El Akkad Street 2 ',

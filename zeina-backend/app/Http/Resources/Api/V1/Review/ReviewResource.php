@@ -36,11 +36,13 @@ class ReviewResource extends JsonResource
             'status' => $this->status ?? 'pending',
             'customer' => $this->customer ? [
                 'id' => $this->customer->id,
+                'name' => trim(($this->customer->first_name ?? '') . ' ' . ($this->customer->last_name ?? '')),
                 'first_name' => $this->customer->first_name,
                 'last_name' => $this->customer->last_name,
                 'email' => $this->customer->email,
                 'phone' => $this->customer->phone,
             ] : null,
+            'customer_name' => $this->customer ? trim(($this->customer->first_name ?? '') . ' ' . ($this->customer->last_name ?? '')) : null,
             'target_type' => $targetType,
             'target' => [
                 'id' => $this->reviewable_id,

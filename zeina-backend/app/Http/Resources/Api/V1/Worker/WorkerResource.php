@@ -16,7 +16,7 @@ class WorkerResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        $media = $this->media->where('collection', 'worker/image')->first();
+        $media = $this->media ? ($this->media->where('collection', 'worker/image')->first() ?? $this->media->first()) : null;
 
         $service = $this->relationLoaded('services') ? $this->services->first() : $this->services()->first();
         $assignedService = $service ? [

@@ -37,10 +37,9 @@ class Provider extends Model
         ->withTimestamps();
     }
 
-    // المناطق التي يعمل بها
-    public function areas()
+    public function serviceZones()
     {
-        return $this->hasMany(AreaProvider::class,'provider_id');
+        return $this->belongsToMany(ServiceZone::class, 'provider_service_zones');
     }
 
     // الحجوزات المعين عليها حالياً

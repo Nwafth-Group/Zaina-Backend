@@ -30,7 +30,7 @@ class ServiceController extends Controller
     {
         // Filter the listing through the Pipeline (one class per filter).
         $query = app(Pipeline::class)
-            ->send(Service::query()->with(['category', 'media', 'startingPrice', 'workers']))
+            ->send(Service::query()->with(['category', 'media', 'workers', 'serviceZones']))
             ->through([
                 SearchFilter::class,
                 StatusFilter::class,
@@ -51,7 +51,7 @@ class ServiceController extends Controller
 
     public function show($id)
     {
-        $service = Service::with(['category', 'duration', 'rules', 'coverages', 'coverages.city', 'coverages.area', 'priceRules', 'priceRules.city', 'priceRules.area', 'workers', 'schedules', 'childAgeGroups'])->findOrFail($id);
+        $service = Service::with(['category', 'duration', 'rules', 'workers', 'schedules', 'childAgeGroups', 'serviceZones'])->findOrFail($id);
 
         return $this->successResponse(new ServiceResource($service), __('messages.service_retrieved_successfully'));
     }
@@ -66,14 +66,12 @@ class ServiceController extends Controller
             'category',
             'workers',
             'childAgeGroups',
-            'coverages',
-            'coverages.city',
-            'coverages.area',
-            'schedules'
+            'schedules',
+            'serviceZones'
         ]);
 
         $latestBookings = $service->bookings()
-            ->with(['customer', 'service'])
+            ->with(['customer', 'service', 'workers'])
             ->orderByDesc('created_at')
             ->limit(10)
             ->get();

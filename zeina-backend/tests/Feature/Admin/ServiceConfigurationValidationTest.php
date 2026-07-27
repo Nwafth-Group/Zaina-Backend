@@ -50,9 +50,6 @@ class ServiceConfigurationValidationTest extends TestCase
             'acceptance_required' => true,
             'start_time' => '09:00',
             'end_time' => '18:00',
-            'coverages' => [
-                ['city_id' => $cityId, 'area_id' => null, 'status' => 'active']
-            ],
             'prices' => [
                 ['pricing_scope' => 'city', 'city_id' => $cityId, 'area_id' => null, 'price_per_service_period' => 120.00, 'currency' => 'EGP']
             ],

@@ -35,6 +35,13 @@ class AdminBookingResource extends JsonResource
                 ? Carbon::parse($this->start_time)->format('h:i A') . ' - ' . Carbon::parse($this->end_time)->format('h:i A')
                 : null,
             'workers_count' => $this->relationLoaded('workers') ? $this->workers->count() : 0,
+            'worker_name' => $this->relationLoaded('workers') && $this->workers->count() > 0
+                ? $this->workers->map(fn($w) => $w->name ?? trim(($w->first_name ?? '') . ' ' . ($w->last_name ?? '')))->filter()->join(', ')
+                : null,
+            'workers' => $this->relationLoaded('workers') ? $this->workers->map(fn($w) => [
+                'id' => $w->id,
+                'name' => $w->name ?? trim(($w->first_name ?? '') . ' ' . ($w->last_name ?? '')),
+            ]) : [],
             'number_of_workers' => (int) ($this->number_of_workers ?? ($this->relationLoaded('workers') ? $this->workers->count() : 0)),
             'worker_gender' => $this->worker_gender,
             'assignment_status' => ($this->relationLoaded('workers') && $this->workers->count() >= (int) ($this->number_of_workers ?? 1)) ? 'assigned' : 'pending_assignment',

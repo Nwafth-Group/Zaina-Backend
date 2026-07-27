@@ -63,7 +63,7 @@ class ProviderController extends Controller
     }
 
     /**
-     * US-02: Map Provider to Services & Coverages
+     * US-02: Map Provider to Services & Service Zones
      */
     public function mapProvider(MapProviderRequest $request, Provider $provider)
     { 
@@ -77,21 +77,12 @@ class ProviderController extends Controller
                 $provider->services()->sync($request->service_ids);
 
                 // 2. تحديث التغطية الجغرافية
-                $provider->areas()->delete(); // مسح التغطية القديمة
-                
-                $coveragesData = array_map(function($coverage) {
-                    return [
-                        'city_id' => $coverage['city_id'],
-                        'area_id' => $coverage['area_id'] ?? null,
-                        'created_by' => auth()->id(),
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ];
-                }, $request->coverages);
-                $provider->areas()->createMany($coveragesData);
+                if ($request->has('service_zone_ids')) {
+                    $provider->serviceZones()->sync($request->service_zone_ids);
+                }
             });
 
-            return $this->successResponse(new ProviderResource($provider->load(['services', 'areas'])),__('messages.provider_and_coverge_success'));
+            return $this->successResponse(new ProviderResource($provider->load(['services', 'serviceZones'])),__('messages.provider_and_coverge_success'));
 
         } catch (\Exception $e) {
             return $this->errorResponse('Failed to map provider');

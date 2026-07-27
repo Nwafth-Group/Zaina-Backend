@@ -1,9 +1,12 @@
 <?php
 
+use App\Http\Controllers\Api\V1\Admin\DriverController;
+use App\Http\Controllers\Api\V1\Admin\DeparturePointController;
+use App\Http\Controllers\Api\V1\Admin\ServiceZoneController;
+use App\Http\Controllers\Api\V1\Admin\TransportDispatchController;
 use App\Http\Controllers\Api\V1\Admin\AdminPointsController;
 use App\Http\Controllers\Api\V1\Admin\AdsController;
 use App\Http\Controllers\Api\V1\Admin\AnnouncementController;
-use App\Http\Controllers\Api\V1\Admin\AreaController;
 use App\Http\Controllers\Api\V1\Admin\AuthController;
 use App\Http\Controllers\Api\V1\Admin\BookingController;
 use App\Http\Controllers\Api\V1\Admin\CategoryController;
@@ -43,6 +46,59 @@ Route::prefix('admin')->group(function () {
         ->middleware('signed');
 
     Route::middleware(['auth:sanctum', IsAdmin::class])->group(function () {
+
+        // Drivers API
+        Route::middleware('permission:drivers.view')->group(function () {
+            Route::get('drivers', [DriverController::class, 'index']);
+            Route::get('drivers/{driver}', [DriverController::class, 'show']);
+        });
+        Route::middleware('permission:drivers.create')->group(function () {
+            Route::post('drivers', [DriverController::class, 'store']);
+        });
+        Route::middleware('permission:drivers.edit')->group(function () {
+            Route::match(['put', 'patch'], 'drivers/{driver}', [DriverController::class, 'update']);
+        });
+        Route::middleware('permission:drivers.delete')->group(function () {
+            Route::delete('drivers/{driver}', [DriverController::class, 'destroy']);
+        });
+
+        // Departure Points API
+        Route::middleware('permission:departure_points.view')->group(function () {
+            Route::get('departure-points', [DeparturePointController::class, 'index']);
+            Route::get('departure-points/{departure_point}', [DeparturePointController::class, 'show']);
+        });
+        Route::middleware('permission:departure_points.create')->group(function () {
+            Route::post('departure-points', [DeparturePointController::class, 'store']);
+        });
+        Route::middleware('permission:departure_points.edit')->group(function () {
+            Route::match(['put', 'patch'], 'departure-points/{departure_point}', [DeparturePointController::class, 'update']);
+        });
+        Route::middleware('permission:departure_points.delete')->group(function () {
+            Route::delete('departure-points/{departure_point}', [DeparturePointController::class, 'destroy']);
+        });
+
+        // Service Zones (Geo-fencing) API
+        Route::middleware('permission:service_zones.view')->group(function () {
+            Route::get('service-zones', [ServiceZoneController::class, 'index']);
+            Route::get('service-zones/{service_zone}', [ServiceZoneController::class, 'show']);
+            Route::post('service-zones/check-point', [ServiceZoneController::class, 'checkPoint']);
+        });
+        Route::middleware('permission:service_zones.create')->group(function () {
+            Route::post('service-zones', [ServiceZoneController::class, 'store']);
+        });
+        Route::middleware('permission:service_zones.edit')->group(function () {
+            Route::match(['put', 'patch'], 'service-zones/{service_zone}', [ServiceZoneController::class, 'update']);
+        });
+        Route::middleware('permission:service_zones.delete')->group(function () {
+            Route::delete('service-zones/{service_zone}', [ServiceZoneController::class, 'destroy']);
+        });
+
+        // Transport & Dispatching API
+        Route::middleware('permission:transport_dispatch.view')->prefix('transport-dispatch')->group(function () {
+            Route::get('daily-overview', [TransportDispatchController::class, 'dailyOverview']);
+            Route::get('region-details', [TransportDispatchController::class, 'regionGroupDetails']);
+            Route::put('groups/{id}', [TransportDispatchController::class, 'updateGroupDispatch'])->middleware('permission:transport_dispatch.edit');
+        });
 
         Route::get('dashboard/stats', [DashboardController::class, 'stats']);
 
@@ -91,34 +147,7 @@ Route::prefix('admin')->group(function () {
         Route::delete('roles/{role}', [RoleController::class, 'destroy'])->middleware('permission:roles.delete');
         Route::post('roles/{role}/duplicate', [RoleController::class, 'duplicate'])->middleware('permission:roles.create');
 
-        // Read-only location lookups feed admin form dropdowns (service coverage &
-        // pricing, worker assignment). Available to any admin: reading reference
-        // data must not require the location.edit *write* permission, which the
-        // services/workers management area itself does not require either.
-        Route::get('cities', [CityController::class, 'index']);
-        Route::get('areas', [AreaController::class, 'index']);
-        Route::get('govrenrates', [GovrenrateController::class, 'index']);
 
-        // Location management (writes) gated behind location.edit or module-specific permission.
-        Route::middleware('permission:location.edit|cities.edit')->group(function () {
-            Route::apiResource('cities', CityController::class)->except('index');
-            Route::post('cities/{city}/toggle-status', [CityController::class, 'toggleStatus']);
-        });
-
-        Route::middleware('permission:location.edit|countries.edit')->group(function () {
-            Route::apiResource('countries', CountryController::class);
-            Route::post('countries/{country}/toggle-status', [CountryController::class, 'toggleStatus']);
-        });
-
-        Route::middleware('permission:location.edit|governorates.edit')->group(function () {
-            Route::apiResource('govrenrates', GovrenrateController::class)->except('index');
-            Route::post('govrenrates/{govrenrate}/toggle-status', [GovrenrateController::class, 'toggleStatus']);
-        });
-
-        Route::middleware('permission:location.edit|areas.edit')->group(function () {
-            Route::apiResource('areas', AreaController::class)->except('index');
-            Route::post('areas/{area}/toggle-status', [AreaController::class, 'toggleStatus']);
-        });
 
         // kyc routes
         //  Route::prefix('kyc')->group(function (){
