@@ -28,12 +28,12 @@ class HomeController extends Controller
         $currentDate = now()->toDateString();
         $currentTime = now()->toTimeString();
 
-        // 2. Upcoming Appointment
-        $upcomingBooking = null;
+        // 2. Upcoming Appointments (up to 5 closest)
+        $upcomingBookings = [];
 
         if (auth('sanctum')->check()) {
             $user = auth('sanctum')->user();
-            $booking = Booking::with(['service.media', 'service.rules', 'visits'])
+            $bookings = Booking::with(['service.media', 'service.rules', 'visits'])
                 ->where('customer_id', $user->id)
                 ->whereIn('status', ['Upcoming', 'inService'])
                 ->where(function ($query) use ($currentDate, $currentTime) {
@@ -45,13 +45,14 @@ class HomeController extends Controller
                 })
                 ->orderBy('booking_date', 'asc')
                 ->orderBy('start_time', 'asc')
-                ->first();
+                ->take(5)
+                ->get();
 
-            if ($booking) {
+            foreach ($bookings as $booking) {
                 // Calculate duration
                 $hours = floor($booking->duration_minutes / 60);
                 $durationText = $hours > 0 ? "{$hours} Hours" : "{$booking->duration_minutes} Mins";
-                $mediaService = $booking->service->media()->where('collection', 'service/icon')->first();
+                $mediaService = $booking->service?->media()->where('collection', 'service/icon')->first();
 
                 // Compute expected arrival time range
                 $expectedArrivalTime = null;
@@ -83,11 +84,11 @@ class HomeController extends Controller
                     $firstVisitFormatted = "{$fvDayName}, {$fvDate->format('d M Y')}";
                 }
 
-                $upcomingBooking = [
+                $upcomingBookings[] = [
                     'id' => $booking->id,
                     'booking_ref' => $booking->booking_ref,
-                    'service_name_ar' => $booking->service->name_ar,
-                    'service_name_en' => $booking->service->name_en,
+                    'service_name_ar' => $booking->service?->name_ar ?? '',
+                    'service_name_en' => $booking->service?->name_en ?? '',
                     'image' => $mediaService ? (new MediaResource($mediaService))->getFileUrl() : null,
                     'price' => $booking->total_amount,
                     'currency' => 'EGP',
@@ -104,10 +105,11 @@ class HomeController extends Controller
             }
         }
 
-        // Return only banners and upcoming_appointment
+        // Return banners and upcoming_appointment (array of up to 5 items)
         return $this->successResponse([
             'banners' => AdResource::collection($banners),
-            'upcoming_appointment' => $upcomingBooking ?? null,
+            'upcoming_appointment' => $upcomingBookings,
+            'upcoming_appointments' => $upcomingBookings,
         ], 'Home page data fetched successfully.');
     }
 }
