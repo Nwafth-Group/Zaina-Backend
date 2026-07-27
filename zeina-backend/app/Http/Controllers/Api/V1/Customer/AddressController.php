@@ -57,7 +57,7 @@ class AddressController extends Controller
             ));
 
             DB::commit();
-            $address->load(['area', 'serviceZone']);
+            $address->load(['serviceZone']);
             return $this->successResponse(new AddressResource($address), __('messages.address_added_successfully'), 201);
             
         } catch (\Exception $e) {
@@ -105,7 +105,7 @@ class AddressController extends Controller
             ));
 
             DB::commit();
-            $address->load(['area', 'serviceZone']);
+            $address->load(['serviceZone']);
             return $this->successResponse(new AddressResource($address), __('messages.address_updated_successfully'));
             
         } catch (\Exception $e) {
