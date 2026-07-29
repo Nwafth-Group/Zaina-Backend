@@ -30,6 +30,19 @@ class GetAvailableDatesRequest extends FormRequest
         $mergeData = [];
         $mergeData['child_age_groups'] = $this->parseChildAgeGroups();
 
+        if ($this->has('duration')) {
+            $mergeData['duration'] = (int) $this->input('duration');
+        }
+        if ($this->has('service_id')) {
+            $mergeData['service_id'] = (int) $this->input('service_id');
+        }
+        if ($this->has('address_id')) {
+            $mergeData['address_id'] = (int) $this->input('address_id');
+        }
+        if ($this->has('workers_count')) {
+            $mergeData['workers_count'] = (int) $this->input('workers_count');
+        }
+
         if ($service) {
             if (!$this->filled('worker_gender')) {
                 $genderOptions = $service->worker_gender_options ?? [];

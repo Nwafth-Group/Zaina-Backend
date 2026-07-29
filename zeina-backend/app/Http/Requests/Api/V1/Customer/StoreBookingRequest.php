@@ -31,15 +31,31 @@ class StoreBookingRequest extends FormRequest
         $mergeData = [];
         $mergeData['child_age_groups'] = $this->parseChildAgeGroups();
 
+        if ($this->has('duration')) {
+            $mergeData['duration'] = (int) $this->input('duration');
+        }
+        if ($this->has('service_id')) {
+            $mergeData['service_id'] = (int) $this->input('service_id');
+        }
+        if ($this->has('address_id')) {
+            $mergeData['address_id'] = (int) $this->input('address_id');
+        }
+        if ($this->has('number_of_children')) {
+            $mergeData['number_of_children'] = (int) $this->input('number_of_children');
+        }
+        if ($this->has('number_of_persons')) {
+            $mergeData['number_of_persons'] = (int) $this->input('number_of_persons');
+        }
+
         if ($service) {
             $genderOptions = $service->worker_gender_options ?? [];
             if ($service->service_code === 'DEEP_CLEANING') {
-                $mergeData['duration'] = $service->default_duration ?? 6;
+                $mergeData['duration'] = (int) ($service->default_duration ?? 6);
                 $mergeData['visit_type'] = 'single_visit';
                 $mergeData['worker_gender'] = in_array('Male', $genderOptions) ? 'Male' : (count($genderOptions) > 0 ? $genderOptions[0] : 'Male');
             } else {
                 if (! $this->filled('duration')) {
-                    $mergeData['duration'] = $service->min_duration ?: ($service->default_duration ?? 4);
+                    $mergeData['duration'] = (int) ($service->min_duration ?: ($service->default_duration ?? 4));
                 }
 
                 if ($service->service_code === 'DOMESTIC_HELPER_HOURLY' || $service->service_code === 'BABYSITTER_HOURLY' || $service->service_code === 'PEDICURE_MANICURE' || (count($genderOptions) === 1 && $genderOptions[0] === 'Female')) {

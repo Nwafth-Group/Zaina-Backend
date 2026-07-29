@@ -135,15 +135,17 @@ class BookingController extends Controller
             }
         }
 
+        $durationHours = (int) ($data['duration'] ?? 4);
         if ($service->has_duration_range) {
-            $minDuration = $service->min_duration ?? 4;
-            $maxDuration = $service->max_duration ?? 6;
-            if ($data['duration'] < $minDuration || $data['duration'] > $maxDuration) {
+            $minDuration = (int) ($service->min_duration ?? 4);
+            $maxDuration = (int) ($service->max_duration ?? 6);
+            if ($durationHours < $minDuration || $durationHours > $maxDuration) {
                 return $this->errorResponse("Duration must be between {$minDuration} and {$maxDuration} hours.", 422);
             }
         } else {
-            $data['duration'] = $service->default_duration ?? 6;
+            $durationHours = (int) ($service->default_duration ?? 6);
         }
+        $data['duration'] = $durationHours;
 
         $genderOptions = $service->worker_gender_options ?? [];
         if (! in_array($data['worker_gender'], $genderOptions)) {
@@ -151,7 +153,7 @@ class BookingController extends Controller
         }
 
         $startTime = Carbon::parse($data['start_time']);
-        $endTime = $startTime->copy()->addHours($data['duration']);
+        $endTime = $startTime->copy()->addHours($durationHours);
 
         $serviceStart = Carbon::parse($service->start_time ?? '08:00');
         $serviceEnd = Carbon::parse($service->end_time ?? '20:00');
