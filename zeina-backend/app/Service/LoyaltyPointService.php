@@ -31,10 +31,12 @@ class LoyaltyPointService
                     ->get();
 
                 foreach ($bookingRules as $rule) {
-                    $completedCount = Booking::where('customer_id', $customer->id)
-                        ->where('status', 'completed')
-                        ->where('created_at', '>=', $rule->created_at)
-                        ->count();
+                    $bQuery = Booking::where('customer_id', $customer->id)
+                        ->where('status', 'completed');
+                    if ($rule->created_at) {
+                        $bQuery->where('created_at', '>=', $rule->created_at);
+                    }
+                    $completedCount = $bQuery->count();
 
                     $requiredCount = (int) ($rule->required_booking_count ?? 1);
                     if ($requiredCount < 1) {
@@ -121,11 +123,13 @@ class LoyaltyPointService
                         ->get();
 
                     foreach ($serviceRules as $serviceRule) {
-                        $serviceCompletedCount = Booking::where('customer_id', $customer->id)
+                        $sQuery = Booking::where('customer_id', $customer->id)
                             ->where('service_id', $booking->service_id)
-                            ->where('status', 'completed')
-                            ->where('created_at', '>=', $serviceRule->created_at)
-                            ->count();
+                            ->where('status', 'completed');
+                        if ($serviceRule->created_at) {
+                            $sQuery->where('created_at', '>=', $serviceRule->created_at);
+                        }
+                        $serviceCompletedCount = $sQuery->count();
 
                         $requiredCount = (int) ($serviceRule->required_booking_count ?? 1);
                         if ($requiredCount < 1) {

@@ -57,10 +57,11 @@ class PointsController extends Controller
 
         // 🌟 B. Booking Cards (General booking completed rules)
         foreach ($bookingRules as $rule) {
-            $completedCount = $user->bookings()
-                ->where('status', 'completed')
-                ->where('created_at', '>=', $rule->created_at)
-                ->count();
+            $bookingQuery = $user->bookings()->where('status', 'completed');
+            if ($rule->created_at) {
+                $bookingQuery->where('created_at', '>=', $rule->created_at);
+            }
+            $completedCount = $bookingQuery->count();
 
             $requiredCount = (int) ($rule->required_booking_count ?? 1);
             if ($requiredCount < 1) {
@@ -99,11 +100,13 @@ class PointsController extends Controller
 
         // 🌟 C. Specific Service Cards
         foreach ($serviceRules as $rule) {
-            $serviceCompletedCount = $user->bookings()
+            $serviceQuery = $user->bookings()
                 ->where('status', 'completed')
-                ->where('service_id', $rule->service_id)
-                ->where('created_at', '>=', $rule->created_at)
-                ->count();
+                ->where('service_id', $rule->service_id);
+            if ($rule->created_at) {
+                $serviceQuery->where('created_at', '>=', $rule->created_at);
+            }
+            $serviceCompletedCount = $serviceQuery->count();
 
             $requiredCount = (int) ($rule->required_booking_count ?? 1);
             if ($requiredCount < 1) {
