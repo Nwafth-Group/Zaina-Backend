@@ -16,6 +16,7 @@ use App\Http\Resources\Api\V1\Reports\ReportsResource;
 use App\Jobs\SendOtpSmsJob;
 use App\Models\Booking;
 use App\Models\BookingAssignment;
+use App\Models\CustomerAddress;
 use App\Models\Report;
 use App\Models\Service;
 use App\Models\ServiceSchedule;
