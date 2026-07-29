@@ -11,6 +11,7 @@ class CustomerAddress extends Model
 
     protected $fillable = [
         'user_id', 'service_zone_id', 'latitude', 'longitude', 
+        'formatted_address', 'city', 'governorate', 'country',
         'label', 'street', 'building_name', 'building_no', 
         'floor', 'apartment_no', 'contact_name', 'phone_number', 
         'secondary_phone', 'serviceable_status', 'notes', 
@@ -35,11 +36,16 @@ class CustomerAddress extends Model
     }
 
     public function getCityAttribute() {
-        return $this->serviceZone?->city;
+        return $this->attributes['city'] ?? $this->serviceZone?->city;
     }
 
     public function getFormattedAddressAttribute(): string
     {
+        $rawFormatted = $this->attributes['formatted_address'] ?? null;
+        if (!empty($rawFormatted)) {
+            return $rawFormatted;
+        }
+
         $parts = array_filter([
             $this->street,
             $this->building_name ? ('مبنى ' . $this->building_name) : null,
