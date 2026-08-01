@@ -19,6 +19,16 @@ class UpdateServiceRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('workers') || array_key_exists('workers', $this->all())) {
+            $workers = $this->input('workers');
+            if (empty($workers) || $workers === '' || $workers === 'null' || $workers === '[]') {
+                $this->merge(['workers' => []]);
+            }
+        }
+    }
+
     /**
      * Get the validation rules that apply to the request.
      *
@@ -64,7 +74,7 @@ class UpdateServiceRequest extends FormRequest
             'features.*.ar' => 'nullable|string|max:255',
             'features.*.en' => 'nullable|string|max:255',
             'status' => 'sometimes|required|in:active,inactive',
-            'workers' => 'sometimes|nullable|array',
+            'workers' => 'nullable|array',
             'workers.*' => [
                 'integer',
                 Rule::exists('workers', 'id')->where('status', 'active'),

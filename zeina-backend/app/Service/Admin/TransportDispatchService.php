@@ -6,6 +6,7 @@ use App\Models\Booking;
 use App\Models\TransportGroup;
 use App\Models\ServiceZone;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\ValidationException;
 
 class TransportDispatchService
 {
@@ -150,10 +151,33 @@ class TransportDispatchService
             $filteredBookings = $bookings;
         }
 
-        // Group by Start Time
-        $timeGroups = $filteredBookings->groupBy(function ($b) {
-            return substr($b->start_time ?? '09:00', 0, 5);
+        // Sort bookings by start time
+        $sortedBookings = $filteredBookings->sortBy(function ($b) {
+            return strtotime('1970-01-01 ' . ($b->start_time ?? '09:00:00'));
         });
+
+        // Group into shift batches where start times within 1 hour belong to the same batch
+        $timeGroups = [];
+        foreach ($sortedBookings as $b) {
+            $timeStr = substr($b->start_time ?? '09:00', 0, 5);
+            $timeTs = strtotime('1970-01-01 ' . $timeStr . ':00');
+
+            $matchedGroupKey = null;
+            foreach ($timeGroups as $baseStartTime => $groupBookings) {
+                $baseTs = strtotime('1970-01-01 ' . $baseStartTime . ':00');
+                $diffInSeconds = abs($timeTs - $baseTs);
+                if ($diffInSeconds <= 3600) { // 1 hour threshold
+                    $matchedGroupKey = $baseStartTime;
+                    break;
+                }
+            }
+
+            if ($matchedGroupKey !== null) {
+                $timeGroups[$matchedGroupKey]->push($b);
+            } else {
+                $timeGroups[$timeStr] = collect([$b]);
+            }
+        }
 
         $groupsResult = [];
 
@@ -260,18 +284,46 @@ class TransportDispatchService
     public function updateGroupDispatch(TransportGroup $group, array $data): TransportGroup
     {
         $departureTime = $data['departure_time'];
+        $driverId = $data['driver_id'] ?? null;
         $startTime = $group->start_time;
 
-        // Rule 3.2: Verify departure time is before start time
-        $warning = null;
-        if (strtotime($departureTime) >= strtotime($startTime)) {
-            $warning = 'تنبيه: وقت الانطلاق يجب أن يكون قبل وقت بدء الخدمة!';
+        $deptTs = strtotime('1970-01-01 ' . $departureTime);
+        $startTs = strtotime('1970-01-01 ' . $startTime);
+
+        // 1. Departure time must be at least 1 hour before shift start time
+        if ($deptTs > ($startTs - 3600)) {
+            throw ValidationException::withMessages([
+                'departure_time' => 'وقت الانطلاق يجب أن يكون قبل ساعة على الأقل من بداية الشفت! / Departure time must be at least 1 hour before shift start time.',
+            ]);
+        }
+
+        // 2. Driver Collision Check: Same driver cannot be assigned to another dispatch at the same time (must be at least 1 hour apart)
+        if (!empty($driverId)) {
+            $conflictingGroup = TransportGroup::query()
+                ->where('service_date', $group->service_date)
+                ->where('driver_id', $driverId)
+                ->where('id', '!=', $group->id)
+                ->whereNotNull('departure_time')
+                ->get()
+                ->first(function ($otherGroup) use ($deptTs) {
+                    $otherDeptTs = strtotime('1970-01-01 ' . $otherGroup->departure_time);
+                    // Less than 1 hour difference (3600 seconds)
+                    return abs($deptTs - $otherDeptTs) < 3600;
+                });
+
+            if ($conflictingGroup) {
+                $otherFormattedTime = Carbon::parse($conflictingGroup->departure_time)->format('h:i A');
+                $otherShiftTime = Carbon::parse($conflictingGroup->start_time)->format('h:i A');
+                throw ValidationException::withMessages([
+                    'driver_id' => "السائق مخصص بالفعل لرحلة شفت آخر ({$otherShiftTime}) في نفس توقيت الانطلاق ({$otherFormattedTime})! لا يمكن تعيين نفس السائق لنفس التوقيت، يجب أن تكون الرحلة التالية بعد ساعة على الأقل.",
+                ]);
+            }
         }
 
         $group->update([
             'departure_point_id' => $data['departure_point_id'],
             'departure_time' => $departureTime,
-            'driver_id' => $data['driver_id'],
+            'driver_id' => $driverId,
             'notes' => $data['notes'] ?? null,
             'status' => 'ready_for_transport',
         ]);
@@ -280,6 +332,122 @@ class TransportDispatchService
             $group->bookings()->sync($data['booking_ids']);
         }
 
-        return $group->load(['departurePoint', 'driver', 'bookings']);
+        return $group->fresh(['departurePoint', 'driver', 'bookings']);
+    }
+
+    /**
+     * Export transport group batch details to styled HTML .xls format (same as booking export).
+     */
+    public function exportGroupExcel(int $groupId)
+    {
+        $group = TransportGroup::with(['departurePoint', 'driver', 'bookings.assignedWorkers', 'bookings.workers', 'bookings.address.serviceZone', 'bookings.customer', 'bookings.service'])->findOrFail($groupId);
+
+        $company = \App\Models\CompanyInfo::first();
+        $companyName = $company?->name_ar ?? 'زينة للخدمات المنزلية';
+        $currentDateStr = now()->locale('ar')->isoFormat('dddd، D MMMM YYYY - h:mm A');
+
+        $driverName = $group->driver ? ($group->driver->name . ' (' . ($group->driver->mobile ?? $group->driver->phone ?? '—') . ')') : 'غير محدد';
+        $depPoint = $group->departurePoint?->name ?? 'غير محددة';
+        $depTime = $group->departure_time ? \Carbon\Carbon::parse($group->departure_time)->format('h:i A') : 'غير محدد';
+        $shiftTime = \Carbon\Carbon::parse($group->start_time)->format('h:i A');
+
+        $workersList = [];
+        foreach ($group->bookings as $b) {
+            $workers = $b->assignedWorkers->count() > 0 ? $b->assignedWorkers : $b->workers;
+            $custName = $b->customer?->full_name ?? (trim(($b->customer?->first_name ?? '') . ' ' . ($b->customer?->last_name ?? '')) ?: null) ?? $b->customer?->name ?? '—';
+            $custPhone = $b->customer?->phone_number ?? $b->customer?->mobile ?? $b->customer?->phone ?? '—';
+            $serviceName = $b->service?->name_ar ?? $b->service?->name_en ?? '—';
+            $serviceAddr = $b->address?->formatted_address ?? $b->address?->street ?? '—';
+            $visitTime = substr($b->start_time ?? '09:00', 0, 5) . ($b->end_time ? ' - ' . substr($b->end_time, 0, 5) : '');
+
+            if ($workers->count() > 0) {
+                foreach ($workers as $w) {
+                    $wPhone = $w->phone_number ?? $w->mobile ?? $w->phone ?? '—';
+                    $workersList[] = [
+                        'worker_name' => $w->name ?? trim(($w->first_name ?? '') . ' ' . ($w->last_name ?? '')),
+                        'worker_phone' => $wPhone,
+                        'worker_address' => $w->address ?? 'سكن العاملات الرئيسي',
+                        'booking_number' => $b->booking_ref ?? ('BKG-' . $b->id),
+                        'customer_name' => $custName,
+                        'customer_phone' => $custPhone,
+                        'service_name' => $serviceName,
+                        'visit_time' => $visitTime,
+                        'service_address' => $serviceAddr,
+                    ];
+                }
+            }
+        }
+
+        $totalWorkers = count($workersList);
+
+        $filename = 'transport_batch_export_' . now()->format('Y-m-d_Hi') . '.xls';
+
+        $headers = [
+            'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
+        ];
+
+        $callback = function () use ($companyName, $currentDateStr, $group, $shiftTime, $depPoint, $depTime, $driverName, $totalWorkers, $workersList) {
+            echo '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
+            echo '<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8">';
+            echo '<style>';
+            echo 'body { font-family: "Segoe UI", Tahoma, Arial, sans-serif; direction: rtl; }';
+            echo 'table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }';
+            echo 'th, td { border: 1px solid #CBD5E1; padding: 10px 14px; text-align: center; vertical-align: middle; }';
+            echo '.header-brand { background-color: #E91E63; color: #FFFFFF; font-size: 22px; font-weight: bold; text-align: center; padding: 16px; }';
+            echo '.header-meta { background-color: #FDF0F3; color: #881337; font-size: 15px; font-weight: bold; text-align: center; padding: 12px; border: 1px solid #F43F5E; }';
+            echo '.th-column { background-color: #D94A78; color: #FFFFFF; font-size: 14px; font-weight: bold; text-align: center; padding: 12px; }';
+            echo '.tr-even { background-color: #F8FAFC; }';
+            echo '.tr-odd { background-color: #FFFFFF; }';
+            echo '</style></head>';
+            echo '<body dir="rtl">';
+
+            echo '<table>';
+            echo '<tr><td colSpan="10" class="header-brand">👑 '.$companyName.' — Zeina Home Services</td></tr>';
+            echo '<tr><td colSpan="10" class="header-meta">📅 <b>تاريخ التصدير:</b> '.$currentDateStr.' &nbsp;|&nbsp; 📍 <b>المنطقة:</b> '.$group->governorate.' - '.$group->area_name.'</td></tr>';
+            echo '<tr><td colSpan="10" class="header-meta">⏱️ <b>فترة الانطلاق:</b> '.$shiftTime.' &nbsp;|&nbsp; 🚏 <b>نقطة الانطلاق:</b> '.$depPoint.' &nbsp;|&nbsp; 🚀 <b>وقت الانطلاق:</b> '.$depTime.' &nbsp;|&nbsp; 👨‍✈️ <b>السائق:</b> '.$driverName.' &nbsp;|&nbsp; 👩‍🍳 <b>عدد العاملات:</b> '.$totalWorkers.'</td></tr>';
+            echo '<tr><td colSpan="10" style="height: 10px; border: none;"></td></tr>';
+            echo '</table>';
+
+            echo '<table>';
+            echo '<thead><tr>';
+            $cols = [
+                '#', 'اسم العاملة (Worker Name)', 'رقم جوال العاملة (Worker Mobile)', 'عنوان سكن العاملة (Worker Address)',
+                'رقم الحجز (Booking Ref)', 'اسم العميل (Customer Name)', 'رقم جوال العميل (Customer Phone)',
+                'الخدمة (Service)', 'توقيت الزيارة (Visit Time Slot)', 'عنوان تقديم الخدمة (Service Address)'
+            ];
+            foreach ($cols as $col) {
+                echo '<th class="th-column">'.$col.'</th>';
+            }
+            echo '</tr></thead>';
+            echo '<tbody>';
+
+            foreach ($workersList as $idx => $w) {
+                $rowClass = ($idx % 2 === 0) ? 'tr-even' : 'tr-odd';
+                echo '<tr class="'.$rowClass.'">';
+                echo '<td>'.($idx + 1).'</td>';
+                echo '<td><b>'.htmlspecialchars($w['worker_name']).'</b></td>';
+                echo '<td><span dir="ltr">'.htmlspecialchars($w['worker_phone']).'</span></td>';
+                echo '<td>'.htmlspecialchars($w['worker_address']).'</td>';
+                echo '<td><b style="color: #E91E63;">'.htmlspecialchars($w['booking_number']).'</b></td>';
+                echo '<td><b>'.htmlspecialchars($w['customer_name']).'</b></td>';
+                echo '<td><span dir="ltr">'.htmlspecialchars($w['customer_phone']).'</span></td>';
+                echo '<td>'.htmlspecialchars($w['service_name']).'</td>';
+                echo '<td><span dir="ltr">'.htmlspecialchars($w['visit_time']).'</span></td>';
+                echo '<td>'.htmlspecialchars($w['service_address']).'</td>';
+                echo '</tr>';
+            }
+
+            if (empty($workersList)) {
+                echo '<tr><td colSpan="10" style="padding: 20px; color: #94A3B8;">لا توجد بيانات عاملات في هذه المجموعة.</td></tr>';
+            }
+
+            echo '</tbody></table></body></html>';
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 }

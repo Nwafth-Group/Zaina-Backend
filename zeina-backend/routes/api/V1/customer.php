@@ -10,7 +10,6 @@ use App\Http\Controllers\Api\V1\Customer\CouponController;
 use App\Http\Controllers\Api\V1\Customer\HomeController;
 use App\Http\Controllers\Api\V1\Customer\KycController;
 use App\Http\Controllers\Api\V1\Customer\LegalDocumentController;
-use App\Http\Controllers\Api\V1\Customer\LocationController;
 use App\Http\Controllers\Api\V1\Customer\NotificationandAnnouncementController;
 use App\Http\Controllers\Api\V1\Customer\PointsController;
 use App\Http\Controllers\Api\V1\Customer\ProfileController;
@@ -60,9 +59,6 @@ Route::prefix('customer')->group(function () {
     Route::get('company-info', [CompanyInfoController::class, 'show']);
 
     // fetch countries, governorates and cities
-    Route::get('locations/countries', [LocationController::class, 'countries']);
-    Route::get('locations/governorates', [LocationController::class, 'governorates']);
-    Route::get('locations/cities', [LocationController::class, 'cities']);
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::middleware(['auth:sanctum', IsCustomer::class])->group(function () {
         // Auth

@@ -123,8 +123,8 @@ class RolesAndUsersSeeder extends Seeder
             $op->assignRole($operationRole);
         }
 
-        // ج. توليد 500 عميل (Customers)
-        // العملاء ما عندهم باسورد (بيدخلوا بـ OTP) ولا Job Title
+        // ج. توليد العملاء (Customers) - (مغلق بناءً على الطلب)
+        /*
         $customers = User::factory()->count(8)->create([
             'type' => 'customer',
             'password' => Hash::make('password'),
@@ -150,5 +150,6 @@ class RolesAndUsersSeeder extends Seeder
             ]
         );
         $testCustomer->assignRole($customerRole);
+        */
     }
 }

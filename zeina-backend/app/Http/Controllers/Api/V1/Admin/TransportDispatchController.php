@@ -56,4 +56,9 @@ class TransportDispatchController extends Controller
             __('messages.transport_dispatch_updated_successfully')
         );
     }
+
+    public function exportGroupExcel($id)
+    {
+        return $this->dispatchService->exportGroupExcel((int) $id);
+    }
 }

@@ -92,13 +92,6 @@ class CategoryAndServiceSeeder extends Seeder
 
             $genderAttr = ($isFirstService || $isThirdService || $isPedicureManicure) ? 'female' : (($isDeepCleaning) ? 'male' : fake()->randomElement(['male', 'female']));
 
-            // Sync workers to this service
-            $newWorkers = Worker::factory(6)->create([
-                'status' => 'active',
-                'gender' => $genderAttr,
-            ]);
-            $workerIds = $newWorkers->pluck('id')->toArray();
-
             // Construct payload matching StoreServiceRequest structure exactly
             $payload = [
                 'category_id' => $categories[$data['cat']]->id,
@@ -110,7 +103,6 @@ class CategoryAndServiceSeeder extends Seeder
                 'description_en' => 'Detailed description for ' . $data['en'],
                 'features' => $features,
                 'status' => 'active',
-                'workers' => $workerIds,
 
                 'available_visit_types' => ($isSecondService || $isThirdService || $isPedicureManicure || $isDeepCleaning)
                     ? [['type' => 'single_visit', 'discount' => 0]]
@@ -126,8 +118,8 @@ class CategoryAndServiceSeeder extends Seeder
                 'has_duration_range' => ($isSecondService || $isThirdService),
                 'min_duration' => ($isSecondService || $isThirdService) ? 4 : null,
                 'max_duration' => ($isSecondService || $isThirdService) ? 6 : null,
-                'min_workers' => $isDeepCleaning ? 6 : 1,
-                'max_workers' => $isDeepCleaning ? 6 : 6,
+                'min_workers' => $isDeepCleaning ? 10 : 1,
+                'max_workers' => $isDeepCleaning ? 10 : 10,
                 'min_children' => $isThirdService ? 1 : null,
                 'max_children' => $isThirdService ? 6 : null,
                 'covered_persons_per_worker' => $data['covered_persons_per_worker'] ?? null,

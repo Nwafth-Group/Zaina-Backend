@@ -11,63 +11,56 @@ class WorkerSeeder extends Seeder
 {
     public function run(): void
     {
-        // 1. إنشاء 30 عامل والتأكد أن حالتهم نشطة
-        $workers = Worker::factory(30)->create(['status' => 'active']);
-
-        // 2. جلب الخدمات الموجودة
+        // 1. جلب الخدمات الموجودة
         $services = Service::all();
-        $serviceCount = $services->count();
 
-        // 3. الربط بذكاء (عامل واحد لخدمة واحدة فقط)
-        if ($serviceCount > 0) {
+        // 2. إنشاء 10 عمال نشطين لكل خدمة وتثبيت صورهم
+        if ($services->count() > 0) {
             $image1 = public_path('assist/workers/1.webp');
             $image2 = public_path('assist/workers/2.webp');
+            $imgIndex = 0;
 
-            foreach ($workers as $index => $worker) {
-                $randomService = $services->random();
-                if (in_array($randomService->service_code, ['DOMESTIC_HELPER_HOURLY', 'BABYSITTER_HOURLY', 'PEDICURE_MANICURE'])) {
-                    $worker->update(['gender' => 'female']);
-                } elseif ($randomService->service_code === 'DEEP_CLEANING' || $index % 5 === 0) {
-                    $worker->update(['gender' => 'male']);
-                }
-                $worker->services()->attach([$randomService->id]);
+            foreach ($services as $service) {
+                $isFemaleOnly = in_array($service->service_code, ['DOMESTIC_HELPER_HOURLY', 'BABYSITTER_HOURLY', 'PEDICURE_MANICURE']);
+                $isMaleOnly = ($service->service_code === 'DEEP_CLEANING');
 
-                // Seed worker images (round robin 1.webp & 2.webp)
-                $sourceImage = ($index % 2 === 0) ? $image1 : $image2;
-                $originalName = ($index % 2 === 0) ? '1.webp' : '2.webp';
+                for ($i = 0; $i < 10; $i++) {
+                    $gender = $isFemaleOnly ? 'female' : ($isMaleOnly ? 'male' : ($i % 2 === 0 ? 'female' : 'male'));
 
-                if (file_exists($sourceImage)) {
-                    $targetDir = 'worker/image';
-                    $fileName = 'worker_'.$worker->id.'_'.time().'.webp';
-                    $targetPath = $targetDir.'/'.$fileName;
-
-                    // Copy to storage
-                    Storage::disk('public')->put($targetPath, file_get_contents($sourceImage));
-
-                    // Create media relationship
-                    $worker->media()->create([
-                        'collection' => 'worker/image',
-                        'file_name' => $fileName,
-                        'mime_type' => 'image/webp',
-                        'size' => filesize($sourceImage),
-                        'disk' => 'public',
-                        'path' => $targetPath,
-                        'title' => $originalName,
-                        'date' => now()->toDateString(),
+                    $worker = Worker::factory()->create([
+                        'status' => 'active',
+                        'gender' => $gender,
                     ]);
+
+                    $worker->services()->syncWithoutDetaching([$service->id]);
+
+                    // Seed worker images (round robin 1.webp & 2.webp)
+                    $sourceImage = ($imgIndex % 2 === 0) ? $image1 : $image2;
+                    $originalName = ($imgIndex % 2 === 0) ? '1.webp' : '2.webp';
+                    $imgIndex++;
+
+                    if (file_exists($sourceImage)) {
+                        $targetDir = 'worker/image';
+                        $fileName = 'worker_'.$worker->id.'_'.time().'_'.$i.'.webp';
+                        $targetPath = $targetDir.'/'.$fileName;
+
+                        Storage::disk('public')->put($targetPath, file_get_contents($sourceImage));
+
+                        $worker->media()->create([
+                            'collection' => 'worker/image',
+                            'file_name' => $fileName,
+                            'mime_type' => 'image/webp',
+                            'size' => filesize($sourceImage),
+                            'disk' => 'public',
+                            'path' => $targetPath,
+                            'title' => $originalName,
+                            'date' => now()->toDateString(),
+                        ]);
+                    }
                 }
             }
 
-            // Ensure Pedicure & Manicure service (Service 4) has dedicated female workers attached
-            $pedicureService = $services->firstWhere('service_code', 'PEDICURE_MANICURE') ?? $services->firstWhere('code', 'PEDICURE_MANICURE');
-            if ($pedicureService) {
-                $femaleWorkers = Worker::where('status', 'active')->where('gender', 'female')->get();
-                foreach ($femaleWorkers->take(5) as $w) {
-                    $w->services()->syncWithoutDetaching([$pedicureService->id]);
-                }
-            }
-
-            $this->command->info('تم إنشاء 30 عاملاً وربط كل منهم بخدمة واحدة بنجاح مع الصور.');
+            $this->command->info('تم إنشاء 10 عمال لكل خدمة وربطهم بالصور بنجاح.');
         } else {
             $this->command->error('لم يتم ربط العمال! جدول الخدمات (services) فارغ. يرجى تشغيل ServiceSeeder أولاً.');
         }

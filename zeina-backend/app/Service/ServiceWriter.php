@@ -126,7 +126,7 @@ class ServiceWriter
         }
 
         if (array_key_exists('workers', $data)) {
-            $workerIds = $data['workers'] ?? [];
+            $workerIds = is_array($data['workers']) ? array_values(array_filter($data['workers'])) : [];
             if (! empty($workerIds)) {
                 $alreadyAssigned = DB::table('service_workers')
                     ->whereIn('worker_id', $workerIds)

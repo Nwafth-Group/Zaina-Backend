@@ -27,7 +27,6 @@ use App\Http\Controllers\Api\V1\Admin\ReviewController;
 use App\Http\Controllers\Api\V1\Admin\RoleController;
 use App\Http\Controllers\Api\V1\Admin\ServiceController;
 use App\Http\Controllers\Api\V1\Customer\BookingContractController;
-use App\Http\Controllers\Api\V1\Admin\ServicePriceController;
 use App\Http\Controllers\Api\V1\Admin\UserController;
 use App\Http\Controllers\Api\V1\Admin\WorkerController;
 use App\Http\Middleware\IsAdmin;
@@ -97,6 +96,7 @@ Route::prefix('admin')->group(function () {
         Route::middleware('permission:transport_dispatch.view')->prefix('transport-dispatch')->group(function () {
             Route::get('daily-overview', [TransportDispatchController::class, 'dailyOverview']);
             Route::get('region-details', [TransportDispatchController::class, 'regionGroupDetails']);
+            Route::get('groups/{id}/export-excel', [TransportDispatchController::class, 'exportGroupExcel']);
             Route::put('groups/{id}', [TransportDispatchController::class, 'updateGroupDispatch'])->middleware('permission:transport_dispatch.edit');
         });
 
@@ -180,22 +180,16 @@ Route::prefix('admin')->group(function () {
             Route::get('services', [ServiceController::class, 'index']);
             Route::get('services/{service}', [ServiceController::class, 'show']);
             Route::get('services/{service}/details', [ServiceController::class, 'details']);
-            Route::get('servicesprices', [ServicePriceController::class, 'index']);
-            Route::get('servicesprices/{servicesprice}', [ServicePriceController::class, 'show']);
-            Route::post('servicesprices/estimated', [ServicePriceController::class, 'getEstimatedPrice']);
         });
         Route::middleware('permission:services.create')->group(function () {
             Route::post('services', [ServiceController::class, 'store']);
-            Route::post('servicesprices', [ServicePriceController::class, 'store']);
         });
         Route::middleware('permission:services.edit')->group(function () {
             Route::match(['put', 'patch'], 'services/{service}', [ServiceController::class, 'update']);
             Route::post('services/{service}/toggle-status', [ServiceController::class, 'toggleStatus']);
-            Route::match(['put', 'patch'], 'servicesprices/{servicesprice}', [ServicePriceController::class, 'update']);
         });
         Route::middleware('permission:services.delete')->group(function () {
             Route::delete('services/{service}', [ServiceController::class, 'destroy']);
-            Route::delete('servicesprices/{servicesprice}', [ServicePriceController::class, 'destroy']);
         });
 
         // Workers

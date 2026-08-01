@@ -109,7 +109,7 @@ class HomeController extends Controller
         return $this->successResponse([
             'banners' => AdResource::collection($banners),
             'upcoming_appointment' => $upcomingBookings,
-            'upcoming_appointments' => $upcomingBookings,
+            // 'upcoming_appointments' => $upcomingBookings,
         ], 'Home page data fetched successfully.');
     }
 }
