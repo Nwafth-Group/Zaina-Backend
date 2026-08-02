@@ -82,7 +82,8 @@ class EmployeeController extends Controller
         try {
             DB::beginTransaction();
             $data = $request->validated();
-            $data['password'] = Hash::make($data['password']); // تشفير الباسورد
+            $plainPassword = $data['password'];
+            $data['password'] = Hash::make($plainPassword); // تشفير الباسورد
             $employee = User::create($data);
             // إسناد الصلاحيات (Roles)
             $employee->assignRole($request->roles);
@@ -97,6 +98,22 @@ class EmployeeController extends Controller
             }
 
             DB::commit();
+
+            // إرسال بريد الترحيب للموظف شاملاً بيانات الدخول ورابط التحكم ومعلومات الشركة (Queued)
+            try {
+                $companyInfo = \App\Models\CompanyInfo::with('media')->first();
+                \Illuminate\Support\Facades\Mail::to($employee->email)->send(
+                    new \App\Mail\EmployeeWelcomeMail(
+                        $employee->load('roles'),
+                        $plainPassword,
+                        $companyInfo,
+                        config('app.admin_portal_url'),
+                        isUpdate: false
+                    )
+                );
+            } catch (\Exception $mailEx) {
+                \Illuminate\Support\Facades\Log::error("Failed to send welcome email to employee {$employee->id}: " . $mailEx->getMessage());
+            }
 
             \Illuminate\Support\Facades\Log::info("Employee created successfully: User ID {$employee->id} by user ID " . auth()->id());
 
@@ -123,6 +140,7 @@ class EmployeeController extends Controller
         try {
             DB::beginTransaction();
             $data = $request->validated();
+            $plainPassword = !empty($data['password']) ? $data['password'] : null;
 
             // تحديث الباسورد فقط إذا تم إرسال باسورد جديد
             if (! empty($data['password'])) {
@@ -150,6 +168,22 @@ class EmployeeController extends Controller
             }
 
             DB::commit();
+
+            // إرسال بريد تحديث البيانات للموظف (Queued)
+            try {
+                $companyInfo = \App\Models\CompanyInfo::with('media')->first();
+                \Illuminate\Support\Facades\Mail::to($employee->email)->send(
+                    new \App\Mail\EmployeeWelcomeMail(
+                        $employee->fresh('roles'),
+                        $plainPassword,
+                        $companyInfo,
+                        config('app.admin_portal_url'),
+                        isUpdate: true
+                    )
+                );
+            } catch (\Exception $mailEx) {
+                \Illuminate\Support\Facades\Log::error("Failed to send update email to employee {$employee->id}: " . $mailEx->getMessage());
+            }
 
             \Illuminate\Support\Facades\Log::info("Employee updated successfully: User ID {$employee->id} by user ID " . auth()->id());
 

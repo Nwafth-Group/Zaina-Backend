@@ -99,6 +99,8 @@ return [
 
     'key' => env('APP_KEY'),
 
+    'admin_portal_url' => env('ADMIN_PORTAL_URL', '#'),
+
     'previous_keys' => [
         ...array_filter(
             explode(',', (string) env('APP_PREVIOUS_KEYS', ''))
