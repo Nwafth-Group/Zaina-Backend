@@ -144,6 +144,14 @@ class User extends Authenticatable implements Auditable
         return $this->hasMany(UserDevice::class, 'user_id');
     }
 
+    public function getFcmTokenAttribute()
+    {
+        if ($this->relationLoaded('devices')) {
+            return $this->devices->pluck('fcm_token')->last();
+        }
+        return $this->devices()->latest()->value('fcm_token');
+    }
+
     public function readAnnouncements()
     {
         return $this->belongsToMany(Announcement::class, 'announcement_user', 'user_id', 'announcement_id')
