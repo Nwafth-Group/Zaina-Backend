@@ -29,11 +29,11 @@ class AuthController extends Controller
         $limiterKey = 'otp_lock_'.preg_replace('/[^0-9]/', '', $mobile);
         $executed = RateLimiter::attempt(
             $limiterKey,
-            3, // عدد المحاولات
+            5, // عدد المحاولات
             function () {
                 // بنتركها فاضية لأننا بس بدنا إياه يحسب الـ hit
             },
-            900 // المدة بالثواني (15 دقيقة)
+            300 // المدة بالثواني (15 دقيقة)
         );
 
         if (! $executed) {
