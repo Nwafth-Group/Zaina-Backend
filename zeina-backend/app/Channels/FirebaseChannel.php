@@ -29,12 +29,16 @@ class FirebaseChannel
 
         $data = $notification->toFirebase($notifiable);
 
-        // إطلاق الـ Push Notification فوراً للأجهزة
-        $this->notificationService->sendPushNotification(
-            $notifiable->id,
-            $data['title'],
-            $data['body'],
-            $data['extra_data'] ?? []
-        );
+        try {
+            // إطلاق الـ Push Notification فوراً للأجهزة
+            $this->notificationService->sendPushNotification(
+                $notifiable->id,
+                $data['title'],
+                $data['body'],
+                $data['extra_data'] ?? []
+            );
+        } catch (\Throwable $e) {
+            Log::error('FirebaseChannel Send Error: ' . $e->getMessage());
+        }
     }
 }

@@ -114,6 +114,12 @@ class BookingStatusService
                                 'current_status' => 'completed',
                             ]
                         ));
+
+                        // Notify Admins of completed booking
+                        $admins = User::whereIn('type', ['super_admin', 'operation'])->get();
+                        foreach ($admins as $admin) {
+                            $admin->notify(new \App\Notifications\AdminBookingEventNotification('completed', $booking));
+                        }
                     }
                 }
             } catch (\Exception $ex) {

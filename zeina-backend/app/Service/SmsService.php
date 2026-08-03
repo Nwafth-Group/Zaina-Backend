@@ -63,6 +63,11 @@ class SmsService
         }
     }
 
+    public function sendSms($mobileNumber, $message)
+    {
+        return $this->send($mobileNumber, $message);
+    }
+
     public function getRemainingBalance()
     {
         $response = Http::post('https://app.community-ads.net/SendSMSService/SMSSender.asmx/GetBalance', [

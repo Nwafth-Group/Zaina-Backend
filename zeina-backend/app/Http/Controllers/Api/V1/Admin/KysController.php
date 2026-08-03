@@ -11,20 +11,20 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class KysController extends Controller
-{ 
+{
     use ApiResponseTrait;
 
-     /**
+    /**
      * 1. عرض قائمة العملاء الذين لديهم طلبات KYC قيد المراجعة
      */
-   public function index()
+    public function index()
     {
         $pendingUsers = User::where('type', 'customer')
-                            ->where('verification_status', 'pending')
-                            ->latest()
-                            ->paginate(15);
+            ->where('verification_status', 'pending')
+            ->latest()
+            ->paginate(15);
 
-        return $this->successResponse(UserResource::collection($pendingUsers), __('messages.kyc_pending_users_fetched_successfully'));                   
+        return $this->successResponse(UserResource::collection($pendingUsers), __('messages.kyc_pending_users_fetched_successfully'));
     }
 
     /**
@@ -36,18 +36,18 @@ class KysController extends Controller
 
         // جلب الصور الخاصة بالهوية
         $idFront = $user->media()->where('collection', 'kyc/id_front')->latest()->first();
-        $idBack  = $user->media()->where('collection', 'kyc/id_back')->latest()->first();
-        $selfie  = $user->media()->where('collection', 'kyc/selfie')->latest()->first();
-        
+        $idBack = $user->media()->where('collection', 'kyc/id_back')->latest()->first();
+        $selfie = $user->media()->where('collection', 'kyc/selfie')->latest()->first();
+
         return $this->successResponse([
-            'user_id'    => $user->id,
-            'full_name'  => $user->full_name,
-            'phone'      => $user->phone_number,
+            'user_id' => $user->id,
+            'full_name' => $user->full_name,
+            'phone' => $user->phone_number,
             // نولد رابط آمن للدالة المسؤولة عن عرض الصور الخاصة
             'images' => [
                 'id_front' => $idFront ? url("api/v1/admin/kyc/media/{$idFront->id}") : null,
-                'id_back'  => $idBack ? url("api/v1/admin/kyc/media/{$idBack->id}") : null,
-                'selfie'   => $selfie ? url("api/v1/admin/kyc/media/{$selfie->id}") : null,
+                'id_back' => $idBack ? url("api/v1/admin/kyc/media/{$idBack->id}") : null,
+                'selfie' => $selfie ? url("api/v1/admin/kyc/media/{$selfie->id}") : null,
             ]
         ]);
 
@@ -59,12 +59,38 @@ class KysController extends Controller
 
         $user->update([
             'verification_status' => 'approved',
-            'rejection_reason'    => null // تنظيف أي سبب رفض سابق
+            'rejection_reason' => null // تنظيف أي سبب رفض سابق
         ]);
 
-        // 🌟 هنا مستقبلاً يمكنك إرسال إشعار للموبايل (Notification) أن حسابه تفعل 🌟
-          
-        return $this->successResponse(null,__('messages.kyc_approval_successfully'));
+        // إسناد نقاط الإحالة في حال وجد مفيّد
+        \App\Service\LoyaltyPointService::awardPointsForReferralApproval($user);
+
+        // 1. إرسال SMS للعميل
+        try {
+            $smsMessage = __('sms.kyc_approved_sms', ['name' => $user->first_name]);
+            app(\App\Service\SmsService::class)->send($user->phone_number, $smsMessage);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Failed to send KYC approval SMS to {$user->id}: " . $e->getMessage());
+        }
+
+        // 2. إرسال بريد إلكتروني للعميل
+        try {
+            if (!empty($user->email)) {
+                $companyInfo = \App\Models\CompanyInfo::with('media')->first();
+                \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\KycApprovedMail($user, $companyInfo));
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Failed to send KYC approval email to {$user->id}: " . $e->getMessage());
+        }
+
+        // 3. إرسال إشعار لحظي (Push Notification) وإضافته لـ Inbox التنبيهات
+        try {
+            $user->notify(new \App\Notifications\KycStatusNotification('approved'));
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Failed to send KYC approval notification to {$user->id}: " . $e->getMessage());
+        }
+
+        return $this->successResponse(null, __('messages.kyc_approval_successfully'));
     }
 
     /**
@@ -82,12 +108,35 @@ class KysController extends Controller
 
         $user->update([
             'verification_status' => 'rejected',
-            'rejection_reason'    => $request->reason
+            'rejection_reason' => $request->reason
         ]);
 
-        // 🌟 هنا مستقبلاً ترسل إشعار للموبايل أن الطلب رُفض ليدخل ويقرأ السبب 🌟
+        // 1. إرسال SMS للعميل مبيناً سبب الرفض
+        try {
+            $smsMessage = __('sms.kyc_rejected_sms', ['name' => $user->first_name, 'reason' => $request->reason]);
+            app(\App\Service\SmsService::class)->send($user->phone_number, $smsMessage);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Failed to send KYC rejection SMS to {$user->id}: " . $e->getMessage());
+        }
 
-        return $this->successResponse(null,__('messages.kyc_rejection_successfully'));
+        // 2. إرسال بريد إلكتروني للعميل
+        try {
+            if (!empty($user->email)) {
+                $companyInfo = \App\Models\CompanyInfo::with('media')->first();
+                \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\KycRejectedMail($user, $request->reason, $companyInfo));
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Failed to send KYC rejection email to {$user->id}: " . $e->getMessage());
+        }
+
+        // 3. إرسال إشعار لحظي (Push Notification) وإضافته لـ Inbox التنبيهات
+        try {
+            $user->notify(new \App\Notifications\KycStatusNotification('rejected', $request->reason));
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Failed to send KYC rejection notification to {$user->id}: " . $e->getMessage());
+        }
+
+        return $this->successResponse(null, __('messages.kyc_rejection_successfully'));
     }
 
     /**

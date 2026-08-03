@@ -16,5 +16,7 @@ return [
     'reminder_1hour_message' => 'This is a friendly reminder that your booking with reference number :ref is scheduled for :date at :time. Please be ready for the service.',
     'reminder_15min_title' => 'Your Service is on the Way! 🚗',
     'reminder_15min_message' => 'Your service provider is on the way to your location. They will arrive shortly.',
+    'kyc_approved_sms' => 'Dear :name, your account verification has been approved successfully! You can now enjoy all our services on Zeina App.',
+    'kyc_rejected_sms' => 'Dear :name, your account verification request was rejected. Reason: :reason. Please re-submit your documents in the app.',
 
 ];

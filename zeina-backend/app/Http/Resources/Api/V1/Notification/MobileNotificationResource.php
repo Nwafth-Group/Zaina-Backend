@@ -28,8 +28,8 @@ class MobileNotificationResource extends JsonResource
             'status'      => $this->status,
             'created_at'  => $this->created_at?->toDateTimeString(),
             'updated_at'  => $this->updated_at?->toDateTimeString(),
-            'creator_name'=> $this->creator?->full_name,
-            'updater_name'=> $this->updater?->full_name,
+            'creator_name'=> $this->creator?->full_name ?: ($this->creator?->first_name ? trim($this->creator->first_name . ' ' . $this->creator->last_name) : ($this->creator?->email ?? ($this->created_by ? 'Admin #' . $this->created_by : null))),
+            'updater_name'=> $this->updater?->full_name ?: ($this->updater?->first_name ? trim($this->updater->first_name . ' ' . $this->updater->last_name) : ($this->updater?->email ?? ($this->updated_by ? 'Admin #' . $this->updated_by : null))),
         ];
     }
 }

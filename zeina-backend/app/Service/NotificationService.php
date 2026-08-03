@@ -13,8 +13,18 @@ class NotificationService
 
     public function __construct()
     {
-        if (app()->has('firebase.messaging')) {
-            $this->messaging = app('firebase.messaging');
+        try {
+            $credentialsConfig = config('firebase.projects.app.credentials');
+            $credentialsPath = is_array($credentialsConfig) ? ($credentialsConfig['file'] ?? null) : $credentialsConfig;
+
+            if ($credentialsPath && file_exists($credentialsPath) && app()->has('firebase.messaging')) {
+                $this->messaging = app('firebase.messaging');
+            } else {
+                Log::warning("Firebase Messaging skipped. Credentials file missing or empty: {$credentialsPath}");
+            }
+        } catch (\Throwable $e) {
+            Log::warning("Firebase Messaging initialization skipped: " . $e->getMessage());
+            $this->messaging = null;
         }
     }
 

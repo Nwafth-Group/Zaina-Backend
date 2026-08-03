@@ -80,7 +80,7 @@ class MobileNotificationController extends Controller
     public function store(StoreMobileNotificationRequest $request)
     {
         $data = $request->validated();
-        $data['created_by'] = auth()->id();
+        $data['created_by'] = auth()->id() ?: auth('sanctum')->id() ?: optional(request()->user())->id;
         $data['status'] = 'scheduled';
 
         $notification = MobileNotification::create($data);
@@ -91,10 +91,10 @@ class MobileNotificationController extends Controller
 
         SendMobileNotificationJob::dispatch($notification->id)->delay($delaySeconds);
 
-        Log::info("Mobile Notification scheduled: ID {$notification->id} for {$scheduledAt->toDateTimeString()} by user ID " . auth()->id());
+        Log::info("Mobile Notification scheduled: ID {$notification->id} for {$scheduledAt->toDateTimeString()} by user ID " . ($data['created_by'] ?? 'guest'));
 
         return $this->successResponse(
-            new MobileNotificationResource($notification),
+            new MobileNotificationResource($notification->fresh(['creator'])),
             __('messages.notification_create_success'),
             201
         );
@@ -197,15 +197,20 @@ class MobileNotificationController extends Controller
             );
         }
 
+        $userId = auth()->id() ?: auth('sanctum')->id() ?: optional(request()->user())->id;
+
         $mobileNotification->status = 'scheduled';
         $mobileNotification->send_date = now()->toDateString();
         $mobileNotification->send_time = now()->toTimeString();
-        $mobileNotification->updated_by = auth()->id();
+        $mobileNotification->updated_by = $userId;
         $mobileNotification->save();
 
-        SendMobileNotificationJob::dispatch($mobileNotification->id);
+        // إرسال الإشعار فورياً ومزامنة الحالة
+        SendMobileNotificationJob::dispatchSync($mobileNotification->id);
 
-        Log::info("Mobile Notification sent immediately (send-now): ID {$mobileNotification->id} by user ID " . auth()->id());
+        $mobileNotification->refresh()->load(['creator', 'updater']);
+
+        Log::info("Mobile Notification sent immediately (send-now): ID {$mobileNotification->id} by user ID " . ($userId ?? 'guest'));
 
         return $this->successResponse(
             new MobileNotificationResource($mobileNotification),

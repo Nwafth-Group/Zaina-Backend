@@ -54,8 +54,20 @@ class WalletController extends Controller
     {
         $user = auth()->user();
         
-        // استخدام الدالة المساعدة التي أنشأناها في مودل User
         $user->deposit($request->amount, 'Wallet Top Up');
+
+        try {
+            $user->notify(new \App\Notifications\WalletNotification(
+                app()->getLocale() === 'en' ? 'Wallet Credited' : 'رصيد جديد بمحفظتك 💰',
+                app()->getLocale() === 'en' 
+                    ? "An amount of EGP {$request->amount} has been added to your wallet." 
+                    : "تم إيداع مبلغ {$request->amount} ج.م في محفظتك بنجاح.",
+                (float) $request->amount,
+                'credit'
+            ));
+        } catch (\Exception $ex) {
+            \Illuminate\Support\Facades\Log::error('Wallet topup notification error: ' . $ex->getMessage());
+        }
 
         return response()->json([
             'success' => true,

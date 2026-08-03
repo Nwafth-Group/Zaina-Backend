@@ -527,6 +527,19 @@ class BookingService
                     ]);
                 } elseif ($refundDestination === 'wallet') {
                     $customer->deposit($refundAmount, 'Refund - Cancelled Booking', $booking->booking_ref);
+                    try {
+                        $customer->notify(new \App\Notifications\WalletNotification(
+                            app()->getLocale() === 'en' ? 'Refund Credited to Wallet' : 'تم استرداد المبلغ إلى المحفظة 💰',
+                            app()->getLocale() === 'en'
+                            ? "An amount of EGP {$refundAmount} for booking ref #{$booking->booking_ref} has been refunded to your wallet."
+                            : "تم استرداد مبلغ {$refundAmount} ج.م للحجز رقم {$booking->booking_ref} إلى محفظتك.",
+                            (float) $refundAmount,
+                            'refund',
+                            ['booking_ref' => $booking->booking_ref]
+                        ));
+                    } catch (\Exception $ex) {
+                        Log::error('Wallet refund notification failure: ' . $ex->getMessage());
+                    }
                 }
             }
 
@@ -554,19 +567,9 @@ class BookingService
                         ));
                     }
                 } else {
-                    $admins = \App\Models\User::where('type', 'admin')->get();
+                    $admins = \App\Models\User::whereIn('type', ['super_admin', 'operation'])->get();
                     foreach ($admins as $admin) {
-                        $adminTitle = app()->getLocale() === 'ar' ? 'إلغاء حجز من العميل' : 'Customer Booking Cancelled';
-                        $admin->notify(new \App\Notifications\BookingNotification(
-                            $adminTitle,
-                            "Customer {$booking->customer?->full_name} has cancelled booking ref: {$booking->booking_ref}. Reason: " . ($reason ?? 'None'),
-                            $booking->id,
-                            [
-                                'booking_ref' => $booking->booking_ref,
-                                'customer_name' => $booking->customer?->full_name,
-                                'current_status' => 'cancelled',
-                            ]
-                        ));
+                        $admin->notify(new \App\Notifications\AdminBookingEventNotification('cancelled', $booking));
                     }
                 }
             } catch (\Exception $ex) {
@@ -738,6 +741,16 @@ class BookingService
             \App\Service\LoyaltyPointService::awardPointsForReview($booking);
 
             DB::commit();
+
+            // Notify Admins of new customer review
+            try {
+                $admins = User::whereIn('type', ['super_admin', 'operation'])->get();
+                foreach ($admins as $admin) {
+                    $admin->notify(new \App\Notifications\AdminBookingEventNotification('review', $booking));
+                }
+            } catch (\Exception $ex) {
+                Log::error('Review notification to admins failed: ' . $ex->getMessage());
+            }
 
             return true;
 

@@ -185,6 +185,12 @@ class AutoUpdateBookingStatusCommand extends Command
                             'current_status' => 'completed',
                         ]
                     ));
+
+                    // Notify Admins of auto-completed booking
+                    $admins = \App\Models\User::whereIn('type', ['super_admin', 'operation'])->get();
+                    foreach ($admins as $admin) {
+                        $admin->notify(new \App\Notifications\AdminBookingEventNotification('completed', $booking));
+                    }
                 }
                 $this->info("Booking Visit ID {$visit->id} (Booking ID {$booking->id}) transitioned to completed.");
                 Log::info("Booking Visit ID {$visit->id} (Booking ID {$booking->id}) transitioned to completed.");
@@ -231,6 +237,12 @@ class AutoUpdateBookingStatusCommand extends Command
                             'current_status' => 'completed',
                         ]
                     ));
+
+                    // Notify Admins of auto-completed booking
+                    $admins = \App\Models\User::whereIn('type', ['super_admin', 'operation'])->get();
+                    foreach ($admins as $admin) {
+                        $admin->notify(new \App\Notifications\AdminBookingEventNotification('completed', $booking));
+                    }
                 }
                 $this->info("Booking ID {$booking->id} transitioned directly to completed.");
                 Log::info("Booking ID {$booking->id} transitioned directly to completed.");

@@ -68,6 +68,16 @@ class KycController extends Controller
 
             DB::commit();
 
+            // إرسال إشعار للأدمن والعمليات بوجود طلب توثيق حساب جديد
+            try {
+                $admins = \App\Models\User::whereIn('type', ['super_admin', 'operation'])->get();
+                foreach ($admins as $admin) {
+                    $admin->notify(new \App\Notifications\AdminKycSubmittedNotification($user));
+                }
+            } catch (\Exception $notifyEx) {
+                \Illuminate\Support\Facades\Log::error("Failed to notify admins of KYC submission from user {$user->id}: " . $notifyEx->getMessage());
+            }
+
             return $this->successResponse([
                 'verification_status' => $user->verification_status
             ], __('messages.kyc_submission_success'));

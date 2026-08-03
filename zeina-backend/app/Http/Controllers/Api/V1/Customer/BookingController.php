@@ -302,7 +302,7 @@ class BookingController extends Controller
 
             $lock->release();
 
-            // Send notification
+            // Send notifications to Customer & Admins
             try {
                 $user->notify(new BookingNotification(
                     __('sms.booking_confirmed', []),
@@ -316,6 +316,12 @@ class BookingController extends Controller
                         'workers_count' => count($request->worker_ids),
                     ]
                 ));
+
+                // Notify Admins of new customer booking
+                $admins = \App\Models\User::whereIn('type', ['super_admin', 'operation'])->get();
+                foreach ($admins as $admin) {
+                    $admin->notify(new \App\Notifications\AdminBookingEventNotification('created', $booking));
+                }
             } catch (\Exception $notifEx) {
                 Log::error('Failed to trigger system booking notification: '.$notifEx->getMessage());
             }
@@ -549,19 +555,9 @@ class BookingController extends Controller
                 ));
 
                 // Notify all admins
-                $admins = \App\Models\User::where('type', 'admin')->get();
-                $adminRescheduleTitle = app()->getLocale() === 'ar' ? 'إعادة جدولة حجز من العميل' : 'Customer Booking Rescheduled';
+                $admins = \App\Models\User::whereIn('type', ['super_admin', 'operation'])->get();
                 foreach ($admins as $admin) {
-                    $admin->notify(new BookingNotification(
-                        $adminRescheduleTitle,
-                        "Customer {$user->full_name} has rescheduled booking ref: {$booking->booking_ref} to {$firstDate} at " . $newStart->format('h:i A') . ".",
-                        $booking->id,
-                        [
-                            'booking_ref' => $booking->booking_ref,
-                            'customer_name' => $user->full_name,
-                            'current_status' => 'Upcoming',
-                        ]
-                    ));
+                    $admin->notify(new \App\Notifications\AdminBookingEventNotification('rescheduled', $booking));
                 }
 
             } catch (\Exception $notifEx) {
