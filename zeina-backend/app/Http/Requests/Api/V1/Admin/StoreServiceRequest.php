@@ -63,7 +63,18 @@ class StoreServiceRequest extends CustomFormRequest
             'available_visit_types.*.type' => 'required|string|in:single_visit,3_days_per_week',
             'available_visit_types.*.discount' => 'nullable|numeric|min:0|max:100',
             'discount_value' => 'nullable|numeric|min:0',
-            'base_price' => 'required|numeric|min:0',
+            'base_price' => 'nullable|numeric|min:0',
+
+            // Service Sub-Items / Options
+            'options' => 'nullable|array',
+            'options.*.name_ar' => 'required_with:options|string|max:100',
+            'options.*.name_en' => 'required_with:options|string|max:100',
+            'options.*.description_ar' => 'nullable|string|max:255',
+            'options.*.description_en' => 'nullable|string|max:255',
+            'options.*.unit_price' => 'required_with:options|numeric|min:0',
+            'options.*.min_qty' => 'nullable|integer|min:0',
+            'options.*.max_qty' => 'nullable|integer',
+            'options.*.status' => 'nullable|in:active,inactive',
 
             // Service Image
             'image' => 'nullable|file|mimes:svg|max:2048',
@@ -349,8 +360,8 @@ class StoreServiceRequest extends CustomFormRequest
                     if (empty($genderOpts)) {
                         $validator->errors()->add('worker_gender_options', $isAr ? 'خيار الجنس لهذه الخدمة يجب تحديده.' : 'Worker gender option must be selected.');
                     }
-                } elseif ($this->filled('pricing_type') && ! $isSecondService && ! $isThirdService) {
-                    $validator->errors()->add('pricing_type', 'Pricing type configuration is only allowed for the Hospitality and Babysitting services.');
+                } elseif ($this->filled('pricing_type') && ! $isSecondService && ! $isThirdService && $this->input('type') !== 'other' && ! $isPedicureManicure) {
+                    $validator->errors()->add('pricing_type', 'Pricing type configuration is only allowed for the Hospitality, Babysitting, and Other services.');
                 }
             },
         ];

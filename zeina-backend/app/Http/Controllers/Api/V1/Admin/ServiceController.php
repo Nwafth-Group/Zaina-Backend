@@ -46,12 +46,27 @@ class ServiceController extends Controller
         $sortDir = strtolower($request->input('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
         $query->orderBy($sortBy, $sortDir);
 
+        if ($request->has('page') || $request->has('per_page')) {
+            $perPage = (int) $request->input('per_page', 15);
+            return $this->successResponse(ServiceResource::collection($query->paginate($perPage)), __('messages.services_retrieved_successfully'));
+        }
+
         return $this->successResponse(ServiceResource::collection($query->get()), __('messages.services_retrieved_successfully'));
     }
 
     public function show($id)
     {
-        $service = Service::with(['category', 'duration', 'rules', 'workers', 'schedules', 'childAgeGroups', 'serviceZones'])->findOrFail($id);
+        $service = Service::with([
+            'category',
+            'duration',
+            'rules',
+            'workers.media',
+            'schedules',
+            'childAgeGroups',
+            'serviceZones',
+            'options',
+            'media'
+        ])->findOrFail($id);
 
         return $this->successResponse(new ServiceResource($service), __('messages.service_retrieved_successfully'));
     }
@@ -64,10 +79,14 @@ class ServiceController extends Controller
     {
         $service->load([
             'category',
-            'workers',
+            'duration',
+            'rules',
+            'workers.media',
             'childAgeGroups',
             'schedules',
-            'serviceZones'
+            'serviceZones',
+            'options',
+            'media'
         ]);
 
         $latestBookings = $service->bookings()

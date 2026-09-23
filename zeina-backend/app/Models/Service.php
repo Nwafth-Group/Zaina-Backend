@@ -81,6 +81,11 @@ class Service extends Model implements Auditable
         return $this->hasMany(ServiceChildAgeGroup::class, 'service_id');
     }
 
+    public function options()
+    {
+        return $this->hasMany(ServiceOption::class, 'service_id');
+    }
+
     public function media()
     {
         return $this->morphMany(Media::class, 'model');

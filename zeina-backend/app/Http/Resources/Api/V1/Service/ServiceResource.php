@@ -80,6 +80,7 @@ class ServiceResource extends JsonResource
                 'frequency_type' => $serviceRewardRule->frequency_type ?? 'repeatable',
             ] : null,
             'child_age_groups' => ServiceChildAgeGroupResource::collection($this->childAgeGroups),
+            'options' => ServiceOptionResource::collection($this->options),
             'service_zones' => \App\Http\Resources\Api\V1\ServiceZone\ServiceZoneResource::collection($this->serviceZones),
             'service_zone_ids' => $this->serviceZones ? $this->serviceZones->pluck('id')->toArray() : [],
             'image' => $media ? MediaResource::make($media)->getFileUrl() : null,

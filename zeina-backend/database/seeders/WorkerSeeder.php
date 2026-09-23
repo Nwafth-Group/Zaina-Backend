@@ -22,7 +22,15 @@ class WorkerSeeder extends Seeder
 
             foreach ($services as $service) {
                 $isFemaleOnly = in_array($service->service_code, ['DOMESTIC_HELPER_HOURLY', 'BABYSITTER_HOURLY', 'PEDICURE_MANICURE']);
-                $isMaleOnly = ($service->service_code === 'DEEP_CLEANING');
+                $isMaleOnly = in_array($service->service_code, [
+                    'DEEP_CLEANING',
+                    'SOFA_CLEANING',
+                    'WATER_TANK_CLEANING',
+                    'STAIRS_SURFACES_CLEANING',
+                    'AC_CLEANING',
+                    'CARPET_CLEANING',
+                    'CAR_WASH'
+                ]);
 
                 for ($i = 0; $i < 10; $i++) {
                     $gender = $isFemaleOnly ? 'female' : ($isMaleOnly ? 'male' : ($i % 2 === 0 ? 'female' : 'male'));

@@ -85,7 +85,18 @@ class UpdateServiceRequest extends FormRequest
             'available_visit_types.*.type' => 'required_with:available_visit_types|string|in:single_visit,3_days_per_week',
             'available_visit_types.*.discount' => 'nullable|numeric|min:0|max:100',
             'discount_value' => 'sometimes|nullable|numeric|min:0',
-            'base_price' => 'sometimes|required|numeric|min:0',
+            'base_price' => 'sometimes|nullable|numeric|min:0',
+
+            // Service Sub-Items / Options
+            'options' => 'sometimes|nullable|array',
+            'options.*.name_ar' => 'required_with:options|string|max:100',
+            'options.*.name_en' => 'required_with:options|string|max:100',
+            'options.*.description_ar' => 'nullable|string|max:255',
+            'options.*.description_en' => 'nullable|string|max:255',
+            'options.*.unit_price' => 'required_with:options|numeric|min:0',
+            'options.*.min_qty' => 'nullable|integer|min:0',
+            'options.*.max_qty' => 'nullable|integer',
+            'options.*.status' => 'nullable|in:active,inactive',
 
             // Service Image
             'image' => 'sometimes|nullable|file|mimes:svg|max:2048',
@@ -372,8 +383,8 @@ class UpdateServiceRequest extends FormRequest
                             $validator->errors()->add('worker_gender_options', $isAr ? 'خيار الجنس لهذه الخدمة يجب تحديده.' : 'Worker gender option must be selected.');
                         }
                     }
-                } elseif ($this->filled('pricing_type') && ! $isSecondService && ! $isThirdService) {
-                    $validator->errors()->add('pricing_type', 'Pricing type configuration is only allowed for the Hospitality and Babysitting services.');
+                } elseif ($this->filled('pricing_type') && ! $isSecondService && ! $isThirdService && $this->input('type') !== 'other' && ! $isPedicureManicure) {
+                    $validator->errors()->add('pricing_type', 'Pricing type configuration is only allowed for the Hospitality, Babysitting, and Other services.');
                 }
             },
         ];

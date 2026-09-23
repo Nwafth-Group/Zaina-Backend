@@ -64,16 +64,113 @@ class CategoryAndServiceSeeder extends Seeder
             }
         }
 
-        // 2. تعريف الخدمات الجديدة المحددة بالصورة (5 خدمات)
+        // 2. تعريف الخدمات المحددة (11 خدمة)
         $servicesData = [
             // خدمات بالساعة (3)
-            ['cat' => 'cleaning', 'type' => 'hourly', 'en' => 'Domestic Helper (Hourly)', 'ar' => 'عاملة منزلية بالساعة', 'price' => 80, 'period' => 2, 'code' => 'DOMESTIC_HELPER_HOURLY'],
-            ['cat' => 'hospitality', 'type' => 'hourly', 'en' => 'Hospitality Worker (Hourly)', 'ar' => 'عاملة ضيافة بالساعة', 'price' => 90, 'period' => 2, 'code' => 'HOSPITALITY_WORKER_HOURLY'],
-            ['cat' => 'babysitting', 'type' => 'hourly', 'en' => 'Babysitter (Hourly)', 'ar' => 'جليسة اطفال بالساعة', 'price' => 100, 'period' => 3, 'code' => 'BABYSITTER_HOURLY'],
+            ['cat' => 'cleaning', 'type' => 'hourly', 'en' => 'Domestic Helper (Hourly)', 'ar' => 'عاملة منزلية بالساعة', 'price' => 80, 'period' => 2, 'code' => 'DOMESTIC_HELPER_HOURLY', 'img_num' => 1],
+            ['cat' => 'hospitality', 'type' => 'hourly', 'en' => 'Hospitality Worker (Hourly)', 'ar' => 'عاملة ضيافة بالساعة', 'price' => 90, 'period' => 2, 'code' => 'HOSPITALITY_WORKER_HOURLY', 'img_num' => 2],
+            ['cat' => 'babysitting', 'type' => 'hourly', 'en' => 'Babysitter (Hourly)', 'ar' => 'جليسة اطفال بالساعة', 'price' => 100, 'period' => 3, 'code' => 'BABYSITTER_HOURLY', 'img_num' => 3],
 
-            // خدمات أخرى (2)
-            ['cat' => 'other', 'type' => 'other', 'en' => 'Pedicure & Manicure Service', 'ar' => 'خدمة العناية بالأقدام واليدين', 'price' => 150, 'period' => 2, 'code' => 'PEDICURE_MANICURE', 'covered_persons_per_worker' => 1],
-            ['cat' => 'other', 'type' => 'other', 'en' => 'Deep Cleaning Service', 'ar' => 'خدمة النظافة العميقة', 'price' => 500, 'period' => 6, 'code' => 'DEEP_CLEANING'],
+            // خدمات أخرى سابقة (2)
+            ['cat' => 'other', 'type' => 'other', 'en' => 'Pedicure & Manicure Service', 'ar' => 'خدمة العناية بالأقدام واليدين', 'price' => 150, 'period' => 2, 'code' => 'PEDICURE_MANICURE', 'covered_persons_per_worker' => 1, 'img_num' => 4],
+            ['cat' => 'other', 'type' => 'other', 'en' => 'Deep Cleaning Service', 'ar' => 'خدمة النظافة العميقة', 'price' => 500, 'period' => 6, 'code' => 'DEEP_CLEANING', 'img_num' => 5],
+
+            // خدمات أخرى جديدة (6 خدمات)
+            [
+                'cat' => 'other',
+                'type' => 'other',
+                'en' => 'Sofa Cleaning Service',
+                'ar' => 'تنظيف الكنب',
+                'price' => 0,
+                'period' => 2,
+                'code' => 'SOFA_CLEANING',
+                'img_num' => 6,
+                'options' => [
+                    ['name_ar' => 'كتب (شخص واحد)', 'name_en' => 'One-seat Sofa', 'unit_price' => 50, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
+                    ['name_ar' => 'كتب (2 اشخاص)', 'name_en' => 'Two-seat Sofa', 'unit_price' => 95, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
+                    ['name_ar' => 'كتب (3 اشخاص)', 'name_en' => 'Three-seat Sofa', 'unit_price' => 140, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
+                ],
+            ],
+            [
+                'cat' => 'other',
+                'type' => 'other',
+                'en' => 'Water Tank Cleaning Service',
+                'ar' => 'تنظيف خزانات المياه',
+                'price' => 0,
+                'period' => 2,
+                'code' => 'WATER_TANK_CLEANING',
+                'img_num' => 7,
+                'options' => [
+                    ['name_ar' => 'خزان علوي وسط', 'name_en' => 'Medium Overhead Tank', 'unit_price' => 1000, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
+                    ['name_ar' => 'خزان علوي كبير', 'name_en' => 'Large Overhead Tank', 'unit_price' => 1300, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
+                ],
+            ],
+            [
+                'cat' => 'other',
+                'type' => 'other',
+                'en' => 'Cleaning the Stairs & Surfaces',
+                'ar' => 'تنظيف السلالم والأسطح',
+                'price' => 0,
+                'period' => 2,
+                'code' => 'STAIRS_SURFACES_CLEANING',
+                'img_num' => 8,
+                'options' => [
+                    ['name_ar' => 'درج أرضي + 3 أدوار', 'name_en' => 'Ground + 3 Floors Stairs', 'unit_price' => 300, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
+                    ['name_ar' => 'درج أرضي + 4 أدوار', 'name_en' => 'Ground + 4 Floors Stairs', 'unit_price' => 330, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
+                    ['name_ar' => 'درج أرضي + 5 أدوار', 'name_en' => 'Ground + 5 Floors Stairs', 'unit_price' => 400, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
+                    ['name_ar' => 'سطح صغير حتى 150 متر', 'name_en' => 'Small Roof (up to 150m²)', 'unit_price' => 500, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
+                    ['name_ar' => 'سطح وسط حتى 270 متر', 'name_en' => 'Medium Roof (up to 270m²)', 'unit_price' => 700, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
+                    ['name_ar' => 'سطح كبير حتى 400 متر', 'name_en' => 'Large Roof (up to 400m²)', 'unit_price' => 1200, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
+                ],
+            ],
+            [
+                'cat' => 'other',
+                'type' => 'other',
+                'en' => 'Air Conditioner Cleaning Service',
+                'ar' => 'تنظيف المكيفات',
+                'price' => 0,
+                'period' => 2,
+                'code' => 'AC_CLEANING',
+                'img_num' => 9,
+                'options' => [
+                    ['name_ar' => 'مكيف واحد شباك', 'name_en' => '1 Window AC Unit', 'unit_price' => 300, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
+                    ['name_ar' => 'مكيف واحد سبليت', 'name_en' => '1 Split AC Unit', 'unit_price' => 500, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
+                ],
+            ],
+            [
+                'cat' => 'other',
+                'type' => 'other',
+                'en' => 'Carpet & Rug Cleaning Service',
+                'ar' => 'غسيل السجاد والموكيت',
+                'price' => 0,
+                'period' => 2,
+                'code' => 'CARPET_CLEANING',
+                'img_num' => 10,
+                'options' => [
+                    ['name_ar' => 'سجادة أو موكيت (3*3م)', 'name_en' => 'Carpet / Rug (3x3m)', 'unit_price' => 300, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
+                    ['name_ar' => 'سجادة أو موكيت (3*4م)', 'name_en' => 'Carpet / Rug (3x4m)', 'unit_price' => 300, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
+                    ['name_ar' => 'سجادة أو موكيت (5*5م)', 'name_en' => 'Carpet / Rug (5x5m)', 'unit_price' => 300, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
+                    ['name_ar' => 'سجادة أو موكيت (2*2م)', 'name_en' => 'Carpet / Rug (2x2m)', 'unit_price' => 300, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
+                    ['name_ar' => 'سجادة أو موكيت (2*3م)', 'name_en' => 'Carpet / Rug (2x3m)', 'unit_price' => 300, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
+                    ['name_ar' => 'سجادة أو موكيت (2*4م)', 'name_en' => 'Carpet / Rug (2x4m)', 'unit_price' => 300, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
+                    ['name_ar' => 'سجادة أو موكيت (5*2م)', 'name_en' => 'Carpet / Rug (5x2m)', 'unit_price' => 300, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
+                ],
+            ],
+            [
+                'cat' => 'other',
+                'type' => 'other',
+                'en' => 'Car Wash Service',
+                'ar' => 'غسيل السيارات',
+                'price' => 0,
+                'period' => 2,
+                'code' => 'CAR_WASH',
+                'img_num' => 11,
+                'options' => [
+                    ['name_ar' => 'سيارة صغيرة خارجي وداخلي (شامل الكراسي والسقف)', 'name_en' => 'Small Car (Interior & Exterior)', 'unit_price' => 500, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
+                    ['name_ar' => 'سيارة وسط خارجي وداخلي (شامل الكراسي والسقف)', 'name_en' => 'Medium Car (Interior & Exterior)', 'unit_price' => 700, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
+                    ['name_ar' => 'سيارة كبيرة خارجي وداخلي (شامل الكراسي والسقف)', 'name_en' => 'Large Car (Interior & Exterior)', 'unit_price' => 1000, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
+                ],
+            ],
         ];
 
         // 3. إدخال الخدمات وتركيب القواعد والأسعار والمناطق
@@ -89,8 +186,7 @@ class CategoryAndServiceSeeder extends Seeder
             $isThirdService = ($data['code'] === 'BABYSITTER_HOURLY');
             $isPedicureManicure = ($data['code'] === 'PEDICURE_MANICURE');
             $isDeepCleaning = ($data['code'] === 'DEEP_CLEANING');
-
-            $genderAttr = ($isFirstService || $isThirdService || $isPedicureManicure) ? 'female' : (($isDeepCleaning) ? 'male' : fake()->randomElement(['male', 'female']));
+            $isOtherNewService = in_array($data['code'], ['SOFA_CLEANING', 'WATER_TANK_CLEANING', 'STAIRS_SURFACES_CLEANING', 'AC_CLEANING', 'CARPET_CLEANING', 'CAR_WASH']);
 
             // Construct payload matching StoreServiceRequest structure exactly
             $payload = [
@@ -104,7 +200,7 @@ class CategoryAndServiceSeeder extends Seeder
                 'features' => $features,
                 'status' => 'active',
 
-                'available_visit_types' => ($isSecondService || $isThirdService || $isPedicureManicure || $isDeepCleaning)
+                'available_visit_types' => ($isSecondService || $isThirdService || $isPedicureManicure || $isDeepCleaning || $isOtherNewService)
                     ? [['type' => 'single_visit', 'discount' => 0]]
                     : [
                         ['type' => 'single_visit', 'discount' => 0],
@@ -119,7 +215,7 @@ class CategoryAndServiceSeeder extends Seeder
                 'min_duration' => ($isSecondService || $isThirdService) ? 4 : null,
                 'max_duration' => ($isSecondService || $isThirdService) ? 6 : null,
                 'min_workers' => $isDeepCleaning ? 10 : 1,
-                'max_workers' => $isDeepCleaning ? 10 : 10,
+                'max_workers' => $isDeepCleaning ? 10 : 1,
                 'min_children' => $isThirdService ? 1 : null,
                 'max_children' => $isThirdService ? 6 : null,
                 'covered_persons_per_worker' => $data['covered_persons_per_worker'] ?? null,
@@ -127,7 +223,7 @@ class CategoryAndServiceSeeder extends Seeder
                 'service_zone_ids' => $allZoneIds,
 
                 'working_days' => ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'saturday'],
-                'shifts' => ($isSecondService || $isThirdService || $isPedicureManicure) ? [] : [
+                'shifts' => ($isSecondService || $isThirdService || $isPedicureManicure || $isOtherNewService) ? [] : [
                     ['start_time' => '08:00'],
                     ['start_time' => '14:00'],
                 ],
@@ -152,6 +248,10 @@ class CategoryAndServiceSeeder extends Seeder
                 'points_conversion_rate' => 10,
             ];
 
+            if (isset($data['options'])) {
+                $payload['options'] = $data['options'];
+            }
+
             if ($isFirstService || $isThirdService) {
                 $payload['worker_gender_options'] = ['Female'];
                 $payload['pricing_type'] = 'per_hour';
@@ -160,9 +260,6 @@ class CategoryAndServiceSeeder extends Seeder
                 $payload['pricing_type'] = 'per_hour';
             } elseif ($isPedicureManicure) {
                 $payload['worker_gender_options'] = ['Female'];
-                $payload['pricing_type'] = 'per_service';
-            } elseif ($isDeepCleaning) {
-                $payload['worker_gender_options'] = ['Male'];
                 $payload['pricing_type'] = 'per_service';
             } else {
                 $payload['worker_gender_options'] = ['Male'];
@@ -205,7 +302,11 @@ class CategoryAndServiceSeeder extends Seeder
             }
 
             // Sync media icon
-            $dummyIconPath = public_path("assist/services/{$service->id}.webp");
+            $imgNum = $data['img_num'] ?? ($index + 1);
+            $dummyIconPath = public_path("assist/services/{$imgNum}.png");
+            if (!file_exists($dummyIconPath)) {
+                $dummyIconPath = public_path("assist/services/{$imgNum}.webp");
+            }
             if (!file_exists($dummyIconPath)) {
                 $selectedIcon = Arr::random($dummyIconsList);
                 $dummyIconPath = public_path('dummy/' . $selectedIcon);

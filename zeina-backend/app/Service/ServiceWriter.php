@@ -39,7 +39,7 @@ class ServiceWriter
      */
     private const RESPONSE_RELATIONS = [
         'category', 'duration', 'rules', 'workers', 'media', 'schedules',
-        'childAgeGroups', 'serviceZones',
+        'childAgeGroups', 'serviceZones', 'options',
     ];
 
     public function __construct(private MediaService $mediaService) {}
@@ -204,6 +204,13 @@ class ServiceWriter
             $service->childAgeGroups()->delete();
             if (! empty($data['child_age_groups'])) {
                 $service->childAgeGroups()->createMany($data['child_age_groups']);
+            }
+        }
+
+        if (array_key_exists('options', $data)) {
+            $service->options()->delete();
+            if (! empty($data['options'])) {
+                $service->options()->createMany($data['options']);
             }
         }
     }
