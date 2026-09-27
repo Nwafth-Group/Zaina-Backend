@@ -19,6 +19,7 @@ class Worker extends Model
         'id_number',
         'address',
         'gender',
+        'team_id',
     ];
 
     /**
@@ -29,6 +30,11 @@ class Worker extends Model
         return [
             'avg_rating' => 'float',
         ];
+    }
+
+    public function team()
+    {
+        return $this->belongsTo(Team::class);
     }
 
     public function services()
@@ -57,5 +63,10 @@ class Worker extends Model
     public function reviews()
     {
         return $this->morphMany(Review::class, 'reviewable');
+    }
+
+    public function absences()
+    {
+        return $this->hasMany(WorkerAbsence::class);
     }
 }

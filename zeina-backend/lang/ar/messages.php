@@ -78,6 +78,7 @@ return [
     'bookings_retrieved' => 'تم جلب الحجوزات بنجاح.',
     'booking_fetched_success' => 'تم جلب الحجز بنجاح.',
     'booking_status_updated' => 'تم تحديث حالة الحجز بنجاح.',
+    'booking_workers_updated' => 'تم تحديث تعيين العمالة بنجاح.',
     'dashboard_retrieved' => 'تم جلب إحصائيات لوحة التحكم بنجاح.',
     'employee_fetched_success' => 'تم جلب الموظفين بنجاح.',
 
@@ -305,4 +306,11 @@ return [
     'service_zone_deleted_successfully' => 'تم حذف منطقة التغطية بنجاح',
     'service_zone_not_available' => 'عذراً، الخدمة غير متاحة في هذا الموقع حالياً.',
     'transport_dispatch_updated_successfully' => 'تم تحديث بيانات النقل وتحديد الانطلاق بنجاح',
+
+    // V.18 Operations & Execution
+    'service_started_successfully' => 'تم تسجيل بدء الخدمة بنجاح وتحويل الحالة إلى قيد التنفيذ',
+    'service_completed_successfully' => 'تم تسجيل انتهاء الخدمة بنجاح وتحديث مخاطر الانتقال',
+    'risk_resolved_successfully' => 'تم إعادة تعيين المورد البديل وإلغاء حالة الخطر بنجاح',
+    'worker_absence_recorded' => 'تم تسجيل غياب العامل وتحديث الحجوزات المتأثرة بنجاح',
+    'booking_workers_updated' => 'تم تحديث عمالة الحجز بنجاح',
 ];

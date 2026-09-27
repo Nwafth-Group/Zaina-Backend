@@ -84,6 +84,131 @@ class BookingController extends Controller
         $data = $request->validated();
         $service = Service::with(['rules', 'schedules', 'childAgeGroups'])->findOrFail($data['service_id']);
 
+        $address = CustomerAddress::with('serviceZone')->find($data['address_id']);
+        if ($address && $address->service_zone_id) {
+            $isCovered = $service->serviceZones()
+                ->where('service_zones.id', $address->service_zone_id)
+                ->where('service_zones.status', 'active')
+                ->exists();
+            if (! $isCovered) {
+                return $this->errorResponse(__('messages.service_not_available_in_location') ?? 'هذه الخدمة غير متوفرة في موقعك الحالي.', 422);
+            }
+        }
+
+        $dates = [];
+        $maxDays = ($service->rules && $service->rules->max_advance_booking_days > 0)
+            ? (int) $service->rules->max_advance_booking_days
+            : 30;
+        $allowSameDay = $service->rules ? (bool) $service->rules->allow_same_day : false;
+
+        $startDate = $allowSameDay ? Carbon::today() : Carbon::tomorrow();
+        $endDate = Carbon::today()->addDays($maxDays);
+
+        $workingDays = $service->schedules()
+            ->where('is_active', true)
+            ->pluck('day')
+            ->unique()
+            ->map(fn ($d) => strtolower($d))
+            ->toArray();
+
+        $customerId = auth()->id();
+
+        // -------------------------------------------------------------
+        // Branch A: Team-Based Services (Services 6 to 11)
+        // -------------------------------------------------------------
+        if ($service->isTeamBased()) {
+            $teams = $service->teams()->where('teams.status', 'active')->with('workers')->get();
+            if ($teams->isEmpty()) {
+                return $this->successResponse([], 'No active teams available for this service.');
+            }
+
+            $conflictService = app(\App\Service\Booking\BookingScheduleConflictService::class);
+            $durationHours = (int) ($data['duration'] ?? ($service->default_duration ?? 2));
+
+            for ($date = $startDate->copy(); $date->lte($endDate); $date->addDay()) {
+                $dayName = strtolower($date->format('l'));
+                if (! in_array($dayName, $workingDays)) {
+                    continue;
+                }
+
+                $dateStr = $date->toDateString();
+
+                if (! empty($data['start_time'])) {
+                    $startTime = Carbon::parse($data['start_time']);
+                    $endTime = $startTime->copy()->addHours($durationHours);
+                    $shiftStart = $startTime->format('H:i:s');
+                    $shiftEnd = $endTime->format('H:i:s');
+
+                    if ($customerId) {
+                        $hasCustomerOverlap = Booking::where('customer_id', $customerId)
+                            ->where('service_id', $service->id)
+                            ->whereIn('status', ['Upcoming', 'inService'])
+                            ->where(function ($q) use ($dateStr, $shiftStart, $shiftEnd) {
+                                $q->whereHas('visits', function ($visitQ) use ($dateStr, $shiftStart, $shiftEnd) {
+                                    $visitQ->where('visit_date', $dateStr)
+                                        ->where('start_time', '<', $shiftEnd)
+                                        ->where('end_time', '>', $shiftStart);
+                                })
+                                ->orWhere(function ($parentQ) use ($dateStr, $shiftStart, $shiftEnd) {
+                                    $parentQ->where('booking_date', $dateStr)
+                                        ->where('start_time', '<', $shiftEnd)
+                                        ->where('end_time', '>', $shiftStart);
+                                });
+                            })
+                            ->exists();
+
+                        if ($hasCustomerOverlap) {
+                            continue;
+                        }
+                    }
+
+                    $teamAvailable = false;
+                    foreach ($teams as $team) {
+                        if ($conflictService->isTeamAvailable($team, $dateStr, $shiftStart, $shiftEnd)) {
+                            $teamAvailable = true;
+                            break;
+                        }
+                    }
+
+                    if ($teamAvailable) {
+                        $dates[] = $dateStr.' 00:00:00';
+                    }
+                } else {
+                    $windowStart = Carbon::parse($service->start_time ?? '08:00');
+                    $windowEnd = Carbon::parse($service->end_time ?? '20:00');
+
+                    $slots = [];
+                    $cur = $windowStart->copy();
+                    while ($cur->copy()->addHours($durationHours)->lte($windowEnd)) {
+                        $slots[] = [
+                            'start' => $cur->format('H:i:s'),
+                            'end' => $cur->copy()->addHours($durationHours)->format('H:i:s'),
+                        ];
+                        $cur->addHours(2);
+                    }
+
+                    $dateHasAvailableTeam = false;
+                    foreach ($slots as $slot) {
+                        foreach ($teams as $team) {
+                            if ($conflictService->isTeamAvailable($team, $dateStr, $slot['start'], $slot['end'])) {
+                                $dateHasAvailableTeam = true;
+                                break 2;
+                            }
+                        }
+                    }
+
+                    if ($dateHasAvailableTeam) {
+                        $dates[] = $dateStr.' 00:00:00';
+                    }
+                }
+            }
+
+            return $this->successResponse($dates, 'Available dates retrieved successfully.');
+        }
+
+        // -------------------------------------------------------------
+        // Branch B: Individual Worker Services (Services 1 to 5)
+        // -------------------------------------------------------------
         if ($service->service_code === 'DEEP_CLEANING') {
             $data['workers_count'] = $service->min_workers ?? 6;
             $data['duration'] = $service->default_duration ?? 6;
@@ -162,33 +287,6 @@ class BookingController extends Controller
             return $this->errorResponse("Selected start time must be within the service window ({$service->start_time} to {$service->end_time}).", 422);
         }
 
-        $dates = [];
-        $maxDays = ($service->rules && $service->rules->max_advance_booking_days > 0)
-            ? (int) $service->rules->max_advance_booking_days
-            : 30;
-        $allowSameDay = $service->rules ? (bool) $service->rules->allow_same_day : false;
-
-        $startDate = $allowSameDay ? Carbon::today() : Carbon::tomorrow();
-        $endDate = Carbon::today()->addDays($maxDays);
-
-        $workingDays = $service->schedules()
-            ->where('is_active', true)
-            ->pluck('day')
-            ->unique()
-            ->map(fn ($d) => strtolower($d))
-            ->toArray();
-
-        $address = CustomerAddress::with('serviceZone')->find($data['address_id']);
-        if ($address && $address->service_zone_id) {
-            $isCovered = $service->serviceZones()
-                ->where('service_zones.id', $address->service_zone_id)
-                ->where('service_zones.status', 'active')
-                ->exists();
-            if (! $isCovered) {
-                return $this->errorResponse(__('messages.service_not_available_in_location') ?? 'هذه الخدمة غير متوفرة في موقعك الحالي.', 422);
-            }
-        }
-
         $serviceWorkers = $service->workers()
             ->where('status', 'active')
             ->where('gender', strtolower($data['worker_gender']))
@@ -210,8 +308,6 @@ class BookingController extends Controller
 
             $dateStr = $date->toDateString();
 
-            // Check if the authenticated customer already has an active overlapping booking for the same service
-            $customerId = auth()->id();
             if ($customerId) {
                 $hasCustomerOverlap = Booking::where('customer_id', $customerId)
                     ->where('service_id', $service->id)

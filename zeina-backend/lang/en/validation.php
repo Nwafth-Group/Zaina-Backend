@@ -420,19 +420,30 @@ return [
 ],
 
 'store_worker' => [
-    'name_required' => 'The worker name is required.',
-    'name_string' => 'The worker name must be a string.',
-    'name_max' => 'The worker name must not exceed 255 characters.',
-    'nationality_required' => 'The worker nationality is required.',
-    'nationality_string' => 'The worker nationality must be a string.',
-    'nationality_max' => 'The worker nationality must not exceed 255 characters.',
-    'status_in' => 'The worker status is invalid.', 
-    'services_array' => 'The services must be an array.',
+    'name_required' => 'Worker name is required.',
+    'name_string' => 'Worker name must be a string.',
+    'name_max' => 'Worker name must not exceed 255 characters.',
+    'phone_number_required' => 'Worker phone number is required.',
+    'phone_number_unique' => 'Phone number is already used by another worker.',
+    'nationality_required' => 'Worker nationality is required.',
+    'nationality_string' => 'Worker nationality must be a string.',
+    'nationality_max' => 'Worker nationality must not exceed 255 characters.',
+    'id_number_required' => 'Worker ID number is required.',
+    'id_number_unique' => 'ID number is already used by another worker.',
+    'address_required' => 'Worker address is required.',
+    'gender_required' => 'Worker gender is required.',
+    'gender_in' => 'Gender must be either male or female.',
+    'status_in' => 'Worker status is invalid.', 
+    'team_male_only' => 'Only male workers can be assigned to teams.',
+    'services_array' => 'Services must be an array.',
     'services.*.exists' => 'One or more selected services do not exist.',
+    'services_single_allowed' => 'A worker in individual services (1-5) can only be assigned to one service, and cannot be combined with other services.',
+    'services_max' => 'This worker is already assigned to a service. A worker can only be assigned to one service.',
     'image_image' => 'The file must be an image.',
     'image_mimes' => 'The image must be a file of type: jpeg, png, jpg, gif, svg.',
     'image_max' => 'The image must not be greater than 2MB.',
 ],
+
 
 'getAvaliable' => [
     'date_required' => 'The date is required.',
@@ -503,6 +514,8 @@ return [
         'number_of_children_min' => 'The number of children must be at least 1.',
         'child_age_groups_min' => 'Please select at least one age group.',
         'child_age_groups_integer' => 'Age group must be an integer.',
+        'duration_between' => 'Duration must be between :min and :max hours.',
+        'duration_exact' => 'Duration must be exactly :duration hours.',
     ],
 
 'report' => [
@@ -617,6 +630,50 @@ return [
         'duration_integer' => 'The duration must be an integer representing hours.',
         'duration_min' => 'The duration must be at least 1 hour.',
      ],
+
+    'team' => [
+        'name_ar_required' => 'The Arabic team name is required.',
+        'name_en_required' => 'The English team name is required.',
+        'code_required' => 'The team code is required.',
+        'code_unique' => 'The team code is already in use.',
+        'status_required' => 'The team status is required.',
+        'status_in' => 'The team status is invalid.',
+        'worker_ids_required' => 'Exactly 3 male workers must be selected for the team.',
+        'worker_ids_size' => 'A team must consist of exactly 3 male workers.',
+        'worker_ids_exists' => 'One or more selected workers do not exist.',
+        'worker_male_only' => 'Worker (:name) is not male. Only male workers can be added to teams.',
+        'worker_already_in_team' => 'Worker (:name) is already assigned to another team.',
+    ],
+
+    'replace_worker' => [
+        'old_worker_required' => 'The worker to be replaced is required.',
+        'old_worker_exists' => 'The selected current worker does not exist.',
+        'new_worker_required' => 'The replacement worker is required.',
+        'new_worker_exists' => 'The replacement worker does not exist.',
+        'new_worker_different' => 'The replacement worker cannot be the same as the current worker.',
+        'reason_required' => 'The replacement reason is required.',
+        'reason_string' => 'The replacement reason must be a string.',
+        'reason_max' => 'The replacement reason must not exceed 500 characters.',
+        'booking_not_upcoming' => 'Cannot replace workers unless the booking is Upcoming or in Pending Assignment.',
+        'booking_payment_failed' => 'Cannot replace workers for a booking with failed payment.',
+        'service_started' => 'Cannot replace workers after the service has already started.',
+        'worker_inactive' => 'Worker (:name) is inactive and cannot be assigned.',
+        'worker_not_eligible' => 'Worker (:name) is not eligible for this service.',
+        'worker_not_male_team' => 'Team services require male workers only. Worker (:name) is not male.',
+        'schedule_conflict_direct' => 'Worker (:name) has a schedule conflict during this time slot.',
+        'schedule_conflict_buffer' => 'Worker (:name) requires a minimum 60-minute transition gap between bookings.',
+        'worker_not_in_booking' => 'The worker to be replaced is not currently assigned to this booking.',
+        'success' => 'Worker replaced successfully and schedule updated.',
+    ],
+
+    'booking_conflict' => [
+        'direct_overlap' => 'Worker (:name) has a direct schedule overlap during this booking slot.',
+        'transition_gap_60min' => 'Schedule conflict: A minimum 60-minute transition gap is required before and after bookings for worker (:name).',
+        'worker_inactive' => 'Worker (:name) is not active.',
+        'worker_ineligible' => 'Worker (:name) is not eligible for this service.',
+        'male_required' => 'Worker (:name) must be male for this service.',
+        'team_worker_conflict' => 'Team worker (:name) is not available due to a schedule conflict.',
+    ],
 
      
 

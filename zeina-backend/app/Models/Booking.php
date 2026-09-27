@@ -15,7 +15,8 @@ class Booking extends Model
         'scheduled_at', 'duration_minutes', 'number_of_workers', 'worker_gender',
         'number_of_children', 'number_of_persons', 'child_age_groups', 'selected_options',
         'price_subtotal', 'tax_amount', 'discount_amount', 'total_amount', 'coupon_id',
-        'status', 'payment_status', 'customer_notes', 'start_time', 'end_time', 'booking_date', 'worker_id',
+        'status', 'payment_status', 'customer_notes', 'start_time', 'end_time', 'booking_date', 'worker_id', 'team_id',
+        'actual_start_time', 'actual_end_time', 'started_by', 'completed_by', 'is_at_risk', 'at_risk_reason',
         'visit_type', 'visit_number', 'payment_transaction_id', 'currency_code', 'contract_id',
         'payment_method', 'paid_points', 'refund_amount', 'refund_points', 'refund_destination',
         'refund_status', 'cancelled_by', 'cancelled_at', 'cancellation_reason'
@@ -23,6 +24,7 @@ class Booking extends Model
 
     protected $casts = [
         'scheduled_at' => 'datetime',
+        'is_at_risk' => 'boolean',
         'child_age_groups' => 'array',
         'selected_options' => 'array',
     ];
@@ -82,5 +84,20 @@ class Booking extends Model
     public function coupon()
     {
         return $this->belongsTo(Coupon::class);
+    }
+
+    public function team()
+    {
+        return $this->belongsTo(Team::class);
+    }
+
+    public function starter()
+    {
+        return $this->belongsTo(User::class, 'started_by');
+    }
+
+    public function completer()
+    {
+        return $this->belongsTo(User::class, 'completed_by');
     }
 }

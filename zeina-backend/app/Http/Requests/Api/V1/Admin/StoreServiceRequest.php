@@ -57,6 +57,11 @@ class StoreServiceRequest extends CustomFormRequest
                 'integer',
                 Rule::exists('workers', 'id')->where('status', 'active'),
             ],
+            'teams' => 'nullable|array',
+            'teams.*' => [
+                'integer',
+                Rule::exists('teams', 'id')->where('status', 'active'),
+            ],
 
             // Available Visit Type & Pricing
             'available_visit_types' => 'required|array|min:1',

@@ -86,9 +86,9 @@ class CategoryAndServiceSeeder extends Seeder
                 'code' => 'SOFA_CLEANING',
                 'img_num' => 6,
                 'options' => [
-                    ['name_ar' => 'كتب (شخص واحد)', 'name_en' => 'One-seat Sofa', 'unit_price' => 50, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
-                    ['name_ar' => 'كتب (2 اشخاص)', 'name_en' => 'Two-seat Sofa', 'unit_price' => 95, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
-                    ['name_ar' => 'كتب (3 اشخاص)', 'name_en' => 'Three-seat Sofa', 'unit_price' => 140, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
+                    ['name_ar' => 'كنب (شخص واحد)', 'name_en' => 'One-seat Sofa', 'unit_price' => 50, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active', 'sort_order' => 1],
+                    ['name_ar' => 'كنب (2 أشخاص)', 'name_en' => 'Two-seat Sofa', 'unit_price' => 95, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active', 'sort_order' => 2],
+                    ['name_ar' => 'كنب (3 أشخاص)', 'name_en' => 'Three-seat Sofa', 'unit_price' => 140, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active', 'sort_order' => 3],
                 ],
             ],
             [
@@ -101,8 +101,8 @@ class CategoryAndServiceSeeder extends Seeder
                 'code' => 'WATER_TANK_CLEANING',
                 'img_num' => 7,
                 'options' => [
-                    ['name_ar' => 'خزان علوي وسط', 'name_en' => 'Medium Overhead Tank', 'unit_price' => 1000, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
-                    ['name_ar' => 'خزان علوي كبير', 'name_en' => 'Large Overhead Tank', 'unit_price' => 1300, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
+                    ['name_ar' => 'خزان علوي وسط', 'name_en' => 'Medium Overhead Tank', 'unit_price' => 1000, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active', 'sort_order' => 1],
+                    ['name_ar' => 'خزان علوي كبير', 'name_en' => 'Large Overhead Tank', 'unit_price' => 1300, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active', 'sort_order' => 2],
                 ],
             ],
             [
@@ -115,12 +115,12 @@ class CategoryAndServiceSeeder extends Seeder
                 'code' => 'STAIRS_SURFACES_CLEANING',
                 'img_num' => 8,
                 'options' => [
-                    ['name_ar' => 'درج أرضي + 3 أدوار', 'name_en' => 'Ground + 3 Floors Stairs', 'unit_price' => 300, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
-                    ['name_ar' => 'درج أرضي + 4 أدوار', 'name_en' => 'Ground + 4 Floors Stairs', 'unit_price' => 330, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
-                    ['name_ar' => 'درج أرضي + 5 أدوار', 'name_en' => 'Ground + 5 Floors Stairs', 'unit_price' => 400, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
-                    ['name_ar' => 'سطح صغير حتى 150 متر', 'name_en' => 'Small Roof (up to 150m²)', 'unit_price' => 500, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
-                    ['name_ar' => 'سطح وسط حتى 270 متر', 'name_en' => 'Medium Roof (up to 270m²)', 'unit_price' => 700, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
-                    ['name_ar' => 'سطح كبير حتى 400 متر', 'name_en' => 'Large Roof (up to 400m²)', 'unit_price' => 1200, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
+                    ['name_ar' => 'درج أرضي + 3 أدوار', 'name_en' => 'Ground + 3 Floors Stairs', 'unit_price' => 300, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active', 'sort_order' => 1],
+                    ['name_ar' => 'درج أرضي + 4 أدوار', 'name_en' => 'Ground + 4 Floors Stairs', 'unit_price' => 330, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active', 'sort_order' => 2],
+                    ['name_ar' => 'درج أرضي + 5 أدوار', 'name_en' => 'Ground + 5 Floors Stairs', 'unit_price' => 400, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active', 'sort_order' => 3],
+                    ['name_ar' => 'سطح صغير حتى 150 متر', 'name_en' => 'Small Roof (up to 150m²)', 'unit_price' => 500, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active', 'sort_order' => 4],
+                    ['name_ar' => 'سطح وسط حتى 270 متر', 'name_en' => 'Medium Roof (up to 270m²)', 'unit_price' => 700, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active', 'sort_order' => 5],
+                    ['name_ar' => 'سطح كبير حتى 400 متر', 'name_en' => 'Large Roof (up to 400m²)', 'unit_price' => 1200, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active', 'sort_order' => 6],
                 ],
             ],
             [
@@ -133,8 +133,8 @@ class CategoryAndServiceSeeder extends Seeder
                 'code' => 'AC_CLEANING',
                 'img_num' => 9,
                 'options' => [
-                    ['name_ar' => 'مكيف واحد شباك', 'name_en' => '1 Window AC Unit', 'unit_price' => 300, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
-                    ['name_ar' => 'مكيف واحد سبليت', 'name_en' => '1 Split AC Unit', 'unit_price' => 500, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
+                    ['name_ar' => 'مكيف واحد شباك', 'name_en' => '1 Window AC Unit', 'unit_price' => 300, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active', 'sort_order' => 1],
+                    ['name_ar' => 'مكيف واحد سبليت', 'name_en' => '1 Split AC Unit', 'unit_price' => 500, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active', 'sort_order' => 2],
                 ],
             ],
             [
@@ -147,13 +147,13 @@ class CategoryAndServiceSeeder extends Seeder
                 'code' => 'CARPET_CLEANING',
                 'img_num' => 10,
                 'options' => [
-                    ['name_ar' => 'سجادة أو موكيت (3*3م)', 'name_en' => 'Carpet / Rug (3x3m)', 'unit_price' => 300, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
-                    ['name_ar' => 'سجادة أو موكيت (3*4م)', 'name_en' => 'Carpet / Rug (3x4m)', 'unit_price' => 300, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
-                    ['name_ar' => 'سجادة أو موكيت (5*5م)', 'name_en' => 'Carpet / Rug (5x5m)', 'unit_price' => 300, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
-                    ['name_ar' => 'سجادة أو موكيت (2*2م)', 'name_en' => 'Carpet / Rug (2x2m)', 'unit_price' => 300, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
-                    ['name_ar' => 'سجادة أو موكيت (2*3م)', 'name_en' => 'Carpet / Rug (2x3m)', 'unit_price' => 300, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
-                    ['name_ar' => 'سجادة أو موكيت (2*4م)', 'name_en' => 'Carpet / Rug (2x4m)', 'unit_price' => 300, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
-                    ['name_ar' => 'سجادة أو موكيت (5*2م)', 'name_en' => 'Carpet / Rug (5x2m)', 'unit_price' => 300, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
+                    ['name_ar' => 'سجادة أو موكيت (3*3م)', 'name_en' => 'Carpet / Rug (3x3m)', 'unit_price' => 300, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active', 'sort_order' => 1],
+                    ['name_ar' => 'سجادة أو موكيت (3*4م)', 'name_en' => 'Carpet / Rug (3x4m)', 'unit_price' => 300, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active', 'sort_order' => 2],
+                    ['name_ar' => 'سجادة أو موكيت (5*5م)', 'name_en' => 'Carpet / Rug (5x5m)', 'unit_price' => 300, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active', 'sort_order' => 3],
+                    ['name_ar' => 'سجادة أو موكيت (2*2م)', 'name_en' => 'Carpet / Rug (2x2m)', 'unit_price' => 300, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active', 'sort_order' => 4],
+                    ['name_ar' => 'سجادة أو موكيت (2*3م)', 'name_en' => 'Carpet / Rug (2x3m)', 'unit_price' => 300, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active', 'sort_order' => 5],
+                    ['name_ar' => 'سجادة أو موكيت (2*4م)', 'name_en' => 'Carpet / Rug (2x4m)', 'unit_price' => 300, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active', 'sort_order' => 6],
+                    ['name_ar' => 'سجادة أو موكيت (5*2م)', 'name_en' => 'Carpet / Rug (5x2m)', 'unit_price' => 300, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active', 'sort_order' => 7],
                 ],
             ],
             [
@@ -166,9 +166,9 @@ class CategoryAndServiceSeeder extends Seeder
                 'code' => 'CAR_WASH',
                 'img_num' => 11,
                 'options' => [
-                    ['name_ar' => 'سيارة صغيرة خارجي وداخلي (شامل الكراسي والسقف)', 'name_en' => 'Small Car (Interior & Exterior)', 'unit_price' => 500, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
-                    ['name_ar' => 'سيارة وسط خارجي وداخلي (شامل الكراسي والسقف)', 'name_en' => 'Medium Car (Interior & Exterior)', 'unit_price' => 700, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
-                    ['name_ar' => 'سيارة كبيرة خارجي وداخلي (شامل الكراسي والسقف)', 'name_en' => 'Large Car (Interior & Exterior)', 'unit_price' => 1000, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active'],
+                    ['name_ar' => 'سيارة صغيرة خارجي وداخلي (شامل الكراسي والسقف)', 'name_en' => 'Small Car (Interior & Exterior)', 'unit_price' => 500, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active', 'sort_order' => 1],
+                    ['name_ar' => 'سيارة وسط خارجي وداخلي (شامل الكراسي والسقف)', 'name_en' => 'Medium Car (Interior & Exterior)', 'unit_price' => 700, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active', 'sort_order' => 2],
+                    ['name_ar' => 'سيارة كبيرة خارجي وداخلي (شامل الكراسي والسقف)', 'name_en' => 'Large Car (Interior & Exterior)', 'unit_price' => 1000, 'min_qty' => 1, 'max_qty' => 10, 'status' => 'active', 'sort_order' => 3],
                 ],
             ],
         ];
@@ -214,8 +214,8 @@ class CategoryAndServiceSeeder extends Seeder
                 'has_duration_range' => ($isSecondService || $isThirdService),
                 'min_duration' => ($isSecondService || $isThirdService) ? 4 : null,
                 'max_duration' => ($isSecondService || $isThirdService) ? 6 : null,
-                'min_workers' => $isDeepCleaning ? 10 : 1,
-                'max_workers' => $isDeepCleaning ? 10 : 1,
+                'min_workers' => $isDeepCleaning ? 10 : ($isOtherNewService ? 3 : 1),
+                'max_workers' => $isDeepCleaning ? 10 : ($isOtherNewService ? 3 : 1),
                 'min_children' => $isThirdService ? 1 : null,
                 'max_children' => $isThirdService ? 6 : null,
                 'covered_persons_per_worker' => $data['covered_persons_per_worker'] ?? null,

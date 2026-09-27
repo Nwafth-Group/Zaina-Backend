@@ -39,10 +39,11 @@ class DatabaseSeeder extends Seeder
             // ReviewServcieAndWorkerSeeder::class,
             AnnouncementSeeder::class,
             // MobileNotificationSeeder::class,
-            KhaledTestUserSeeder::class,
             CompanyInfoSeeder::class,
             DriverSeeder::class,
             DeparturePointSeeder::class,
+            TeamSeeder::class,
+            KhaledTestUserSeeder::class,
         ]);
     }
 }

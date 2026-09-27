@@ -14,6 +14,7 @@ use App\Filters\Booking\SearchFilter;
 use App\Filters\Booking\ServiceFilter;
 use App\Filters\Booking\StatusFilter;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\V1\Admin\ReplaceBookingWorkerRequest;
 use App\Http\Requests\Api\V1\Admin\UpdateBookingStatusRequest;
 use App\Http\Requests\Api\V1\Customer\RescheduleBookingRequest;
 use App\Http\Resources\Api\V1\Booking\AdminBookingDetailResource;
@@ -21,10 +22,12 @@ use App\Http\Resources\Api\V1\Booking\AdminBookingResource;
 use App\Notifications\BookingNotification;
 use App\Models\Booking;
 use App\Models\CompanyInfo;
+use App\Models\Service;
 use App\Models\Worker;
 use App\Models\BookingAssignment;
 use App\Models\BookingHistory;
 use App\Service\Admin\BookingStatusService;
+use App\Service\Booking\BookingScheduleConflictService;
 use App\Traits\ApiResponseTrait;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -72,7 +75,7 @@ class BookingController extends Controller
         ];
 
         $query = app(Pipeline::class)
-            ->send(Booking::query()->with(['customer', 'service', 'workers']))
+            ->send(Booking::query()->with(['customer', 'service', 'workers', 'team']))
             ->through([
                 SearchFilter::class,
                 StatusFilter::class,
@@ -260,7 +263,7 @@ class BookingController extends Controller
 
     public function show(Booking $booking)
     {
-        $booking->load(['customer', 'service', 'workers', 'address', 'histories.createdBy', 'visits']);
+        $booking->load(['customer', 'service', 'workers', 'address', 'histories.createdBy', 'visits', 'team.workers']);
 
         return $this->successResponse(new AdminBookingDetailResource($booking), __('messages.booking_fetched_success'));
     }
@@ -287,30 +290,27 @@ class BookingController extends Controller
 
     /**
      * Get eligible and available workers for a booking slot.
+     * Enforces active status, service eligibility, and the 60-minute transition buffer.
      */
     public function eligibleWorkers(Booking $booking)
     {
         $service = $booking->service;
         if (!$service) {
-            return $this->errorResponse('Service not found for this booking.', 404);
+            return $this->errorResponse(__('validation.booking_conflict.worker_ineligible', ['name' => 'Service']), 404);
         }
 
-        // Get busy worker IDs during this booking's time slot
-        $busyWorkerIds = BookingAssignment::where('status', 'active')
-            ->where('booking_id', '!=', $booking->id)
-            ->whereHas('booking', function ($q) use ($booking) {
-                $q->where('booking_date', $booking->booking_date)
-                    ->whereIn('status', ['Upcoming', 'inService'])
-                    ->where(function ($timeQ) use ($booking) {
-                        $timeQ->where('start_time', '<', $booking->end_time)
-                              ->where('end_time', '>', $booking->start_time);
-                    });
-            })
-            ->pluck('worker_id')
-            ->unique()
-            ->toArray();
+        $conflictService = app(BookingScheduleConflictService::class);
+        $candidateWorkerIds = $service->workers()->where('workers.status', 'active')->pluck('workers.id')->toArray();
 
-        // Get active workers assigned to the service and who are not busy
+        $busyWorkerIds = $conflictService->getBusyWorkerIdsForSlot(
+            $candidateWorkerIds,
+            $booking->booking_date,
+            $booking->start_time,
+            $booking->end_time,
+            $booking->id,
+            true // Enforce 60-minute transition gap
+        );
+
         $eligibleWorkers = $service->workers()
             ->where('workers.status', 'active')
             ->whereNotIn('workers.id', $busyWorkerIds)
@@ -320,6 +320,8 @@ class BookingController extends Controller
                 'name'        => $w->name,
                 'nationality' => $w->nationality,
                 'avg_rating'  => $w->avg_rating,
+                'gender'      => $w->gender,
+                'team_id'     => $w->team_id,
                 'status'      => $w->status,
             ]);
 
@@ -340,17 +342,12 @@ class BookingController extends Controller
 
         // Rule BR-22: Cannot assign workers if payment status is failed
         if ($booking->payment_status === 'failed') {
-            return $this->errorResponse('Cannot assign workers to a booking with failed payment.', 422);
+            return $this->errorResponse(__('validation.replace_worker.booking_payment_failed'), 422);
         }
 
         // Limit worker updates to Upcoming or Pending Assignment bookings only
         if ($booking->status !== 'Upcoming' && $booking->status !== 'Pending Assignment') {
-            return $this->errorResponse(
-                app()->getLocale() === 'ar'
-                    ? 'لا يمكن تعيين أو تغيير العمال إلا للحجوزات القادمة أو قيد الانتظار.'
-                    : 'Cannot assign or replace workers unless the booking status is Upcoming or Pending Assignment.',
-                422
-            );
+            return $this->errorResponse(__('validation.replace_worker.booking_not_upcoming'), 422);
         }
 
         $workerIds = $request->input('worker_ids');
@@ -359,7 +356,7 @@ class BookingController extends Controller
         // Check if any worker is inactive
         foreach ($workers as $worker) {
             if ($worker->status !== 'active') {
-                return $this->errorResponse("Worker {$worker->name} is inactive and cannot be assigned.", 422);
+                return $this->errorResponse(__('validation.replace_worker.worker_inactive', ['name' => $worker->name]), 422);
             }
         }
 
@@ -369,35 +366,32 @@ class BookingController extends Controller
         foreach ($workerIds as $id) {
             if (!in_array($id, $eligibleWorkerIds)) {
                 $w = $workers->firstWhere('id', $id);
-                return $this->errorResponse("Worker " . ($w->name ?? $id) . " is not eligible for this service.", 422);
+                return $this->errorResponse(__('validation.replace_worker.worker_not_eligible', ['name' => $w->name ?? $id]), 422);
             }
         }
 
-        // Validate schedule conflicts
-        $busyWorkerIds = BookingAssignment::where('status', 'active')
-            ->where('booking_id', '!=', $booking->id)
-            ->whereHas('booking', function ($q) use ($booking) {
-                $q->where('booking_date', $booking->booking_date)
-                    ->whereIn('status', ['Upcoming', 'inService'])
-                    ->where(function ($timeQ) use ($booking) {
-                        $timeQ->where('start_time', '<', $booking->end_time)
-                              ->where('end_time', '>', $booking->start_time);
-                    });
-            })
-            ->pluck('worker_id')
-            ->toArray();
+        // Validate schedule conflicts and 60-minute transition buffer
+        $conflictService = app(BookingScheduleConflictService::class);
+        $enforceBuffer = !$request->boolean('override_time');
 
-        foreach ($workerIds as $id) {
-            if (in_array($id, $busyWorkerIds)) {
-                $w = $workers->firstWhere('id', $id);
-                return $this->errorResponse("Worker " . ($w->name ?? $id) . " has a schedule conflict during this slot.", 422);
+        foreach ($workers as $w) {
+            $conflictError = $conflictService->checkWorkerConflict(
+                $w,
+                $booking->booking_date,
+                $booking->start_time,
+                $booking->end_time,
+                $booking->id,
+                $enforceBuffer
+            );
+            if ($conflictError) {
+                return $this->errorResponse($conflictError, 422);
             }
         }
 
         // Rule BR-13: Validate service started constraint
         $bookingStart = Carbon::parse($booking->booking_date . ' ' . $booking->start_time);
         if (now()->greaterThanOrEqualTo($bookingStart) && !$request->input('override_time')) {
-            return $this->errorResponse('Cannot replace workers after the service has already started.', 422);
+            return $this->errorResponse(__('validation.replace_worker.service_started'), 422);
         }
 
         // Fetch previous worker names and new worker names for a descriptive history note
@@ -454,7 +448,6 @@ class BookingController extends Controller
             ]);
         });
 
-        
         // Rule BR-16 / BR-17: Notify customer via push notification, database, and SMS queue
         try {
             if ($booking->customer) {
@@ -481,6 +474,129 @@ class BookingController extends Controller
         $booking->load(['workers', 'histories']);
 
         return $this->successResponse(new AdminBookingDetailResource($booking), __('messages.booking_workers_updated') ?? 'تم تحديث تعيين العمالة بنجاح.');
+    }
+
+    /**
+     * Replace a single worker in a booking (and swap team membership if it is a team booking).
+     */
+    public function replaceWorker(ReplaceBookingWorkerRequest $request, Booking $booking)
+    {
+        if ($booking->payment_status === 'failed') {
+            return $this->errorResponse(__('validation.replace_worker.booking_payment_failed'), 422);
+        }
+
+        if ($booking->status !== 'Upcoming' && $booking->status !== 'Pending Assignment') {
+            return $this->errorResponse(__('validation.replace_worker.booking_not_upcoming'), 422);
+        }
+
+        $bookingStart = Carbon::parse($booking->booking_date . ' ' . $booking->start_time);
+        if (now()->greaterThanOrEqualTo($bookingStart) && !$request->boolean('override_buffer')) {
+            return $this->errorResponse(__('validation.replace_worker.service_started'), 422);
+        }
+
+        $oldWorker = Worker::findOrFail($request->validated('old_worker_id'));
+        $newWorker = Worker::findOrFail($request->validated('new_worker_id'));
+
+        // Ensure old worker is currently an active assignment on this booking
+        $oldAssignment = BookingAssignment::where('booking_id', $booking->id)
+            ->where('worker_id', $oldWorker->id)
+            ->where('status', 'active')
+            ->first();
+
+        if (!$oldAssignment) {
+            return $this->errorResponse(__('validation.replace_worker.worker_not_in_booking'), 422);
+        }
+
+        if ($newWorker->status !== 'active') {
+            return $this->errorResponse(__('validation.replace_worker.worker_inactive', ['name' => $newWorker->name]), 422);
+        }
+
+        // Validate service eligibility
+        $service = $booking->service;
+        $isEligible = $service->workers()->where('workers.id', $newWorker->id)->exists();
+        if (!$isEligible) {
+            return $this->errorResponse(__('validation.replace_worker.worker_not_eligible', ['name' => $newWorker->name]), 422);
+        }
+
+        // If team service or booking has team_id: must be male
+        $isTeamService = $service->is_team_based ?? in_array($service->service_code, Service::getTeamBasedCodes());
+        if (($isTeamService || $booking->team_id) && strtolower($newWorker->gender ?? '') !== 'male') {
+            return $this->errorResponse(__('validation.replace_worker.worker_not_male_team', ['name' => $newWorker->name]), 422);
+        }
+
+        // Validate schedule conflict & 60-min transition buffer
+        $conflictService = app(BookingScheduleConflictService::class);
+        $enforceBuffer = !$request->boolean('override_buffer');
+        $conflictErr = $conflictService->checkWorkerConflict(
+            $newWorker,
+            $booking->booking_date,
+            $booking->start_time,
+            $booking->end_time,
+            $booking->id,
+            $enforceBuffer
+        );
+        if ($conflictErr) {
+            return $this->errorResponse($conflictErr, 422);
+        }
+
+        $reason = $request->validated('reason');
+        $historyNote = "Worker replacement: Replaced ({$oldWorker->name}) with ({$newWorker->name}). Reason: {$reason}";
+
+        DB::transaction(function () use ($booking, $oldWorker, $newWorker, $oldAssignment, $historyNote) {
+            // If team-based / booking has team_id, swap team membership in workers table
+            if ($booking->team_id) {
+                $oldWorker->update(['team_id' => null]);
+                $newWorker->update(['team_id' => $booking->team_id]);
+            }
+
+            // Update assignments
+            $oldAssignment->update(['status' => 'replaced']);
+            BookingAssignment::create([
+                'booking_id'  => $booking->id,
+                'worker_id'   => $newWorker->id,
+                'status'      => 'active',
+                'assigned_at' => now(),
+            ]);
+
+            // Save log to booking histories
+            BookingHistory::create([
+                'booking_id' => $booking->id,
+                'old_status' => $booking->status,
+                'new_status' => $booking->status,
+                'note'       => $historyNote,
+                'created_by' => auth()->id(),
+            ]);
+        });
+
+        // Notify customer
+        try {
+            if ($booking->customer) {
+                $lang = $booking->customer->preferred_language === 'en' ? 'en' : 'ar';
+                $title = $lang === 'en' ? 'Worker Replacement' : 'استبدال عامل';
+                $body = $lang === 'en'
+                    ? "A worker for your booking {$booking->booking_ref} has been replaced ({$newWorker->name})."
+                    : "تم استبدال عامل لحجزك رقم {$booking->booking_ref} بالعامل ({$newWorker->name}).";
+
+                $booking->customer->notify(new BookingNotification(
+                    $title,
+                    $body,
+                    $booking->id,
+                    [
+                        'booking_ref'    => $booking->booking_ref,
+                        'current_status' => $booking->status,
+                    ]
+                ));
+            }
+        } catch (\Exception $ex) {
+            Log::error('Notification failure during worker replacement: ' . $ex->getMessage());
+        }
+
+        $booking->load(['workers', 'histories', 'team.workers']);
+
+        return $this->successResponse(
+            new AdminBookingDetailResource($booking),
+            __('validation.replace_worker.success')
+        );
     }
 
     public function reschedule(RescheduleBookingRequest $request, Booking $booking)

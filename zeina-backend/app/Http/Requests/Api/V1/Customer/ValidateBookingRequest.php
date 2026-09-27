@@ -31,6 +31,10 @@ class ValidateBookingRequest extends FormRequest
         $mergeData = [];
         $mergeData['child_age_groups'] = $this->parseChildAgeGroups();
 
+        if ($this->has('selected_options') && !$this->has('options')) {
+            $mergeData['options'] = $this->input('selected_options');
+        }
+
         if ($this->has('duration')) {
             $mergeData['duration'] = (int) $this->input('duration');
         }
@@ -52,7 +56,12 @@ class ValidateBookingRequest extends FormRequest
 
         if ($service) {
             $genderOptions = $service->worker_gender_options ?? [];
-            if ($service->service_code === 'DEEP_CLEANING') {
+            if ($service->isTeamBased()) {
+                $mergeData['duration'] = (int) ($service->default_duration ?? 2);
+                $mergeData['workers_count'] = (int) ($service->min_workers ?? 3);
+                $mergeData['visit_type'] = 'single_visit';
+                $mergeData['worker_gender'] = 'Male';
+            } elseif ($service->service_code === 'DEEP_CLEANING') {
                 $mergeData['duration'] = (int) ($service->default_duration ?? 6);
                 $mergeData['workers_count'] = (int) ($service->min_workers ?? 6);
                 $mergeData['visit_type'] = 'single_visit';
@@ -88,6 +97,7 @@ class ValidateBookingRequest extends FormRequest
         $service = $serviceId ? Service::find($serviceId) : null;
         $isBabysitter = $service && $service->service_code === 'BABYSITTER_HOURLY';
         $isPedicureManicure = $service && $service->service_code === 'PEDICURE_MANICURE';
+        $isTeamService = $service && $service->isTeamBased();
 
         return [
             'service_id' => ['required', 'exists:services,id'],
@@ -96,7 +106,7 @@ class ValidateBookingRequest extends FormRequest
             'dates' => ['required', 'array'],
             'dates.*' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
             'start_time' => ['required', 'date_format:H:i'],
-            'workers_count' => [$isBabysitter ? 'nullable' : 'required', 'integer', 'min:1'],
+            'workers_count' => [($isBabysitter || $isTeamService) ? 'nullable' : 'required', 'integer', 'min:1'],
             'preferred_worker_ids' => ['nullable', 'array'],
             'preferred_worker_ids.*' => ['exists:workers,id'],
             'coupon_code' => ['nullable', 'string'],
@@ -106,6 +116,10 @@ class ValidateBookingRequest extends FormRequest
             'number_of_persons' => [$isPedicureManicure ? 'required' : 'nullable', 'integer', 'min:1'],
             'child_age_groups' => $isBabysitter ? ['required', 'array', 'min:1'] : ['nullable', 'array'],
             'child_age_groups.*' => ['integer', 'exists:service_child_age_groups,id'],
+            'options' => ['nullable', 'array'],
+            'options.*.id' => ['required_with:options', 'integer', 'exists:service_options,id'],
+            'options.*.quantity' => ['required_with:options', 'integer', 'min:1'],
+            'selected_options' => ['nullable', 'array'],
             'note' => ['nullable', 'string'],
         ];
     }
@@ -291,12 +305,12 @@ class ValidateBookingRequest extends FormRequest
                         $minDuration = $service->min_duration ?? 4;
                         $maxDuration = $service->max_duration ?? 6;
                         if ($duration < $minDuration || $duration > $maxDuration) {
-                            $validator->errors()->add('duration', "Duration must be between {$minDuration} and {$maxDuration} hours.");
+                            $validator->errors()->add('duration', __('validation.create_booking.duration_between', ['min' => $minDuration, 'max' => $maxDuration]));
                         }
                     } else {
                         $defaultDuration = $service->default_duration ?? 2;
                         if ($duration !== $defaultDuration) {
-                            $validator->errors()->add('duration', "Duration must be exactly {$defaultDuration} hours.");
+                            $validator->errors()->add('duration', __('validation.create_booking.duration_exact', ['duration' => $defaultDuration]));
                         }
                     }
 

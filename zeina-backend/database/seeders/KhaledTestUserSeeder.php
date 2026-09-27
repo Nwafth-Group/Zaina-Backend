@@ -6,22 +6,28 @@ use App\Models\User;
 use App\Models\Role;
 use App\Models\CustomerAddress;
 use App\Models\Service;
+use App\Models\ServiceOption;
 use App\Models\Worker;
+use App\Models\Team;
 use App\Models\Booking;
 use App\Models\BookingAssignment;
 use App\Models\BookingHistory;
 use App\Models\BookingVisit;
+use App\Models\ServiceZone;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
-use App\Models\ServiceZone;
-
 class KhaledTestUserSeeder extends Seeder
 {
     public function run(): void
     {
+        // 0. Ensure TeamSeeder has been run if no teams exist
+        if (Team::count() === 0) {
+            $this->call(TeamSeeder::class);
+        }
+
         // 1. Create or fetch user Khaled
         $user = User::updateOrCreate(
             ['phone_number' => '+201012935668'],
@@ -80,27 +86,31 @@ class KhaledTestUserSeeder extends Seeder
             ->where('id', '!=', $address->id)
             ->update(['is_default' => false]);
 
-        // Get some active services (preferably 1, 2, 3 as requested)
-        $services = Service::whereIn('id', [1, 2, 3])->where('status', 'active')->get();
-        if ($services->isEmpty()) {
-            $services = Service::where('status', 'active')->take(3)->get();
+        // Standard hourly services (IDs 1, 2, 3)
+        $standardServices = Service::whereIn('id', [1, 2, 3])->where('status', 'active')->get();
+        if ($standardServices->isEmpty()) {
+            $standardServices = Service::where('status', 'active')->take(3)->get();
         }
 
-        if ($services->isEmpty()) {
-            $this->command->error('No active services found. Seed CategoryAndServiceSeeder first.');
-            return;
+        // Specialized services (Services 6 to 11)
+        $specializedServices = Service::with('options')->whereIn('id', [6, 7, 8, 9, 10, 11])->where('status', 'active')->get();
+        if ($specializedServices->isEmpty()) {
+            $specializedServices = Service::with('options')->whereHas('teams')->get();
         }
 
-        // 3. Generate 15 Bookings (5 Upcoming, 5 inService, 5 completed)
-        $statusCounts = [
-            'Upcoming'  => 5,
-            'inService' => 5,
-            'completed' => 5
+        $activeTeams = Team::with('workers')->where('status', 'active')->get();
+
+        // 3. Generate 18 Bookings (6 Upcoming, 6 inService, 6 completed)
+        // Each status gets 3 standard bookings and 3 specialized bookings with team & options
+        $statusGroups = [
+            'Upcoming'  => 6,
+            'inService' => 6,
+            'completed' => 6,
         ];
 
         DB::beginTransaction();
         try {
-            // Clean up previous test bookings for Khaled to prevent duplicate entry errors
+            // Clean up previous test bookings for Khaled
             $oldBookingIds = Booking::where('customer_id', $user->id)->pluck('id');
             if ($oldBookingIds->isNotEmpty()) {
                 BookingAssignment::whereIn('booking_id', $oldBookingIds)->delete();
@@ -109,42 +119,98 @@ class KhaledTestUserSeeder extends Seeder
                 Booking::whereIn('id', $oldBookingIds)->delete();
             }
 
-            $bookingIndex = 1;
+            foreach ($statusGroups as $status => $totalCount) {
+                for ($i = 0; $i < $totalCount; $i++) {
+                    $isSpecialized = ($i % 2 === 1); // Alternating between standard and specialized
 
-            foreach ($statusCounts as $status => $count) {
-                for ($i = 0; $i < $count; $i++) {
-                    // Pick service sequentially
-                    $service = $services->values()->get($i % $services->count());
-                    
-                    // Fetch an active worker for this service
-                    $worker = Worker::whereHas('services', function($q) use ($service) {
-                        $q->where('services.id', $service->id);
-                    })->where('status', 'active')->first();
+                    if ($isSpecialized && $specializedServices->isNotEmpty() && $activeTeams->isNotEmpty()) {
+                        // --- SPECIALIZED SERVICE WITH TEAM & OPTIONS ---
+                        $service = $specializedServices->values()->get(($i / 2) % $specializedServices->count());
+                        
+                        // Select an active team linked to this service, or pick from active teams
+                        $team = $service->teams()->where('teams.status', 'active')->with('workers')->first()
+                            ?? $activeTeams->get($i % $activeTeams->count());
 
-                    if (!$worker) {
-                        // Fallback to any active worker
-                        $worker = Worker::where('status', 'active')->first();
+                        $teamWorkers = $team->workers()->where('status', 'active')->get();
+                        if ($teamWorkers->isEmpty()) {
+                            $teamWorkers = $team->workers;
+                        }
+                        $leadWorker = $teamWorkers->first();
+
+                        // Pick 1 to 2 options from this service
+                        $optionsPool = $service->options->where('status', 'active');
+                        if ($optionsPool->isEmpty()) {
+                            $optionsPool = ServiceOption::where('service_id', $service->id)->get();
+                        }
+
+                        $selectedOptions = [];
+                        $subtotal = 0;
+                        if ($optionsPool->isNotEmpty()) {
+                            $picked = $optionsPool->take(2);
+                            foreach ($picked as $pIdx => $opt) {
+                                $qty = ($pIdx === 0) ? 2 : 1;
+                                $unitPrice = (float) $opt->unit_price;
+                                $totalItem = $unitPrice * $qty;
+                                $subtotal += $totalItem;
+                                $selectedOptions[] = [
+                                    'id'          => $opt->id,
+                                    'name_ar'     => $opt->name_ar,
+                                    'name_en'     => $opt->name_en,
+                                    'unit_price'  => $unitPrice,
+                                    'quantity'    => $qty,
+                                    'total_price' => $totalItem,
+                                ];
+                            }
+                        } else {
+                            $subtotal = 350.00;
+                        }
+
+                        $taxAmount = round($subtotal * 0.15, 2);
+                        $totalAmount = $subtotal + $taxAmount;
+
+                        $workerCount = $teamWorkers->count() ?: 3;
+                        $workerGender = 'Male';
+                        $assignedWorkers = $teamWorkers;
+                        $teamId = $team->id;
+                    } else {
+                        // --- STANDARD SERVICE (SINGLE WORKER) ---
+                        $service = $standardServices->values()->get($i % $standardServices->count());
+
+                        $worker = Worker::whereHas('services', function ($q) use ($service) {
+                            $q->where('services.id', $service->id);
+                        })->where('status', 'active')->first();
+
+                        if (!$worker) {
+                            $worker = Worker::where('status', 'active')->first();
+                        }
+
+                        $subtotal = 200.00;
+                        $taxAmount = 20.00;
+                        $totalAmount = 220.00;
+                        $selectedOptions = null;
+                        $workerCount = 1;
+                        $workerGender = $worker?->gender ?? 'Female';
+                        $leadWorker = $worker;
+                        $assignedWorkers = $worker ? collect([$worker]) : collect();
+                        $teamId = null;
                     }
 
-                    if (!$worker) {
-                        $this->command->error('No active workers found. Seed WorkerSeeder first.');
-                        DB::rollBack();
-                        return;
-                    }
-
-                    // Generate logical dates
+                    // Logical dates & times
                     if ($status === 'Upcoming') {
-                        $date = Carbon::now()->addDays($i + 2); // 2 to 6 days in future
+                        $date = Carbon::now()->addDays($i + 1);
+                        $startTime = sprintf('%02d:00:00', 9 + ($i % 3) * 3);
+                        $endTime = sprintf('%02d:00:00', 12 + ($i % 3) * 3);
                     } elseif ($status === 'inService') {
-                        $date = Carbon::now(); // Today
+                        $date = Carbon::now();
+                        $startTime = sprintf('%02d:00:00', 8 + ($i % 4) * 2);
+                        $endTime = sprintf('%02d:00:00', 12 + ($i % 4) * 2);
                     } else { // completed
-                        $date = Carbon::now()->subDays($i + 1); // 1 to 5 days in past
+                        $date = Carbon::now()->subDays($i + 1);
+                        $startTime = sprintf('%02d:00:00', 9 + ($i % 3) * 3);
+                        $endTime = sprintf('%02d:00:00', 13 + ($i % 3) * 3);
                     }
 
-                    // Schedule shifts (e.g. 09:00 AM to 01:00 PM)
-                    $startTime = '09:00:00';
-                    $endTime = '13:00:00';
-                    $durationMinutes = 240;
+                    $durationMinutes = abs((int) Carbon::parse($endTime)->diffInMinutes(Carbon::parse($startTime))) ?: 180;
 
                     $bookingRef = 'KB-' . str_pad(rand(1, 999999), 6, '0', STR_PAD_LEFT);
                     while (Booking::where('booking_ref', $bookingRef)->exists()) {
@@ -152,32 +218,36 @@ class KhaledTestUserSeeder extends Seeder
                     }
 
                     $booking = Booking::create([
-                        'booking_ref'      => $bookingRef,
-                        'customer_id'      => $user->id,
-                        'service_id'       => $service->id,
-                        'address_id'       => $address->id,
-                        'worker_id'        => $worker->id,
-                        'booking_date'     => $date->toDateString(),
-                        'start_time'       => $startTime,
-                        'end_time'         => $endTime,
-                        'duration_minutes' => $durationMinutes,
-                        'price_subtotal'   => 200.00,
-                        'tax_amount'       => 20.00,
-                        'discount_amount'  => 0.00,
-                        'total_amount'     => 220.00,
-                        'status'           => $status,
-                        'payment_status'   => 'paid',
-                        'payment_method'   => 'cash',
-                        'number_of_workers'=> 1,
-                        'worker_gender'    => $worker->gender ?? 'Female',
+                        'booking_ref'       => $bookingRef,
+                        'customer_id'       => $user->id,
+                        'service_id'        => $service->id,
+                        'address_id'        => $address->id,
+                        'worker_id'         => $leadWorker?->id,
+                        'team_id'           => $teamId,
+                        'booking_date'      => $date->toDateString(),
+                        'start_time'        => $startTime,
+                        'end_time'          => $endTime,
+                        'duration_minutes'  => $durationMinutes,
+                        'price_subtotal'    => $subtotal,
+                        'tax_amount'        => $taxAmount,
+                        'discount_amount'   => 0.00,
+                        'total_amount'      => $totalAmount,
+                        'status'            => $status,
+                        'payment_status'    => 'paid',
+                        'payment_method'    => 'cash',
+                        'number_of_workers' => $workerCount,
+                        'worker_gender'     => $workerGender,
+                        'selected_options'  => $selectedOptions,
                     ]);
 
-                    // Assignment
-                    BookingAssignment::create([
-                        'booking_id' => $booking->id,
-                        'worker_id'  => $worker->id,
-                        'status'     => 'active',
-                    ]);
+                    // Assign workers (for Team: all team members; for Standard: single worker)
+                    foreach ($assignedWorkers as $w) {
+                        BookingAssignment::create([
+                            'booking_id' => $booking->id,
+                            'worker_id'  => $w->id,
+                            'status'     => 'active',
+                        ]);
+                    }
 
                     // Visit
                     BookingVisit::create([
@@ -192,16 +262,14 @@ class KhaledTestUserSeeder extends Seeder
                     BookingHistory::create([
                         'booking_id' => $booking->id,
                         'new_status' => $status,
-                        'note'       => 'Seeded test booking for Khaled.',
+                        'note'       => $teamId ? "Seeded specialized booking with team #{$teamId}." : 'Seeded test booking for Khaled.',
                         'created_by' => $user->id,
                     ]);
-
-                    $bookingIndex++;
                 }
             }
 
             DB::commit();
-            $this->command->info("Seeded 15 test bookings for Khaled (+201012935668) successfully!");
+            $this->command->info("Seeded 18 test bookings (standard and specialized with teams & options) for Khaled (+201012935668) successfully!");
 
         } catch (\Exception $e) {
             DB::rollBack();

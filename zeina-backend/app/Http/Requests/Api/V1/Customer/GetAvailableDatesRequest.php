@@ -30,6 +30,10 @@ class GetAvailableDatesRequest extends FormRequest
         $mergeData = [];
         $mergeData['child_age_groups'] = $this->parseChildAgeGroups();
 
+        if ($this->has('selected_options') && !$this->has('options')) {
+            $mergeData['options'] = $this->input('selected_options');
+        }
+
         if ($this->has('duration')) {
             $mergeData['duration'] = (int) $this->input('duration');
         }
@@ -44,7 +48,18 @@ class GetAvailableDatesRequest extends FormRequest
         }
 
         if ($service) {
-            if (!$this->filled('worker_gender')) {
+            $isTeamService = $service->isTeamBased();
+            if ($isTeamService) {
+                if (!$this->filled('duration')) {
+                    $mergeData['duration'] = (int) ($service->default_duration ?? 2);
+                }
+                if (!$this->filled('workers_count')) {
+                    $mergeData['workers_count'] = (int) ($service->min_workers ?? 3);
+                }
+                if (!$this->filled('worker_gender')) {
+                    $mergeData['worker_gender'] = 'Male';
+                }
+            } elseif (!$this->filled('worker_gender')) {
                 $genderOptions = $service->worker_gender_options ?? [];
                 $mergeData['worker_gender'] = count($genderOptions) > 0 ? $genderOptions[0] : 'Female';
             }
@@ -60,17 +75,22 @@ class GetAvailableDatesRequest extends FormRequest
         $serviceId = $this->input('service_id');
         $service = $serviceId ? Service::find($serviceId) : null;
         $isBabysitter = $service && $service->service_code === 'BABYSITTER_HOURLY';
+        $isTeamService = $service && $service->isTeamBased();
 
         return [
             'service_id' => 'required|exists:services,id',
             'address_id' => 'required|exists:customer_addresses,id',
-            'start_time' => 'required|date_format:H:i',
-            'duration' => 'required|integer',
-            'worker_gender' => ($isBabysitter ? 'nullable' : 'required') . '|string|in:Male,Female',
-            'workers_count' => ($isBabysitter ? 'nullable' : 'required') . '|integer|min:1',
+            'start_time' => ($isTeamService ? 'nullable' : 'required') . '|date_format:H:i',
+            'duration' => ($isTeamService ? 'nullable' : 'required') . '|integer',
+            'worker_gender' => ($isBabysitter || $isTeamService ? 'nullable' : 'required') . '|string|in:Male,Female',
+            'workers_count' => ($isBabysitter || $isTeamService ? 'nullable' : 'required') . '|integer|min:1',
             'number_of_children' => ($isBabysitter ? 'required' : 'nullable') . '|integer|min:1',
             'child_age_groups' => $isBabysitter ? 'required|array|min:1' : 'nullable|array',
             'child_age_groups.*' => 'integer|exists:service_child_age_groups,id',
+            'options' => 'nullable|array',
+            'options.*.id' => 'required_with:options|integer|exists:service_options,id',
+            'options.*.quantity' => 'required_with:options|integer|min:1',
+            'selected_options' => 'nullable|array',
             'note' => 'nullable|string',
         ];
     }

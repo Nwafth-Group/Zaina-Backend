@@ -38,6 +38,9 @@ class RolesAndUsersSeeder extends Seeder
             // Workers
             'workers.view', 'workers.create', 'workers.edit', 'workers.delete',
             
+            // Work Teams
+            'teams.view', 'teams.create', 'teams.edit', 'teams.delete',
+            
             // Banners / Ads
             'banners.view', 'banners.create', 'banners.edit', 'banners.delete',
             

@@ -85,6 +85,18 @@ class ServiceResource extends JsonResource
             'service_zone_ids' => $this->serviceZones ? $this->serviceZones->pluck('id')->toArray() : [],
             'image' => $media ? MediaResource::make($media)->getFileUrl() : null,
 
+            'is_team_based' => $this->isTeamBased(),
+            'teams' => ($this->relationLoaded('teams') ? $this->teams : ($this->isTeamBased() ? $this->teams()->get() : collect()))->map(function ($t) {
+                return [
+                    'id' => $t->id,
+                    'name_ar' => $t->name_ar,
+                    'name_en' => $t->name_en,
+                    'code' => $t->code,
+                    'status' => $t->status,
+                    'members_count' => $t->relationLoaded('workers') ? $t->workers->count() : $t->workers()->count(),
+                ];
+            })->values()->all(),
+
             'preferred_workers' => $this->relationLoaded('preferred_workers')
                 ? WorkerResource::collection($this->preferred_workers)
                 : WorkerResource::collection($this->getPreferredWorkers()),

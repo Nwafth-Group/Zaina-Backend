@@ -86,6 +86,7 @@ return [
     'bookings_retrieved' => 'Bookings retrieved successfully.',
     'booking_fetched_success' => 'Booking retrieved successfully.',
     'booking_status_updated' => 'Booking status updated successfully.',
+    'booking_workers_updated' => 'Booking workers updated successfully.',
     'dashboard_retrieved' => 'Dashboard statistics retrieved successfully.',
     'employee_fetched_success' => 'Employee fetch successfully.',
     'employee_created_successfully' => 'Employee created successfully.',
@@ -318,4 +319,11 @@ return [
     'service_zone_deleted_successfully' => 'Service zone deleted successfully.',
     'service_zone_not_available' => 'Sorry, service is currently unavailable in this location.',
     'transport_dispatch_updated_successfully' => 'Transport dispatch details updated successfully.',
+
+    // V.18 Operations & Execution
+    'service_started_successfully' => 'Service execution started successfully and status updated to In Progress.',
+    'service_completed_successfully' => 'Service execution completed successfully and transition risks evaluated.',
+    'risk_resolved_successfully' => 'Alternative resource assigned and risk resolved successfully.',
+    'worker_absence_recorded' => 'Worker absence recorded and affected bookings updated successfully.',
+    'booking_workers_updated' => 'Booking workers updated successfully.',
 ];

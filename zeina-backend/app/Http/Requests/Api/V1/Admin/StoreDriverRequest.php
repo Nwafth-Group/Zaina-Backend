@@ -17,9 +17,12 @@ class StoreDriverRequest extends FormRequest
             'name'   => ['required', 'string', 'max:255'],
             'mobile' => ['required', 'string', 'max:30', 'unique:drivers,mobile'],
             'email'  => ['nullable', 'email', 'max:255'],
-            'gender' => ['required', 'in:male,female'],
-            'status' => ['required', 'in:active,inactive'],
-            'image'  => ['nullable', 'image', 'max:5120'],
+            'gender'           => ['required', 'in:male,female'],
+            'vehicle_type'     => ['nullable', 'string', 'max:255'],
+            'vehicle_plate'    => ['nullable', 'string', 'max:50'],
+            'vehicle_capacity' => ['nullable', 'integer', 'min:1', 'max:50'],
+            'status'           => ['required', 'in:active,inactive'],
+            'image'            => ['nullable', 'image', 'max:5120'],
         ];
     }
 }

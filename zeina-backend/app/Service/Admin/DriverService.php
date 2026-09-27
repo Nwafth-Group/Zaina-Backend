@@ -39,11 +39,14 @@ class DriverService
     public function createDriver(array $data, $imageFile = null): Driver
     {
         $driver = Driver::create([
-            'name' => $data['name'],
-            'mobile' => $data['mobile'],
-            'email' => $data['email'] ?? null,
-            'gender' => $data['gender'],
-            'status' => $data['status'],
+            'name'             => $data['name'],
+            'mobile'           => $data['mobile'],
+            'email'            => $data['email'] ?? null,
+            'gender'           => $data['gender'],
+            'vehicle_type'     => $data['vehicle_type'] ?? null,
+            'vehicle_plate'    => $data['vehicle_plate'] ?? null,
+            'vehicle_capacity' => isset($data['vehicle_capacity']) ? (int) $data['vehicle_capacity'] : 5,
+            'status'           => $data['status'],
         ]);
 
         if ($imageFile) {
@@ -66,11 +69,14 @@ class DriverService
     public function updateDriver(Driver $driver, array $data, $imageFile = null): Driver
     {
         $driver->update([
-            'name' => $data['name'],
-            'mobile' => $data['mobile'],
-            'email' => $data['email'] ?? null,
-            'gender' => $data['gender'],
-            'status' => $data['status'],
+            'name'             => $data['name'],
+            'mobile'           => $data['mobile'],
+            'email'            => $data['email'] ?? null,
+            'gender'           => $data['gender'],
+            'vehicle_type'     => $data['vehicle_type'] ?? $driver->vehicle_type,
+            'vehicle_plate'    => $data['vehicle_plate'] ?? $driver->vehicle_plate,
+            'vehicle_capacity' => isset($data['vehicle_capacity']) ? (int) $data['vehicle_capacity'] : $driver->vehicle_capacity,
+            'status'           => $data['status'],
         ]);
 
         if ($imageFile) {

@@ -79,6 +79,11 @@ class UpdateServiceRequest extends FormRequest
                 'integer',
                 Rule::exists('workers', 'id')->where('status', 'active'),
             ],
+            'teams' => 'nullable|array',
+            'teams.*' => [
+                'integer',
+                Rule::exists('teams', 'id')->where('status', 'active'),
+            ],
 
             // Available Visit Type & Pricing
             'available_visit_types' => 'sometimes|required|array|min:1',

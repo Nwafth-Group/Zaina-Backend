@@ -44,6 +44,15 @@ class AdminBookingResource extends JsonResource
             ]) : [],
             'number_of_workers' => (int) ($this->number_of_workers ?? ($this->relationLoaded('workers') ? $this->workers->count() : 0)),
             'worker_gender' => $this->worker_gender,
+            'team_id' => $this->team_id,
+            'team' => $this->team ? [
+                'id' => $this->team->id,
+                'code' => $this->team->code,
+                'name' => $lang === 'ar' ? $this->team->name_ar : $this->team->name_en,
+            ] : null,
+            'selected_options' => is_array($this->selected_options)
+                ? $this->selected_options
+                : json_decode($this->selected_options ?? '[]', true),
             'assignment_status' => ($this->relationLoaded('workers') && $this->workers->count() >= (int) ($this->number_of_workers ?? 1)) ? 'assigned' : 'pending_assignment',
             'visit_type' => $this->visit_type ?? 'single_visit',
             'pricing_type' => $this->service?->pricing_type ?? 'per_service',

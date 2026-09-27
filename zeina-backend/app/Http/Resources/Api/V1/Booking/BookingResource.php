@@ -237,6 +237,17 @@ class BookingResource extends JsonResource
                 return $notes;
             }),
 
+            'team_id' => $this->team_id,
+            'team' => $this->team ? [
+                'id' => $this->team->id,
+                'code' => $this->team->code,
+                'name' => $lang === 'ar' ? $this->team->name_ar : $this->team->name_en,
+            ] : null,
+
+            'selected_options' => is_array($this->selected_options)
+                ? $this->selected_options
+                : json_decode($this->selected_options ?? '[]', true),
+
             // Card item format fields for easy listing rendering
             'card_details' => [
                 'contract_number_request' => $this->booking_ref,

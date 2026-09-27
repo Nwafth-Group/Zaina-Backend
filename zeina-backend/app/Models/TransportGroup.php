@@ -18,8 +18,15 @@ class TransportGroup extends Model
         'departure_point_id',
         'departure_time',
         'driver_id',
+        'vehicle_type',
+        'vehicle_plate',
+        'vehicle_capacity',
         'notes',
         'status',
+    ];
+
+    protected $casts = [
+        'vehicle_capacity' => 'integer',
     ];
 
     public function serviceZone()

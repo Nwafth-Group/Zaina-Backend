@@ -53,7 +53,7 @@ class WorkerController extends Controller
 
         // 1. تمرير الاستعلام عبر سلسلة الفلاتر (Pipeline Pattern)
         $query = app(Pipeline::class)
-            ->send(Worker::query()->with(['media', 'services']))
+            ->send(Worker::query()->with(['media', 'services', 'team']))
             ->through([
                 SearchFilter::class,
                 StatusFilter::class,
@@ -65,6 +65,19 @@ class WorkerController extends Controller
 
         if ($request->filled('gender')) {
             $query->whereRaw('LOWER(gender) = ?', [strtolower($request->input('gender'))]);
+        }
+
+        if ($request->boolean('no_team_only')) {
+            $query->where(function ($q) use ($request) {
+                $q->whereNull('team_id');
+                if ($request->filled('include_team_id')) {
+                    $q->orWhere('team_id', $request->input('include_team_id'));
+                }
+            });
+        }
+
+        if ($request->filled('team_id')) {
+            $query->where('team_id', $request->input('team_id'));
         }
 
         if ($request->boolean('unassigned_only')) {
@@ -120,7 +133,7 @@ class WorkerController extends Controller
     public function store(StoreWorkerRequest $request)
     {
         $data = $request->validated();
-        $create_data = collect($data)->only(['name', 'nationality', 'status', 'phone_number', 'id_number', 'address', 'gender'])->toArray();
+        $create_data = collect($data)->only(['name', 'nationality', 'status', 'phone_number', 'id_number', 'address', 'gender', 'team_id'])->toArray();
         $worker = Worker::create($create_data);
 
         if (isset($data['services'])) {
@@ -130,7 +143,7 @@ class WorkerController extends Controller
             $media = $this->mediaService->upload($request->file('image'), $worker, 'worker/image', 'public');
         }
 
-        $worker->load(['services', 'media']);
+        $worker->load(['services', 'media', 'team']);
 
         return $this->successResponse(new WorkerResource($worker), __('messages.worker_created_successfully'), 201);
 
@@ -141,7 +154,7 @@ class WorkerController extends Controller
      */
     public function show(Worker $worker)
     {
-        $worker->load(['services', 'media']);
+        $worker->load(['services', 'media', 'team']);
 
         return $this->successResponse(new WorkerResource($worker), __('messages.worker_retrieved_successfully'));
     }
@@ -152,7 +165,7 @@ class WorkerController extends Controller
      */
     public function details(Worker $worker)
     {
-        $worker->load(['services', 'media']);
+        $worker->load(['services', 'media', 'team']);
 
         $latestBookings = $worker->bookings()
             ->with(['customer', 'service'])
@@ -187,7 +200,7 @@ class WorkerController extends Controller
     public function update(UpdateWorkerRequest $request, Worker $worker)
     {
         $data = $request->validated();
-        $update_data = collect($data)->only(['name', 'nationality', 'status', 'phone_number', 'id_number', 'address', 'gender'])->toArray();
+        $update_data = collect($data)->only(['name', 'nationality', 'status', 'phone_number', 'id_number', 'address', 'gender', 'team_id'])->toArray();
         $worker->update($update_data);
         if (isset($data['services'])) {
             $worker->services()->sync($data['services']);
@@ -200,7 +213,7 @@ class WorkerController extends Controller
             $media = $this->mediaService->upload($request->file('image'), $worker, 'worker/image', 'public');
         }
 
-        $worker->load(['services', 'media']);
+        $worker->load(['services', 'media', 'team']);
 
         return $this->successResponse(new WorkerResource($worker), __('messages.worker_updated_successfully'));
     }

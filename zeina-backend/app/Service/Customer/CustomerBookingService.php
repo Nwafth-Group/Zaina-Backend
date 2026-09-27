@@ -10,6 +10,8 @@ use App\Models\CompanyInfo;
 use App\Models\Coupon;
 use App\Models\CustomerAddress;
 use App\Models\Service;
+use App\Models\ServiceOption;
+use App\Models\Worker;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -31,7 +33,11 @@ class CustomerBookingService
         [$address, $service] = $this->validateAddressAndService($user, $data);
 
         $workersCount = $data['workers_count'] ?? null;
-        if ($service->service_code === 'DEEP_CLEANING') {
+        if ($service->isTeamBased()) {
+            $data['workers_count'] = $service->min_workers ?? 3;
+            $data['duration'] = $service->default_duration ?? 2;
+            $data['worker_gender'] = 'Male';
+        } elseif ($service->service_code === 'DEEP_CLEANING') {
             $data['workers_count'] = $service->min_workers ?? 6;
             $data['duration'] = $service->default_duration ?? 6;
             $genderOpts = $service->worker_gender_options ?? [];
@@ -121,10 +127,37 @@ class CustomerBookingService
 
         $availableWorkers = $availableWorkersQuery->get();
 
-        // 7. Allocate preferred workers first, then randomly fill slots up to workers_count
-        $allocatedWorkers = $this->allocateWorkers($availableWorkers, (int) $data['workers_count'], $data['preferred_worker_ids'] ?? []);
+        // 7. Allocate team for team-based services, or individual workers for standard services
+        $isTeamService = $service->is_team_based ?? in_array($service->service_code, Service::getTeamBasedCodes());
+        if ($isTeamService) {
+            $conflictService = app(\App\Service\Booking\BookingScheduleConflictService::class);
+            $selectedTeam = null;
+            $teams = $service->teams()->where('status', 'active')->with('workers')->get();
+            foreach ($teams as $team) {
+                $teamAvailableAllDates = true;
+                foreach ($dates as $date) {
+                    if (!$conflictService->isTeamAvailable($team, $date, $times['start_str'], $times['end_str'])) {
+                        $teamAvailableAllDates = false;
+                        break;
+                    }
+                }
+                if ($teamAvailableAllDates) {
+                    $selectedTeam = $team;
+                    break;
+                }
+            }
+            if (!$selectedTeam) {
+                throw ValidationException::withMessages([
+                    'workers_count' => __('messages.no_workers_available'),
+                ]);
+            }
+            $allocatedWorkers = $selectedTeam->workers;
+        } else {
+            $allocatedWorkers = $this->allocateWorkers($availableWorkers, (int) $data['workers_count'], $data['preferred_worker_ids'] ?? []);
+        }
 
         // 8. Calculate subtotal, discount, VAT, and total
+        $options = $data['options'] ?? $data['selected_options'] ?? [];
         $pricing = $this->calculatePricing(
             $service,
             $address,
@@ -135,13 +168,19 @@ class CustomerBookingService
             $user,
             $times['start_str'],
             $times['end_str'],
-            (int) ($data['number_of_persons'] ?? 1)
+            (int) ($data['number_of_persons'] ?? 1),
+            $options
         );
 
-        return [
+        $res = [
             'worker_ids' => $allocatedWorkers->pluck('id')->toArray(),
             'pricing' => $pricing['pricing'],
         ];
+        if ($isTeamService && isset($selectedTeam) && $selectedTeam) {
+            $res['team_id'] = $selectedTeam->id;
+        }
+
+        return $res;
     }
 
     /**
@@ -156,7 +195,11 @@ class CustomerBookingService
         // 1. Fetch address and service models
         [$address, $service] = $this->validateAddressAndService($user, $data);
 
-        if ($service->service_code === 'DEEP_CLEANING') {
+        if ($service->isTeamBased()) {
+            $data['duration'] = $service->default_duration ?? 2;
+            $data['visit_type'] = 'single_visit';
+            $data['worker_gender'] = 'Male';
+        } elseif ($service->service_code === 'DEEP_CLEANING') {
             $data['duration'] = $service->default_duration ?? 6;
             if (empty($data['worker_gender'])) {
                 $genderOpts = $service->worker_gender_options ?? [];
@@ -245,24 +288,18 @@ class CustomerBookingService
                 throw new \Exception(__('messages.invalid_worker_for_service'), 422);
             }
 
-            $hasConflict = BookingAssignment::where('worker_id', $workerId)
-                ->where('status', 'active')
-                ->whereHas('booking', function ($q) use ($dates, $times) {
-                    $q->whereIn('booking_date', $dates)
-                        ->whereIn('status', ['Upcoming', 'inService'])
-                        ->where(function ($timeQ) use ($times) {
-                            $timeQ->where('start_time', '<', $times['end_str'])
-                                ->where('end_time', '>', $times['start_str']);
-                        });
-                })
-                ->exists();
-
-            if ($hasConflict) {
-                throw new \Exception(__('messages.worker_already_booked'), 422);
+            $conflictService = app(\App\Service\Booking\BookingScheduleConflictService::class);
+            $worker = \App\Models\Worker::find($workerId);
+            foreach ($dates as $date) {
+                $conflictErr = $conflictService->checkWorkerConflict($worker, $date, $times['start_str'], $times['end_str'], null, true);
+                if ($conflictErr) {
+                    throw new \Exception($conflictErr, 422);
+                }
             }
         }
 
         // 6. Calculate prices
+        $options = $data['options'] ?? $data['selected_options'] ?? [];
         $pricing = $this->calculatePricing(
             $service,
             $address,
@@ -273,7 +310,8 @@ class CustomerBookingService
             $user,
             $times['start_str'],
             $times['end_str'],
-            (int) ($data['number_of_persons'] ?? 1)
+            (int) ($data['number_of_persons'] ?? 1),
+            $options
         );
         $totalAmount = $pricing['pricing']['total'];
 
@@ -298,6 +336,38 @@ class CustomerBookingService
                 ->lockForUpdate()
                 ->exists();
 
+            $teamId = $data['team_id'] ?? null;
+            if (! $teamId && ! empty($workerIds)) {
+                $firstWorker = Worker::find($workerIds[0]);
+                if ($firstWorker && $firstWorker->team_id) {
+                    $teamId = $firstWorker->team_id;
+                }
+            }
+
+            // Build snapshot of selected_options for team-based services
+            $selectedOptions = null;
+            if (! empty($options) && is_array($options)) {
+                $selectedOptions = [];
+                foreach ($options as $optItem) {
+                    $optId = $optItem['id'] ?? null;
+                    $qty = (int) ($optItem['quantity'] ?? 1);
+                    if ($optId && $qty > 0) {
+                        $optModel = ServiceOption::where('service_id', $service->id)->find($optId);
+                        if ($optModel) {
+                            $unitPrice = (float) $optModel->unit_price;
+                            $selectedOptions[] = [
+                                'id' => $optModel->id,
+                                'name_ar' => $optModel->name_ar,
+                                'name_en' => $optModel->name_en,
+                                'unit_price' => $unitPrice,
+                                'quantity' => $qty,
+                                'total_price' => round($unitPrice * $qty, 2),
+                            ];
+                        }
+                    }
+                }
+            }
+
             // Create Booking (using first date as parent reference)
             $booking = Booking::create([
                 'booking_ref' => 'HC-'.rand(100000, 999999),
@@ -305,6 +375,7 @@ class CustomerBookingService
                 'service_id' => $data['service_id'],
                 'address_id' => $data['address_id'],
                 'worker_id' => $workerIds[0],
+                'team_id' => $teamId,
                 'coupon_id' => $pricing['coupon'] ? $pricing['coupon']->id : null,
                 'booking_date' => $dates[0],
                 'start_time' => $times['start_str'],
@@ -315,6 +386,7 @@ class CustomerBookingService
                 'number_of_children' => $service->service_code === 'BABYSITTER_HOURLY' ? ($data['number_of_children'] ?? null) : null,
                 'number_of_persons' => $service->service_code === 'PEDICURE_MANICURE' ? ($data['number_of_persons'] ?? 1) : null,
                 'child_age_groups' => $service->service_code === 'BABYSITTER_HOURLY' ? ($data['child_age_groups'] ?? null) : null,
+                'selected_options' => $selectedOptions,
                 'customer_notes' => $data['note'] ?? null,
                 'price_subtotal' => $pricing['pricing']['subtotal'],
                 'tax_amount' => $pricing['pricing']['tax'],
@@ -482,21 +554,11 @@ class CustomerBookingService
      */
     private function getBusyWorkerIds(Service $service, string $bookingDate, string $startStr, string $endStr): array
     {
-        $dbBusyIds = BookingAssignment::where('status', 'active')
-            ->whereHas('booking', function ($q) use ($bookingDate, $startStr, $endStr) {
-                $q->where('booking_date', $bookingDate)
-                    ->whereIn('status', ['Upcoming', 'inService'])
-                    ->where(function ($timeQ) use ($startStr, $endStr) {
-                        $timeQ->where('start_time', '<', $endStr)
-                            ->where('end_time', '>', $startStr);
-                    });
-            })
-            ->pluck('worker_id')
-            ->unique()
-            ->toArray();
+        $allWorkerIds = $service->workers()->where('status', 'active')->pluck('workers.id')->toArray();
+        $conflictService = app(\App\Service\Booking\BookingScheduleConflictService::class);
+        $dbBusyIds = $conflictService->getBusyWorkerIdsForSlot($allWorkerIds, $bookingDate, $startStr, $endStr, null, true);
 
         $cacheBusyIds = [];
-        $allWorkerIds = $service->workers()->where('status', 'active')->pluck('workers.id')->toArray();
         $currentUserId = auth()->id();
 
         foreach ($allWorkerIds as $workerId) {
@@ -553,17 +615,31 @@ class CustomerBookingService
     /**
      * Calculate price calculations: subtotal, service discount, coupon discount, tax (VAT=0), and total.
      */
-    public function calculatePricing(Service $service, CustomerAddress $address, int $workersCount, int $visitsCount, string $visitType, ?string $couponCode = null, $user = null, $startTime = null, $endTime = null, int $numberOfPersons = 1): array
+    public function calculatePricing(Service $service, CustomerAddress $address, int $workersCount, int $visitsCount, string $visitType, ?string $couponCode = null, $user = null, $startTime = null, $endTime = null, int $numberOfPersons = 1, array $options = []): array
     {
         $pricePerPeriod = (float) ($service->base_price ?? 0);
         $isFirstService = ($service->service_code === 'DOMESTIC_HELPER_HOURLY');
         $isPedicureManicure = ($service->service_code === 'PEDICURE_MANICURE');
-
         $isDeepCleaning = ($service->service_code === 'DEEP_CLEANING');
+        $isTeamService = $service->isTeamBased();
 
-        if ($isPedicureManicure) {
+        if ($isTeamService && ! empty($options)) {
+            $optionsSubtotal = 0;
+            foreach ($options as $item) {
+                $optionId = $item['id'] ?? null;
+                $qty = (int) ($item['quantity'] ?? 1);
+                if ($optionId && $qty > 0) {
+                    $opt = ServiceOption::where('service_id', $service->id)->find($optionId);
+                    if ($opt) {
+                        $optionsSubtotal += ((float) $opt->unit_price) * $qty;
+                    }
+                }
+            }
+            $subtotal = $optionsSubtotal * $visitsCount;
+            $pricePerPeriod = $optionsSubtotal;
+        } elseif ($isPedicureManicure) {
             $subtotal = $pricePerPeriod * $workersCount * max(1, $numberOfPersons);
-        } elseif ($isDeepCleaning) {
+        } elseif ($isDeepCleaning || $isTeamService) {
             $subtotal = $pricePerPeriod * $visitsCount;
         } elseif ($service->pricing_type === 'per_hour' && ! $isFirstService && $startTime && $endTime) {
             $start = Carbon::parse($startTime);

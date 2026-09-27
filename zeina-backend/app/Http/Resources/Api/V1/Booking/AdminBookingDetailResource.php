@@ -150,6 +150,27 @@ class AdminBookingDetailResource extends JsonResource
                 'payment_method' => $this->payment_method,
             ],
 
+            'team_id' => $this->team_id,
+            'team' => $this->team ? [
+                'id' => $this->team->id,
+                'code' => $this->team->code,
+                'name' => $lang === 'ar' ? $this->team->name_ar : $this->team->name_en,
+                'name_ar' => $this->team->name_ar,
+                'name_en' => $this->team->name_en,
+                'status' => $this->team->status,
+                'workers_count' => $this->team->workers ? $this->team->workers->count() : 0,
+                'workers' => $this->team->workers ? $this->team->workers->map(fn($w) => [
+                    'id' => $w->id,
+                    'name' => $w->name,
+                    'nationality' => $w->nationality,
+                    'gender' => $w->gender,
+                ])->values() : [],
+            ] : null,
+
+            'selected_options' => is_array($this->selected_options)
+                ? $this->selected_options
+                : json_decode($this->selected_options ?? '[]', true),
+
             'contract_id' => $this->contract_id ?? 1,
             'customer_notes' => $this->customer_notes,
             'number_of_children' => $this->number_of_children ? (int) $this->number_of_children : null,

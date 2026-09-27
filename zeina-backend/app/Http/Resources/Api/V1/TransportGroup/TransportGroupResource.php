@@ -24,6 +24,9 @@ class TransportGroupResource extends JsonResource
             'service_zone' => new ServiceZoneResource($this->whenLoaded('serviceZone')),
             'departure_point' => new DeparturePointResource($this->whenLoaded('departurePoint')),
             'driver' => new DriverResource($this->whenLoaded('driver')),
+            'vehicle_type' => $this->vehicle_type ?? $this->driver?->vehicle_type,
+            'vehicle_plate' => $this->vehicle_plate ?? $this->driver?->vehicle_plate,
+            'vehicle_capacity' => (int) ($this->vehicle_capacity ?? $this->driver?->vehicle_capacity ?? 5),
             'bookings_count' => $this->bookings_count ?? $this->bookings->count(),
             'created_at' => $this->created_at?->toIso8601String(),
         ];

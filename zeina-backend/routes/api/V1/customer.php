@@ -85,7 +85,7 @@ Route::prefix('customer')->group(function () {
         Route::get('/services/{service}/check-coverage', [ServiceController::class, 'checkCoverage']);
 
         // Bookings
-        Route::get('/bookings/available-dates', [BookingController::class, 'availableDates']);
+        Route::match(['get', 'post'], '/bookings/available-dates', [BookingController::class, 'availableDates']);
         Route::post('/bookings/validate', [BookingController::class, 'validateBooking']);
         Route::post('/bookings/contract-preview', [BookingContractController::class, 'previewContract']);
         Route::get('/bookings/{booking}/contract', [BookingContractController::class, 'downloadContract']);

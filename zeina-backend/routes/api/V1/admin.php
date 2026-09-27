@@ -29,6 +29,8 @@ use App\Http\Controllers\Api\V1\Admin\ServiceController;
 use App\Http\Controllers\Api\V1\Customer\BookingContractController;
 use App\Http\Controllers\Api\V1\Admin\UserController;
 use App\Http\Controllers\Api\V1\Admin\WorkerController;
+use App\Http\Controllers\Api\V1\Admin\TeamController;
+use App\Http\Controllers\Api\V1\Admin\DailyOperationsController;
 use App\Http\Middleware\IsAdmin;
 use Illuminate\Support\Facades\Route;
 
@@ -210,6 +212,21 @@ Route::prefix('admin')->group(function () {
             Route::delete('workers/{worker}', [WorkerController::class, 'destroy']);
         });
 
+        // Work Teams (فرق العمل)
+        Route::middleware('permission:teams.view')->group(function () {
+            Route::get('teams', [TeamController::class, 'index']);
+            Route::get('teams/{team}', [TeamController::class, 'show']);
+        });
+        Route::middleware('permission:teams.create')->group(function () {
+            Route::post('teams', [TeamController::class, 'store']);
+        });
+        Route::middleware('permission:teams.edit')->group(function () {
+            Route::match(['put', 'patch'], 'teams/{team}', [TeamController::class, 'update']);
+        });
+        Route::middleware('permission:teams.delete')->group(function () {
+            Route::delete('teams/{team}', [TeamController::class, 'destroy']);
+        });
+
         // Bookings
         Route::middleware('permission:bookings.view')->group(function () {
             Route::get('bookings/export', [BookingController::class, 'export']);
@@ -221,7 +238,23 @@ Route::prefix('admin')->group(function () {
             Route::patch('bookings/{booking}/status', [BookingController::class, 'updateStatus']);
             Route::get('bookings/{booking}/eligible-workers', [BookingController::class, 'eligibleWorkers']);
             Route::post('bookings/{booking}/assign-workers', [BookingController::class, 'assignWorkers']);
+            Route::post('bookings/{booking}/replace-worker', [BookingController::class, 'replaceWorker']);
             Route::post('bookings/{booking}/reschedule', [BookingController::class, 'reschedule']);
+        });
+
+        // Daily Operations & Exception Management (Document V.18)
+        Route::middleware('permission:bookings.view')->group(function () {
+            Route::get('operations/daily-dashboard', [DailyOperationsController::class, 'dailyDashboard']);
+            Route::get('operations/worker-timeline', [DailyOperationsController::class, 'workerTimeline']);
+            Route::get('operations/bookings/{booking}/alternatives', [DailyOperationsController::class, 'getAlternatives']);
+            Route::get('operations/absences', [DailyOperationsController::class, 'getAbsences']);
+        });
+        Route::middleware('permission:bookings.edit')->group(function () {
+            Route::post('operations/bookings/{booking}/start', [DailyOperationsController::class, 'startService']);
+            Route::post('operations/bookings/{booking}/complete', [DailyOperationsController::class, 'completeService']);
+            Route::post('operations/bookings/{booking}/resolve-risk', [DailyOperationsController::class, 'resolveRisk']);
+            Route::post('operations/absences', [DailyOperationsController::class, 'recordAbsence']);
+            Route::post('operations/absences/{absence}/resolve', [DailyOperationsController::class, 'resolveAbsence']);
         });
 
         // Home banners (ads) shown in the customer app.

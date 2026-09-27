@@ -83,7 +83,7 @@ class Service extends Model implements Auditable
 
     public function options()
     {
-        return $this->hasMany(ServiceOption::class, 'service_id');
+        return $this->hasMany(ServiceOption::class, 'service_id')->orderBy('sort_order', 'asc')->orderBy('id', 'asc');
     }
 
     public function media()
@@ -94,6 +94,11 @@ class Service extends Model implements Auditable
     public function workers()
     {
         return $this->belongsToMany(Worker::class, 'service_workers');
+    }
+
+    public function teams()
+    {
+        return $this->belongsToMany(Team::class, 'service_teams')->withTimestamps();
     }
 
     public function coupons()
@@ -115,4 +120,26 @@ class Service extends Model implements Auditable
     {
         return $this->belongsToMany(ServiceZone::class, 'service_service_zones', 'service_id', 'service_zone_id');
     }
+
+    public static function getTeamBasedCodes(): array
+    {
+        return [
+            'SOFA_CLEANING',
+            'WATER_TANK_CLEANING',
+            'STAIRS_SURFACES_CLEANING',
+            'AC_CLEANING',
+            'CARPET_CLEANING',
+            'CAR_WASH',
+            'MATTRESS_CLEANING',
+            'CURTAIN_CLEANING',
+        ];
+    }
+
+    public function isTeamBased(): bool
+    {
+        $code = strtoupper($this->service_code ?? '');
+        $teamCodes = array_map('strtoupper', self::getTeamBasedCodes());
+        return in_array($code, $teamCodes, true);
+    }
 }
+

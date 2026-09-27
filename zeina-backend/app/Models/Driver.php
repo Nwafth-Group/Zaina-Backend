@@ -15,7 +15,14 @@ class Driver extends Model
         'mobile',
         'email',
         'gender',
+        'vehicle_type',
+        'vehicle_plate',
+        'vehicle_capacity',
         'status',
+    ];
+
+    protected $casts = [
+        'vehicle_capacity' => 'integer',
     ];
 
     public function media()

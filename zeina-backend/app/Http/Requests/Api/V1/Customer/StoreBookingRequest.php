@@ -31,6 +31,10 @@ class StoreBookingRequest extends FormRequest
         $mergeData = [];
         $mergeData['child_age_groups'] = $this->parseChildAgeGroups();
 
+        if ($this->has('selected_options') && !$this->has('options')) {
+            $mergeData['options'] = $this->input('selected_options');
+        }
+
         if ($this->has('duration')) {
             $mergeData['duration'] = (int) $this->input('duration');
         }
@@ -49,7 +53,11 @@ class StoreBookingRequest extends FormRequest
 
         if ($service) {
             $genderOptions = $service->worker_gender_options ?? [];
-            if ($service->service_code === 'DEEP_CLEANING') {
+            if ($service->isTeamBased()) {
+                $mergeData['duration'] = (int) ($service->default_duration ?? 2);
+                $mergeData['visit_type'] = 'single_visit';
+                $mergeData['worker_gender'] = 'Male';
+            } elseif ($service->service_code === 'DEEP_CLEANING') {
                 $mergeData['duration'] = (int) ($service->default_duration ?? 6);
                 $mergeData['visit_type'] = 'single_visit';
                 $mergeData['worker_gender'] = in_array('Male', $genderOptions) ? 'Male' : (count($genderOptions) > 0 ? $genderOptions[0] : 'Male');
@@ -88,6 +96,7 @@ class StoreBookingRequest extends FormRequest
             'dates' => ['required', 'array'],
             'dates.*' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
             'start_time' => ['required', 'date_format:H:i'],
+            'team_id' => ['nullable', 'exists:teams,id'],
             'worker_ids' => ['required', 'array', 'min:1'],
             'worker_ids.*' => ['required', 'exists:workers,id'],
             'payment_method' => ['required', 'string', 'in:points,wallet,card'],
@@ -98,6 +107,10 @@ class StoreBookingRequest extends FormRequest
             'number_of_persons' => [$isPedicureManicure ? 'required' : 'nullable', 'integer', 'min:1'],
             'child_age_groups' => $isBabysitter ? ['required', 'array', 'min:1'] : ['nullable', 'array'],
             'child_age_groups.*' => ['integer', 'exists:service_child_age_groups,id'],
+            'options' => ['nullable', 'array'],
+            'options.*.id' => ['required_with:options', 'integer', 'exists:service_options,id'],
+            'options.*.quantity' => ['required_with:options', 'integer', 'min:1'],
+            'selected_options' => ['nullable', 'array'],
             'note' => ['nullable', 'string'],
         ];
     }
@@ -279,26 +292,26 @@ class StoreBookingRequest extends FormRequest
                     }
                     $genderOptions = $service->worker_gender_options ?? [];
                     if (empty($workerGender)) {
-                        $validator->errors()->add('worker_gender', 'Please select a worker gender.');
+                        $validator->errors()->add('worker_gender', __('validation.create_booking.worker_gender_invalid'));
                     } elseif (! in_array($workerGender, $genderOptions)) {
                         $validator->errors()->add('worker_gender', __('validation.create_booking.worker_gender_invalid'));
                     }
 
                     $duration = $this->input('duration');
                     if ($duration === null) {
-                        $validator->errors()->add('duration', 'Please specify a service duration.');
+                        $validator->errors()->add('duration', __('validation.create_booking.duration_required'));
                     } else {
                         $duration = (int) $duration;
                         if ($service->has_duration_range) {
                             $minDuration = $service->min_duration ?? 4;
                             $maxDuration = $service->max_duration ?? 6;
                             if ($duration < $minDuration || $duration > $maxDuration) {
-                                $validator->errors()->add('duration', "The service duration must be between {$minDuration} and {$maxDuration} hours.");
+                                $validator->errors()->add('duration', __('validation.create_booking.duration_between', ['min' => $minDuration, 'max' => $maxDuration]));
                             }
                         } else {
                             $defaultDuration = $service->default_duration ?? 2;
                             if ($duration !== $defaultDuration) {
-                                $validator->errors()->add('duration', "The service duration must be exactly {$defaultDuration} hours.");
+                                $validator->errors()->add('duration', __('validation.create_booking.duration_exact', ['duration' => $defaultDuration]));
                             }
                         }
                     }
