@@ -20,7 +20,7 @@ class StoreTeamRequest extends FormRequest
             'code' => ['required', 'string', 'max:50', 'unique:teams,code'],
             'status' => ['required', 'in:active,inactive'],
             'notes' => ['nullable', 'string'],
-            'worker_ids' => ['required', 'array', 'size:3'],
+            'worker_ids' => ['required', 'array', 'min:1'],
             'worker_ids.*' => ['exists:workers,id'],
             'service_ids' => ['nullable', 'array'],
             'service_ids.*' => ['exists:services,id'],
@@ -32,13 +32,6 @@ class StoreTeamRequest extends FormRequest
         $validator->after(function ($validator) {
             $workerIds = $this->input('worker_ids', []);
             if (!empty($workerIds) && is_array($workerIds)) {
-                if (count($workerIds) !== 3) {
-                    $validator->errors()->add(
-                        'worker_ids',
-                        __('validation.team.worker_ids_size')
-                    );
-                }
-
                 $workers = Worker::whereIn('id', $workerIds)->get();
 
                 foreach ($workers as $worker) {
@@ -70,7 +63,7 @@ class StoreTeamRequest extends FormRequest
             'status.required' => __('validation.team.status_required'),
             'status.in' => __('validation.team.status_in'),
             'worker_ids.required' => __('validation.team.worker_ids_required'),
-            'worker_ids.size' => __('validation.team.worker_ids_size'),
+            'worker_ids.min' => __('validation.team.worker_ids_min'),
             'worker_ids.*.exists' => __('validation.team.worker_ids_exists'),
         ];
     }
