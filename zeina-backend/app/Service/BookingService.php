@@ -34,7 +34,7 @@ class BookingService
             ->where('is_active', true)
             ->findOrFail($data['address_id']);
 
-        $service = Service::with('duration')->findOrFail($data['service_id']);
+        $service = Service::findOrFail($data['service_id']);
 
         // 2. فحص المحفظة السالبة
         if ($user->wallet_balance < 0) {
@@ -42,7 +42,7 @@ class BookingService
         }
 
         // 3. حساب الأوقات والكتل الثابتة
-        $periodHours = $service->duration->service_period_hours ?? 2;
+        $periodHours = $service->default_duration ?? 2;
         $totalMinutes = $data['periods_count'] * $periodHours * 60;
 
         $start = Carbon::parse($data['start_time']);

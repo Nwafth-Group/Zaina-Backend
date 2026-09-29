@@ -13,17 +13,23 @@ return new class extends Migration
     {
         Schema::create('reward_tasks', function (Blueprint $table) {
             $table->id();
-            $table->string('title_ar');       // مثلاً: تابعنا على فيسبوك
-            $table->string('title_en');       // Follow us on Facebook
-            $table->string('subtitle_ar')->nullable(); // ابق على اطلاع بآخر العروض
-            $table->string('subtitle_en')->nullable(); // Stay updated with our latest offers
+            $table->string('title_ar');
+            $table->string('title_en');
+            $table->string('subtitle_ar')->nullable();
+            $table->string('subtitle_en')->nullable();
             $table->integer('points'); 
-            // زر الإجراء (Call to Action)
-            $table->string('action_text_ar'); // تابعنا
-            $table->string('action_text_en'); // Follow
-            $table->enum('action_type', ['url', 'invite_friend', 'rate_service']);// نوع الإجراء عشان الموبايل يعرف كيف يتعامل معه
-            $table->string('action_link')->nullable(); // رابط الفيسبوك لو كان النوع url
-            $table->boolean('status')->default(true); // لتفعيل أو تعطيل المهمة
+            $table->string('action_text_ar');
+            $table->string('action_text_en');
+            $table->enum('action_type', ['url', 'invite_friend', 'rate_service']);
+            $table->string('action_link')->nullable();
+            $table->boolean('status')->default(true);
+            $table->string('rule_category')->nullable();
+            $table->foreignId('service_id')->nullable()->constrained('services')->nullOnDelete();
+            $table->integer('required_booking_count')->nullable();
+            $table->string('frequency_type')->default('one_time');
+            $table->json('eligible_services')->nullable();
+            $table->string('calculation_method')->nullable();
+            $table->integer('points_expiration_months')->nullable();
             $table->timestamps();
         });
     }

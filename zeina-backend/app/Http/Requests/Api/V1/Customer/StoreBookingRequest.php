@@ -6,9 +6,9 @@ use App\Models\Service;
 use App\Service\Customer\CustomerBookingService;
 use App\Traits\ParsesChildAgeGroups;
 use Carbon\Carbon;
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\Api\V1\CustomFormRequest;
 
-class StoreBookingRequest extends FormRequest
+class StoreBookingRequest extends CustomFormRequest
 {
     use ParsesChildAgeGroups;
 
@@ -89,6 +89,8 @@ class StoreBookingRequest extends FormRequest
         $isBabysitter = $service && $service->service_code === 'BABYSITTER_HOURLY';
         $isPedicureManicure = $service && $service->service_code === 'PEDICURE_MANICURE';
 
+        $isTeamService = $service && $service->isTeamBased();
+
         return [
             'service_id' => ['required', 'exists:services,id'],
             'address_id' => ['required', 'exists:customer_addresses,id'],
@@ -97,7 +99,7 @@ class StoreBookingRequest extends FormRequest
             'dates.*' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
             'start_time' => ['required', 'date_format:H:i'],
             'team_id' => ['nullable', 'exists:teams,id'],
-            'worker_ids' => ['required', 'array', 'min:1'],
+            'worker_ids' => $isTeamService ? ['nullable', 'array'] : ['required', 'array', 'min:1'],
             'worker_ids.*' => ['required', 'exists:workers,id'],
             'payment_method' => ['required', 'string', 'in:points,wallet,card'],
             'coupon_code' => ['nullable', 'string'],

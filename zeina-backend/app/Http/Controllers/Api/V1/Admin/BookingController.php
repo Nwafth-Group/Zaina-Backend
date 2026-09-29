@@ -14,6 +14,7 @@ use App\Filters\Booking\SearchFilter;
 use App\Filters\Booking\ServiceFilter;
 use App\Filters\Booking\StatusFilter;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\V1\Admin\AssignBookingTeamRequest;
 use App\Http\Requests\Api\V1\Admin\ReplaceBookingWorkerRequest;
 use App\Http\Requests\Api\V1\Admin\UpdateBookingStatusRequest;
 use App\Http\Requests\Api\V1\Customer\RescheduleBookingRequest;
@@ -23,6 +24,7 @@ use App\Notifications\BookingNotification;
 use App\Models\Booking;
 use App\Models\CompanyInfo;
 use App\Models\Service;
+use App\Models\Team;
 use App\Models\Worker;
 use App\Models\BookingAssignment;
 use App\Models\BookingHistory;
@@ -596,6 +598,186 @@ class BookingController extends Controller
         return $this->successResponse(
             new AdminBookingDetailResource($booking),
             __('validation.replace_worker.success')
+        );
+    }
+
+    /**
+     * Get eligible teams for a booking with their slot availability status.
+     */
+    public function eligibleTeams(Booking $booking)
+    {
+        $service = $booking->service;
+        if (!$service) {
+            return $this->errorResponse(__('validation.booking_conflict.worker_ineligible', ['name' => 'Service']), 404);
+        }
+
+        $conflictService = app(BookingScheduleConflictService::class);
+        $teams = $service->teams()->where('teams.status', 'active')->with(['workers'])->get();
+
+        $result = $teams->map(function ($team) use ($booking, $conflictService) {
+            $isAvailable = $conflictService->isTeamAvailable(
+                $team,
+                $booking->booking_date,
+                $booking->start_time,
+                $booking->end_time,
+                $booking->id
+            );
+
+            $isCurrentlyAssigned = ((int) $booking->team_id === (int) $team->id);
+
+            return [
+                'id' => $team->id,
+                'name_ar' => $team->name_ar,
+                'name_en' => $team->name_en,
+                'code' => $team->code,
+                'status' => $team->status,
+                'workers_count' => $team->workers->count(),
+                'workers' => $team->workers->map(fn($w) => [
+                    'id' => $w->id,
+                    'name' => $w->name,
+                    'gender' => $w->gender,
+                    'nationality' => $w->nationality,
+                    'avg_rating' => $w->avg_rating,
+                    'status' => $w->status,
+                ]),
+                'is_available' => $isAvailable,
+                'is_currently_assigned' => $isCurrentlyAssigned,
+            ];
+        });
+
+        return $this->successResponse($result, __('validation.assign_team.teams_fetched_success'));
+    }
+
+    /**
+     * Assign or reassign an operational team to a booking.
+     */
+    public function assignTeam(AssignBookingTeamRequest $request, Booking $booking)
+    {
+        if ($booking->payment_status === 'failed') {
+            return $this->errorResponse(__('validation.replace_worker.booking_payment_failed'), 422);
+        }
+
+        if ($booking->status !== 'Upcoming' && $booking->status !== 'Pending Assignment') {
+            return $this->errorResponse(__('validation.replace_worker.booking_not_upcoming'), 422);
+        }
+
+        $service = $booking->service;
+        $isTeamService = $service && ($service->isTeamBased() || in_array($service->service_code, Service::getTeamBasedCodes()));
+        if (!$isTeamService && !$booking->team_id) {
+            return $this->errorResponse(__('validation.assign_team.not_team_service'), 422);
+        }
+
+        $newTeam = Team::with('workers')->findOrFail($request->validated('team_id'));
+        if ($newTeam->status !== 'active') {
+            return $this->errorResponse(__('validation.assign_team.team_inactive'), 422);
+        }
+
+        if ($newTeam->workers->isEmpty()) {
+            return $this->errorResponse(__('validation.assign_team.team_no_workers'), 422);
+        }
+
+        // Validate schedule conflict unless overridden
+        $conflictService = app(BookingScheduleConflictService::class);
+        $isAvailable = $conflictService->isTeamAvailable(
+            $newTeam,
+            $booking->booking_date,
+            $booking->start_time,
+            $booking->end_time,
+            $booking->id
+        );
+
+        if (!$isAvailable && !$request->boolean('override_conflict')) {
+            return $this->errorResponse(__('validation.assign_team.schedule_conflict'), 422);
+        }
+
+        // Validate service start constraint
+        $bookingStart = Carbon::parse($booking->booking_date . ' ' . $booking->start_time);
+        if (now()->greaterThanOrEqualTo($bookingStart) && !$request->boolean('override_conflict')) {
+            return $this->errorResponse(__('validation.replace_worker.service_started'), 422);
+        }
+
+        $oldTeam = $booking->team;
+        $oldTeamName = $oldTeam ? ($oldTeam->name_ar ?: $oldTeam->name_en ?: $oldTeam->code) : null;
+        $newTeamName = $newTeam->name_ar ?: $newTeam->name_en ?: $newTeam->code;
+
+        $historyNote = $oldTeam
+            ? "Replaced team ({$oldTeamName}) with ({$newTeamName})."
+            : "Assigned team ({$newTeamName}) to booking.";
+
+        if ($request->filled('note')) {
+            $historyNote .= ' Note: ' . $request->validated('note');
+        }
+
+        $oldStatus = $booking->status;
+        $newStatus = 'Upcoming';
+
+        DB::transaction(function () use ($booking, $newTeam, $oldStatus, $newStatus, $historyNote) {
+            // Replace existing active assignments
+            BookingAssignment::where('booking_id', $booking->id)
+                ->where('status', 'active')
+                ->update(['status' => 'replaced']);
+
+            // Create new active assignments for each worker in the new team
+            $firstWorkerId = null;
+            foreach ($newTeam->workers as $worker) {
+                if (!$firstWorkerId) {
+                    $firstWorkerId = $worker->id;
+                }
+                BookingAssignment::create([
+                    'booking_id'  => $booking->id,
+                    'worker_id'   => $worker->id,
+                    'status'      => 'active',
+                    'assigned_at' => now(),
+                ]);
+            }
+
+            // Update booking team_id, worker_id, number_of_workers, and status
+            $booking->update([
+                'team_id'           => $newTeam->id,
+                'worker_id'         => $firstWorkerId,
+                'number_of_workers' => $newTeam->workers->count(),
+                'status'            => $newStatus,
+            ]);
+
+            // Save log to booking histories
+            BookingHistory::create([
+                'booking_id' => $booking->id,
+                'old_status' => $oldStatus,
+                'new_status' => $newStatus,
+                'note'       => $historyNote,
+                'created_by' => auth()->id(),
+            ]);
+        });
+
+        // Notify customer
+        try {
+            if ($booking->customer) {
+                $lang = $booking->customer->preferred_language === 'en' ? 'en' : 'ar';
+                $title = $lang === 'en' ? 'Team Assignment Updated' : 'تحديث تعيين فريق العمل';
+                $body = $lang === 'en'
+                    ? "The operational team for your booking {$booking->booking_ref} has been updated."
+                    : "تم تحديث فريق العمل التشغيلي لحجزك رقم {$booking->booking_ref}.";
+
+                $booking->customer->notify(new BookingNotification(
+                    $title,
+                    $body,
+                    $booking->id,
+                    [
+                        'booking_ref'    => $booking->booking_ref,
+                        'current_status' => $booking->status,
+                        'team_id'        => $newTeam->id,
+                    ]
+                ));
+            }
+        } catch (\Exception $ex) {
+            Log::error('Notification failure during team assignment: ' . $ex->getMessage());
+        }
+
+        $booking->load(['workers', 'histories', 'team.workers']);
+
+        return $this->successResponse(
+            new AdminBookingDetailResource($booking),
+            __('validation.assign_team.success')
         );
     }
 

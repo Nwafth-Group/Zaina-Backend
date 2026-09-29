@@ -28,14 +28,11 @@ return new class extends Migration
             
             // New Config Fields
             $table->json('available_visit_types')->nullable();
-            $table->decimal('discount_value', 10, 2)->default(0.00);
             $table->text('terms_ar')->nullable();
             $table->text('terms_en')->nullable();
-            $table->boolean('acceptance_required')->default(true);
             $table->time('start_time')->nullable();
             $table->time('end_time')->nullable();
             $table->integer('default_duration')->nullable();
-            $table->string('duration_unit', 50)->default('Hours');
             $table->boolean('has_duration_range')->default(false);
             $table->integer('min_duration')->nullable();
             $table->integer('max_duration')->nullable();
@@ -43,7 +40,13 @@ return new class extends Migration
             $table->integer('max_workers')->default(1);
             $table->integer('min_children')->nullable();
             $table->integer('max_children')->nullable();
+            $table->integer('covered_persons_per_worker')->nullable()->default(1);
             $table->decimal('base_price', 10, 2)->default(0.00);
+
+            $table->boolean('points_redemption_enabled')->default(false);
+            $table->string('points_redemption_method')->default('fixed');
+            $table->integer('points_required_fixed')->default(0);
+            $table->integer('points_conversion_rate')->default(10);
             
             $table->timestamps();
         });

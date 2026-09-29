@@ -13,16 +13,21 @@ return new class extends Migration
     {
         Schema::create('coupons', function (Blueprint $table) {
             $table->id();
-            $table->string('code')->unique(); // كود الكوبون مثل: ZAINAH20
-            $table->string('type'); // 'fixed' (مبلغ ثابت) أو 'percentage' (نسبة مئوية)
-            $table->decimal('value', 8, 2); // قيمة الخصم (مثلاً 50.00 جنيه أو 15%)
-            $table->integer('usage_limit')->nullable(); // إجمالي عدد مرات استخدام الكوبون في النظام ككل (null يعني غير محدود)
-            $table->integer('user_usage_limit')->default(1); // حد الاستخدام لكل مستخدم (الافتراضي: يستخدمه العميل مرة واحدة فقط)
-            $table->integer('used_count')->default(0); // كم مرة استُخدم الكوبون فعلياً في النظام
-            $table->dateTime('start_date'); // تاريخ بدء الفعالية
-            $table->dateTime('end_date'); // تاريخ انتهاء الصلاحية
-            $table->boolean('is_for_all_users')->default(true); // هل الكوبون متاح للجميع أم لمستخدمين محددين؟
-            $table->boolean('is_for_all_services')->default(true); // هل الكوبون يشمل كل الخدمات أم خدمات محددة؟
+            $table->string('name')->nullable()->unique();
+            $table->string('code')->unique();
+            $table->string('type');
+            $table->decimal('value', 8, 2);
+            $table->integer('usage_limit')->nullable();
+            $table->integer('user_usage_limit')->default(1);
+            $table->integer('used_count')->default(0);
+            $table->dateTime('start_date');
+            $table->dateTime('end_date');
+            $table->boolean('is_for_all_users')->default(true);
+            $table->boolean('is_for_all_services')->default(true);
+            $table->boolean('is_for_all_cities')->default(true);
+            $table->integer('completed_bookings_count')->default(0);
+            $table->integer('min_workers')->nullable();
+            $table->json('allowed_visit_types')->nullable();
             $table->enum('status', ['active', 'inactive'])->default('active');
             $table->timestamps();
         });

@@ -10,7 +10,6 @@ class PointSystemSeeder extends Seeder
 {
     public function run(): void
     {
-        // 🌟 1. Seed global progress cycle & redemption settings
         $settings = [
             'service_cycle_rules' => [
                 'action_type' => 'complete_bookings',
@@ -27,7 +26,6 @@ class PointSystemSeeder extends Seeder
             );
         }
 
-        // 🌟 2. Seed default points earning rules (Reward Tasks)
         $tasks = [
             [
                 'title_ar' => 'متابعة صفحتنا على فيسبوك',
@@ -118,7 +116,6 @@ class PointSystemSeeder extends Seeder
             );
         }
 
-        // 🌟 3. Seed specific service rules for each service in the database
         $services = DB::table('services')->get();
         foreach ($services as $service) {
             DB::table('reward_tasks')->updateOrInsert(
@@ -148,7 +145,6 @@ class PointSystemSeeder extends Seeder
             );
         }
 
-        // 🌟 4. Inject mock balance history to dev users for testing
         $users = User::all();
 
         if ($users->isEmpty()) {

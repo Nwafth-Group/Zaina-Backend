@@ -6,9 +6,9 @@ use App\Models\Service;
 use App\Service\Customer\CustomerBookingService;
 use App\Traits\ParsesChildAgeGroups;
 use Carbon\Carbon;
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\Api\V1\CustomFormRequest;
 
-class ValidateBookingRequest extends FormRequest
+class ValidateBookingRequest extends CustomFormRequest
 {
     use ParsesChildAgeGroups;
 

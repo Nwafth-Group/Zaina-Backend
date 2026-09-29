@@ -16,13 +16,13 @@ return new class extends Migration
             $table->foreignId('service_id')->constrained('services')->onDelete('cascade');
             $table->string('name_ar');
             $table->string('name_en');
-            $table->integer('age_from'); // in months
-            $table->integer('age_to');   // in months
-            $table->string('calculation_type')->nullable(); // per_child, ratio_based
+            $table->integer('age_from');
+            $table->integer('age_to');
+            $table->string('calculation_type')->nullable();
             $table->integer('children_count')->default(1);
             $table->integer('required_worker_count')->default(1);
             $table->string('note')->nullable();
-            $table->string('status')->default('active'); // active, inactive
+            $table->string('status')->default('active');
             $table->timestamps();
         });
     }

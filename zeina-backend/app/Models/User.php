@@ -159,13 +159,6 @@ class User extends Authenticatable implements Auditable
             ->withTimestamps();
     }
 
-    //    public function readAnnouncements()
-    // {
-    //     return $this->belongsToMany(Announcement::class, 'announcement_user', 'announcement_id', 'user_id')
-    //                 ->withPivot('read_at')
-    //                 ->withTimestamps();
-    // }
-
     public function referralCodes()
     {
         return $this->hasMany(UserReferralCode::class, 'user_id');

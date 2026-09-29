@@ -120,15 +120,8 @@ public function index(Request $request)
               ->where('end_time', '>=', $endTimeStr);    // شفت الخدمة ينتهي بعد أو مع نهاية حجز العميل
         });
 
-        // ب. فحص تضاربات العمال: نضمن وجود عامل يغطي المنطقة وليس لديه حجز يتداخل مع هذه الفترة
-        $query->whereHas('workers', function ($workerQ) use ($request, $bookingDate, $startTimeStr, $endTimeStr) {
-            // الفحص الجغرافي للمنطقة الجغرافية
-            if ($request->filled('service_zone_id')) {
-                $workerQ->whereHas('serviceZones', function($zoneQ) use ($request) {
-                    $zoneQ->where('service_zones.id', $request->service_zone_id);
-                });
-            }
-
+        // ب. فحص تضاربات العمال: نضمن وجود عامل ليس لديه حجز يتداخل مع هذه الفترة
+        $query->whereHas('workers', function ($workerQ) use ($bookingDate, $startTimeStr, $endTimeStr) {
             // فحص التداخل الزمني (Overlap Check) لحجوزات العامل النشطة
             // العامل يكون متاحاً إذا لم يكن لديه أي حجز يتقاطع مع الفترة [start_time - end_time]
             $workerQ->whereDoesntHave('bookings', function ($bookingQ) use ($bookingDate, $startTimeStr, $endTimeStr) {
@@ -150,38 +143,4 @@ public function index(Request $request)
         'services' => ServiceResource::collection($services)->response()->getData(true)
     ], __('messages.filtered_services_retrieved') ?? 'Filtered services retrieved successfully.');
 }
-
-
-
-    /**
-     * Store a newly created resource in storage.
-     */
-    // public function store(Request $request)
-    // {
-    //     //
-    // }
-
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
-    }
 }

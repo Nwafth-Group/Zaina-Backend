@@ -3,7 +3,6 @@
 namespace App\Http\Requests\Api\V1\Admin;
 
 use App\Http\Requests\Api\V1\CustomFormRequest;
-use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class StoreCategoryRequest extends CustomFormRequest

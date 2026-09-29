@@ -66,8 +66,8 @@ class ServiceResource extends JsonResource
             'base_price' => $this->base_price,
             'terms_ar' => $this->terms_ar,
             'terms_en' => $this->terms_en,
+            'duration' => null,
 
-            'duration' => ServiceDurationResource::make($this->whenLoaded('duration')),
             'rules' => ServiceRuleResource::make($this->whenLoaded('rules')),
             'reward_rule' => ($serviceRewardRule = \App\Models\RewardTasks::where('status', true)->where('rule_category', 'service')->where('service_id', $this->id)->first()) ? [
                 'id' => $serviceRewardRule->id,

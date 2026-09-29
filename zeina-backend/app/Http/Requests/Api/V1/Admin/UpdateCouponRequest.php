@@ -33,7 +33,7 @@ class UpdateCouponRequest extends CustomFormRequest
                 'min:0.01',
                 function ($attribute, $value, $fail) {
                     if ($this->input('type') === 'percentage' && $value > 100) {
-                        $fail(__('validation.percentage_max_value') ?: 'Percentage discount cannot exceed 100%.');
+                        $fail(__('validation.coupon.percentage_max_value'));
                     }
                 },
             ],
@@ -48,7 +48,7 @@ class UpdateCouponRequest extends CustomFormRequest
                 function ($attribute, $value, $fail) {
                     $usageLimit = $this->input('usage_limit');
                     if (!is_null($usageLimit) && $value > $usageLimit) {
-                        $fail('The user usage limit field must not be greater than ' . $usageLimit . '.');
+                        $fail(__('validation.coupon.user_usage_limit_max', ['limit' => $usageLimit]));
                     }
                 },
             ],

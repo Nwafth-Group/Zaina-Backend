@@ -14,6 +14,9 @@ return new class extends Migration
             $table->string('mobile')->unique();
             $table->string('email')->nullable();
             $table->enum('gender', ['male', 'female'])->default('male');
+            $table->string('vehicle_type')->nullable();
+            $table->string('vehicle_plate')->nullable();
+            $table->unsignedInteger('vehicle_capacity')->default(5);
             $table->enum('status', ['active', 'inactive'])->default('active');
             $table->timestamps();
         });

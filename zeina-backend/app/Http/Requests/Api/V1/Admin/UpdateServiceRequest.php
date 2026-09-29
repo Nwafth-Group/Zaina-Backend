@@ -6,10 +6,10 @@ use App\Models\Category;
 use App\Models\Service;
 use Carbon\Carbon;
 use Illuminate\Contracts\Validation\ValidationRule;
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\Api\V1\CustomFormRequest;
 use Illuminate\Validation\Rule;
 
-class UpdateServiceRequest extends FormRequest
+class UpdateServiceRequest extends CustomFormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -89,7 +89,6 @@ class UpdateServiceRequest extends FormRequest
             'available_visit_types' => 'sometimes|required|array|min:1',
             'available_visit_types.*.type' => 'required_with:available_visit_types|string|in:single_visit,3_days_per_week',
             'available_visit_types.*.discount' => 'nullable|numeric|min:0|max:100',
-            'discount_value' => 'sometimes|nullable|numeric|min:0',
             'base_price' => 'sometimes|nullable|numeric|min:0',
 
             // Service Sub-Items / Options
@@ -114,7 +113,6 @@ class UpdateServiceRequest extends FormRequest
             'start_time' => 'sometimes|nullable|date_format:H:i',
             'end_time' => 'sometimes|nullable|date_format:H:i|after:start_time',
             'default_duration' => 'sometimes|required|integer|min:1',
-            'duration_unit' => 'sometimes|nullable|string|in:Hours,Days',
             'has_duration_range' => 'sometimes|nullable|boolean',
             'min_duration' => 'sometimes|nullable|integer|min:1',
             'max_duration' => 'sometimes|nullable|integer|min:1|gte:min_duration',
@@ -132,12 +130,6 @@ class UpdateServiceRequest extends FormRequest
             'child_age_groups.*.children_count' => 'required_with:child_age_groups|integer|min:1',
             'child_age_groups.*.required_worker_count' => 'required_with:child_age_groups|integer|min:1',
             'child_age_groups.*.status' => 'required_with:child_age_groups|in:active,inactive',
-
-            // Durations array for backward compatibility
-            'durations' => 'sometimes|nullable|array',
-            'durations.service_period_hours' => 'sometimes|nullable|integer|min:1',
-            'durations.allowed_contract_durations' => 'sometimes|nullable|array',
-            'durations.min_contract_months' => 'sometimes|nullable|integer|min:1',
 
             // Service Shifts & Schedules
             'working_days' => 'sometimes|nullable|array|min:1',
@@ -161,20 +153,12 @@ class UpdateServiceRequest extends FormRequest
             'rules.reschedule_cutoff_hours' => 'required_if:rules.allow_reschedule,true|integer|min:0',
             'rules.allow_same_day' => 'nullable|boolean',
             'rules.max_advance_booking_days' => 'nullable|integer|min:0',
-            'rules.lead_time_min_hours' => 'nullable|integer|min:0',
-            'rules.lead_time_max_days' => 'nullable|integer|min:1',
-            'rules.late_cancel_action' => 'nullable|in:fee,block,manual',
-            'rules.late_cancel_fee_type' => 'nullable|in:percent,fixed',
-            'rules.late_cancel_fee_value' => 'nullable|numeric|min:0',
-            'rules.no_show_policy' => 'nullable|in:compensate,consumed',
-            'rules.max_changes_per_booking' => 'nullable|integer|min:0',
             'rules.arrival_buffer_minutes' => 'nullable|integer|min:0',
             'rules.late_arrival_grace_minutes' => 'nullable|integer|min:0',
 
             // Terms & Conditions
             'terms_ar' => 'sometimes|required|string|max:5000',
             'terms_en' => 'sometimes|required|string|max:5000',
-            'acceptance_required' => 'sometimes|nullable|boolean',
         ];
 
         $service = $this->route('service');
@@ -209,9 +193,10 @@ class UpdateServiceRequest extends FormRequest
     {
         return [
             function ($validator) {
+                $isAr = app()->getLocale() === 'ar';
                 $service = $this->route('service');
                 if ($this->has('service_code') && $service && $this->input('service_code') !== $service->service_code) {
-                    $validator->errors()->add('service_code', 'The service code cannot be updated.');
+                    $validator->errors()->add('service_code', $isAr ? 'لا يمكن تعديل كود الخدمة.' : 'The service code cannot be updated.');
                 }
                 $startTime = $this->input('start_time') ?? ($service ? $service->start_time : null);
                 $endTime = $this->input('end_time') ?? ($service ? $service->end_time : null);
@@ -234,7 +219,9 @@ class UpdateServiceRequest extends FormRequest
                                 if ($startStr < $startTime || $endStr > $endTime) {
                                     $validator->errors()->add(
                                         "shifts.{$index}.start_time",
-                                        "The shift schedule times must be within the service request window ({$startTime} to {$endTime})."
+                                        $isAr
+                                            ? "مواعيد الشفتات يجب أن تقع ضمن نافذة وقت طلب الخدمة ({$startTime} إلى {$endTime})."
+                                            : "The shift schedule times must be within the service request window ({$startTime} to {$endTime})."
                                     );
                                 }
                             } catch (\Exception $e) {
@@ -349,10 +336,10 @@ class UpdateServiceRequest extends FormRequest
                     $maxChildren = $this->input('max_children') ?? ($service ? $service->max_children : null);
 
                     if ($this->has('min_children') && ($minChildren === null || $minChildren < 1)) {
-                        $validator->errors()->add('min_children', 'Minimum number of children must be at least 1.');
+                        $validator->errors()->add('min_children', $isAr ? 'الحد الأدنى لعدد الأطفال يجب أن يكون 1 على الأقل.' : 'Minimum number of children must be at least 1.');
                     }
                     if ($minChildren !== null && $maxChildren !== null && $minChildren > $maxChildren) {
-                        $validator->errors()->add('max_children', 'Maximum number of children must be greater than or equal to minimum.');
+                        $validator->errors()->add('max_children', $isAr ? 'الحد الأقصى لعدد الأطفال يجب أن يكون أكبر من أو يساوي الحد الأدنى.' : 'Maximum number of children must be greater than or equal to minimum.');
                     }
 
                     if ($this->has('child_age_groups')) {
@@ -360,7 +347,7 @@ class UpdateServiceRequest extends FormRequest
                         $activeGroups = array_filter($ageGroups, fn ($g) => ($g['status'] ?? '') === 'active');
 
                         if (empty($activeGroups)) {
-                            $validator->errors()->add('child_age_groups', 'At least one active child age group must be configured before publishing.');
+                            $validator->errors()->add('child_age_groups', $isAr ? 'يجب تهيئة وتفعيل فئة عمرية واحدة للأطفال على الأقل قبل النشر.' : 'At least one active child age group must be configured before publishing.');
                         } else {
                             // Check for overlaps: sort active groups by age_from
                             usort($activeGroups, fn ($a, $b) => ($a['age_from'] ?? 0) <=> ($b['age_from'] ?? 0));
@@ -371,7 +358,7 @@ class UpdateServiceRequest extends FormRequest
                                 $to = (int) ($current['age_to'] ?? 0);
 
                                 if ($from > $to) {
-                                    $validator->errors()->add("child_age_groups.{$i}.age_from", 'Age From must be less than or equal to Age To.');
+                                    $validator->errors()->add("child_age_groups.{$i}.age_from", $isAr ? 'العمر من يجب أن يكون أقل من أو يساوي العمر إلى.' : 'Age From must be less than or equal to Age To.');
                                 }
                             }
                         }
@@ -389,7 +376,7 @@ class UpdateServiceRequest extends FormRequest
                         }
                     }
                 } elseif ($this->filled('pricing_type') && ! $isSecondService && ! $isThirdService && $this->input('type') !== 'other' && ! $isPedicureManicure) {
-                    $validator->errors()->add('pricing_type', 'Pricing type configuration is only allowed for the Hospitality, Babysitting, and Other services.');
+                    $validator->errors()->add('pricing_type', $isAr ? 'تهيئة نوع التسعير متاحة فقط لخدمات الضيافة، وجليسة الأطفال، والخدمات الأخرى.' : 'Pricing type configuration is only allowed for the Hospitality, Babysitting, and Other services.');
                 }
             },
         ];
@@ -405,41 +392,12 @@ class UpdateServiceRequest extends FormRequest
             'name_en.max' => __('validation.update_service.name_en_max'),
             'status.in' => __('validation.update_service.status_in'),
 
-            // المدد الزمنية
-            'durations.array' => __('validation.update_service.durations_array'),
-            'durations.service_period_hours.required_if' => __('validation.update_service.service_period_hours_required_if'),
-            'durations.service_period_hours.integer' => __('validation.update_service.service_period_hours_integer'),
-            'durations.service_period_hours.min' => __('validation.update_service.service_period_hours_min'),
-            'durations.allowed_contract_durations.required_if' => __('validation.update_service.allowed_contract_durations_required_if'),
-            'durations.allowed_contract_durations.array' => __('validation.update_service.allowed_contract_durations_array'),
-            'durations.min_contract_months.required_if' => __('validation.update_service.min_contract_months_required_if'),
-            'durations.min_contract_months.integer' => __('validation.update_service.min_contract_months_integer'),
-            'durations.min_contract_months.min' => __('validation.update_service.min_contract_months_min'),
-
-            // العمالة
-            'workers.required' => __('validation.update_service.workers_required'),
-            'workers.array' => __('validation.update_service.workers_array'),
-            'workers.min' => __('validation.update_service.workers_min'),
-            'workers.*.integer' => __('validation.update_service.worker_id_integer'),
-            'workers.*.exists' => __('validation.update_service.worker_id_exists'),
-
             // قواعد الخدمة
             'rules.array' => __('validation.update_service.rules_array'),
             'rules.free_cancel_cutoff_hours.integer' => __('validation.update_service.free_cancel_cutoff_hours_integer'),
             'rules.free_cancel_cutoff_hours.min' => __('validation.update_service.free_cancel_cutoff_hours_min'),
             'rules.reschedule_cutoff_hours.integer' => __('validation.update_service.reschedule_cutoff_hours_integer'),
             'rules.reschedule_cutoff_hours.min' => __('validation.update_service.reschedule_cutoff_hours_min'),
-            'rules.lead_time_min_hours.integer' => __('validation.update_service.lead_time_min_hours_integer'),
-            'rules.lead_time_min_hours.min' => __('validation.update_service.lead_time_min_hours_min'),
-            'rules.lead_time_max_days.integer' => __('validation.update_service.lead_time_max_days_integer'),
-            'rules.lead_time_max_days.min' => __('validation.update_service.lead_time_max_days_min'),
-            'rules.late_cancel_action.in' => __('validation.update_service.late_cancel_action_in'),
-            'rules.late_cancel_fee_type.in' => __('validation.update_service.late_cancel_fee_type_in'),
-            'rules.late_cancel_fee_value.numeric' => __('validation.update_service.late_cancel_fee_value_numeric'),
-            'rules.late_cancel_fee_value.min' => __('validation.update_service.late_cancel_fee_value_min'),
-            'rules.no_show_policy.in' => __('validation.update_service.no_show_policy_in'),
-            'rules.max_changes_per_booking.integer' => __('validation.update_service.max_changes_per_booking_integer'),
-            'rules.max_changes_per_booking.min' => __('validation.update_service.max_changes_per_booking_min'),
 
             // الصور
             'image.image' => __('validation.update_service.image_invalid'),

@@ -15,6 +15,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('coupon_id')->constrained('coupons')->onDelete('cascade');
             $table->foreignId('service_id')->constrained('services')->onDelete('cascade');
+            $table->json('allowed_visit_types')->nullable();
+            $table->integer('min_workers')->nullable();
             $table->timestamps();
         });
     }

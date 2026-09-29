@@ -24,7 +24,10 @@ return new class extends Migration
             $table->string('snapchat_link')->nullable();
             $table->string('tiktok_link')->nullable();
             $table->string('linkedin_link')->nullable();
+            $table->string('google_play_link')->nullable();
+            $table->string('app_store_link')->nullable();
             $table->decimal('vat_percentage', 5, 2)->default(0.00);
+            $table->string('tax_number')->nullable();
             $table->timestamps();
         });
     }

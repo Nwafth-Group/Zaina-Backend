@@ -14,10 +14,13 @@ return new class extends Migration
             $table->string('governorate')->nullable();
             $table->foreignId('service_zone_id')->nullable()->constrained('service_zones')->nullOnDelete();
             $table->string('area_name')->nullable();
-            $table->string('start_time'); // e.g. "08:00"
+            $table->string('start_time');
             $table->foreignId('departure_point_id')->nullable()->constrained('departure_points')->nullOnDelete();
-            $table->string('departure_time')->nullable(); // e.g. "07:00"
+            $table->string('departure_time')->nullable();
             $table->foreignId('driver_id')->nullable()->constrained('drivers')->nullOnDelete();
+            $table->string('vehicle_type')->nullable();
+            $table->string('vehicle_plate')->nullable();
+            $table->unsignedInteger('vehicle_capacity')->nullable();
             $table->text('notes')->nullable();
             $table->enum('status', ['not_prepared', 'partially_prepared', 'ready_for_transport', 'departed', 'completed'])->default('not_prepared');
             $table->timestamps();

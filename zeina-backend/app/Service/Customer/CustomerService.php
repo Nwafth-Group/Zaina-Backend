@@ -35,7 +35,7 @@ class CustomerService
             abort(404, __('messages.service_not_available'));
         }
 
-        $service->load(['rules', 'media', 'schedules', 'childAgeGroups', 'options', 'teams.workers', 'duration', 'serviceZones']);
+        $service->load(['rules', 'media', 'schedules', 'childAgeGroups', 'options', 'teams.workers', 'serviceZones']);
 
         $userId = auth('sanctum')->id();
         $activeWorkers = $service->workers()

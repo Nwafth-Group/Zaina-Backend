@@ -16,7 +16,6 @@ use App\Http\Controllers\Api\V1\Customer\ProfileController;
 use App\Http\Controllers\Api\V1\Customer\ReviewController;
 use App\Http\Controllers\Api\V1\Customer\SearchController;
 use App\Http\Controllers\Api\V1\Customer\ServiceController;
-use App\Http\Controllers\Api\V1\Customer\TestController;
 use App\Http\Controllers\Api\V1\Customer\UserCardController;
 use App\Http\Controllers\Api\V1\Customer\WalletController;
 use App\Http\Controllers\Api\V1\Notification\DeviceTokenController;
@@ -25,7 +24,6 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('customer')->group(function () {
 
-    Route::get('test', [TestController::class, 'test']);
     Route::get('search', [SearchController::class, 'index']);
     Route::get('filter', [SearchController::class, 'filter']);
     Route::get('/bookings/public-contract/{booking}', [BookingContractController::class, 'viewContractPublicly'])
@@ -34,7 +32,7 @@ Route::prefix('customer')->group(function () {
     Route::prefix('auth')->group(function () {
         // Route::post('register', [AuthController::class, 'register']);
         // Route::post('verify-register', [AuthController::class, 'verifyRegister']);
-        Route::post('send-otp', [AuthController::class, 'sendotp']);
+        Route::post('send-otp', [AuthController::class, 'sendOtp']);
         Route::post('verify-otp', [AuthController::class, 'verifyOtp']);
         Route::post('/verify', [KycController::class, 'submit'])->middleware('auth:sanctum');
     });

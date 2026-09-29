@@ -26,9 +26,9 @@ class ServiceWriter
     private const BASE_FIELDS = [
         'category_id', 'type', 'worker_gender_options', 'pricing_type', 'name_ar', 'name_en',
         'description_ar', 'description_en', 'status', 'features',
-        'service_code', 'available_visit_types', 'discount_value', 'terms_ar',
-        'terms_en', 'acceptance_required', 'start_time', 'end_time',
-        'default_duration', 'duration_unit', 'has_duration_range',
+        'service_code', 'available_visit_types', 'terms_ar',
+        'terms_en', 'start_time', 'end_time',
+        'default_duration', 'has_duration_range',
         'min_duration', 'max_duration', 'min_workers', 'max_workers', 'base_price',
         'min_children', 'max_children', 'covered_persons_per_worker',
         'points_redemption_enabled', 'points_redemption_method', 'points_required_fixed', 'points_conversion_rate',
@@ -40,7 +40,7 @@ class ServiceWriter
      * @var list<string>
      */
     private const RESPONSE_RELATIONS = [
-        'category', 'duration', 'rules', 'workers', 'media', 'schedules',
+        'category', 'rules', 'workers', 'media', 'schedules',
         'childAgeGroups', 'serviceZones', 'options',
     ];
 
@@ -87,14 +87,11 @@ class ServiceWriter
      */
     private function baseAttributes(array $data): array
     {
-        $attributes = array_intersect_key($data, array_flip(self::BASE_FIELDS));
-        $attributes['acceptance_required'] = true;
-
-        return $attributes;
+        return array_intersect_key($data, array_flip(self::BASE_FIELDS));
     }
 
     /**
-     * Upsert durations/rules, sync service zones, and sync workers. Each
+     * Upsert rules, sync service zones, and sync workers. Each
      * section is only touched when present in the payload (so partial updates
      * leave the rest intact). For a brand-new service the deletes are no-ops.
      *
@@ -102,27 +99,6 @@ class ServiceWriter
      */
     private function syncRelations(Service $service, array $data): void
     {
-        // For backward compatibility, keep the duration relationship updated
-        $durationData = [];
-        if (isset($data['default_duration'])) {
-            $durationData['service_period_hours'] = $data['default_duration'];
-        } elseif (isset($data['durations']['service_period_hours'])) {
-            $durationData['service_period_hours'] = $data['durations']['service_period_hours'];
-        }
-
-        if (isset($data['durations']['allowed_contract_durations'])) {
-            $durationData['allowed_contract_durations'] = $data['durations']['allowed_contract_durations'];
-        }
-        if (isset($data['durations']['min_contract_months'])) {
-            $durationData['min_contract_months'] = $data['durations']['min_contract_months'];
-        }
-
-        if (! empty($durationData)) {
-            $service->duration()->updateOrCreate(['service_id' => $service->id], $durationData);
-        } elseif (array_key_exists('durations', $data)) {
-            $service->duration()->updateOrCreate(['service_id' => $service->id], $data['durations']);
-        }
-
         if (array_key_exists('rules', $data)) {
             $service->rules()->updateOrCreate(['service_id' => $service->id], $data['rules']);
         }

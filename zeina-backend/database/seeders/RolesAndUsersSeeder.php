@@ -27,7 +27,6 @@ class RolesAndUsersSeeder extends Seeder
             'drivers.view', 'drivers.create', 'drivers.edit', 'drivers.delete',
             'departure_points.view', 'departure_points.create', 'departure_points.edit', 'departure_points.delete',
             'transport_dispatch.view', 'transport_dispatch.edit',
-            'providers.view', 'providers.create', 'providers.edit', 'providers.deactivate', 'provider_eligibility.edit',
             
             // Services
             'services.view', 'services.create', 'services.edit', 'services.delete',

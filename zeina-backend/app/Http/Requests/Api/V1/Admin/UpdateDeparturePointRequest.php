@@ -2,9 +2,9 @@
 
 namespace App\Http\Requests\Api\V1\Admin;
 
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\Api\V1\CustomFormRequest;
 
-class UpdateDeparturePointRequest extends FormRequest
+class UpdateDeparturePointRequest extends CustomFormRequest
 {
     public function authorize(): bool
     {

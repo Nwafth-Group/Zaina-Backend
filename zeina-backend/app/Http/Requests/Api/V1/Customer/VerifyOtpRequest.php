@@ -3,7 +3,6 @@
 namespace App\Http\Requests\Api\V1\Customer;
 
 use App\Http\Requests\Api\V1\CustomFormRequest;
-use Illuminate\Foundation\Http\FormRequest;
 
 class VerifyOtpRequest extends CustomFormRequest
 {

@@ -22,16 +22,7 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        // 2. Add team_id to workers table (A worker can belong to ONLY ONE team)
-        Schema::table('workers', function (Blueprint $table) {
-            $table->foreignId('team_id')
-                ->nullable()
-                ->after('status')
-                ->constrained('teams')
-                ->nullOnDelete();
-        });
-
-        // 3. Service Teams Pivot Table (Services 6 to 11 can be assigned multiple teams)
+        // 2. Service Teams Pivot Table (Services 6 to 11 can be assigned multiple teams)
         Schema::create('service_teams', function (Blueprint $table) {
             $table->id();
             $table->foreignId('service_id')->constrained('services')->cascadeOnDelete();
@@ -48,12 +39,6 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('service_teams');
-
-        Schema::table('workers', function (Blueprint $table) {
-            $table->dropForeign(['team_id']);
-            $table->dropColumn('team_id');
-        });
-
         Schema::dropIfExists('teams');
     }
 };

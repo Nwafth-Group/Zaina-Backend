@@ -11,7 +11,7 @@ class Booking extends Model
     use HasFactory;
 
     protected $fillable = [
-        'booking_ref', 'customer_id', 'service_id', 'address_id', 'provider_id',
+        'booking_ref', 'customer_id', 'service_id', 'address_id',
         'scheduled_at', 'duration_minutes', 'number_of_workers', 'worker_gender',
         'number_of_children', 'number_of_persons', 'child_age_groups', 'selected_options',
         'price_subtotal', 'tax_amount', 'discount_amount', 'total_amount', 'coupon_id',
@@ -64,11 +64,6 @@ class Booking extends Model
     public function address()
     {
         return $this->belongsTo(CustomerAddress::class, 'address_id');
-    }
-
-    public function provider()
-    {
-        return $this->belongsTo(Provider::class);
     }
 
     public function assignments()

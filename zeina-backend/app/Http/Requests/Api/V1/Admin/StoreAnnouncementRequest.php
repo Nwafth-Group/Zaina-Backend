@@ -3,10 +3,10 @@
 namespace App\Http\Requests\Api\V1\Admin;
 
 use Illuminate\Contracts\Validation\ValidationRule;
-use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use App\Http\Requests\Api\V1\CustomFormRequest;
 
-class StoreAnnouncementRequest extends FormRequest
+class StoreAnnouncementRequest extends CustomFormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -43,7 +43,7 @@ class StoreAnnouncementRequest extends FormRequest
     {
         $validator->after(function ($validator) {
             if (! $this->boolean('send_to_all') && empty($this->input('customer_ids'))) {
-                $validator->errors()->add('customer_ids', __('validation.required'));
+                $validator->errors()->add('customer_ids', __('validation.announcement.recipients_required'));
             }
         });
     }

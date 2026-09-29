@@ -10,7 +10,7 @@ class ServiceSchedule extends Model
     /** @use HasFactory<\Database\Factories\ServiceScheduleFactory> */
     use HasFactory;
     protected $fillable = [
-        'service_id', 'day', 'start_time', 'end_time', 'is_active' , 'schedule_date'
+        'service_id', 'day', 'start_time', 'end_time', 'is_active'
     ];
 
     public function service()

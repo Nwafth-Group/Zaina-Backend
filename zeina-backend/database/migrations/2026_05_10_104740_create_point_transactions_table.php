@@ -14,8 +14,14 @@ return new class extends Migration
         Schema::create('point_transactions', function (Blueprint $table) {
         $table->id();
         $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
-        $table->enum('type', ['earn', 'redeem']); 
+        $table->string('type'); 
         $table->integer('amount'); 
+        $table->integer('points_before')->default(0);
+        $table->integer('points_after')->default(0);
+        $table->string('reason')->nullable();
+        $table->string('created_by')->nullable();
+        $table->foreignId('created_by_user_id')->nullable()->constrained('users')->nullOnDelete();
+        $table->date('expiration_date')->nullable();
         $table->string('title_ar');
         $table->string('title_en');
         $table->nullableMorphs('reference'); 

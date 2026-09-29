@@ -147,11 +147,10 @@ class CustomerBookingService
                 }
             }
             if (!$selectedTeam) {
-                throw ValidationException::withMessages([
-                    'workers_count' => __('messages.no_workers_available'),
-                ]);
+                $allocatedWorkers = collect();
+            } else {
+                $allocatedWorkers = $selectedTeam->workers;
             }
-            $allocatedWorkers = $selectedTeam->workers;
         } else {
             $allocatedWorkers = $this->allocateWorkers($availableWorkers, (int) $data['workers_count'], $data['preferred_worker_ids'] ?? []);
         }
@@ -161,7 +160,7 @@ class CustomerBookingService
         $pricing = $this->calculatePricing(
             $service,
             $address,
-            $allocatedWorkers->count(),
+            $isTeamService ? ($allocatedWorkers->count() ?: ($service->min_workers ?? 3)) : $allocatedWorkers->count(),
             count($dates),
             $data['visit_type'] ?? 'single_visit',
             $data['coupon_code'] ?? null,
@@ -176,8 +175,8 @@ class CustomerBookingService
             'worker_ids' => $allocatedWorkers->pluck('id')->toArray(),
             'pricing' => $pricing['pricing'],
         ];
-        if ($isTeamService && isset($selectedTeam) && $selectedTeam) {
-            $res['team_id'] = $selectedTeam->id;
+        if ($isTeamService) {
+            $res['team_id'] = ($selectedTeam && $selectedTeam->id) ? $selectedTeam->id : null;
         }
 
         return $res;
@@ -265,45 +264,53 @@ class CustomerBookingService
             $this->validateShiftBoundaries($service, $date, $times['start_str'], $times['end_str']);
         }
 
-        $workerIds = $data['worker_ids'];
+        $isTeamService = $service->is_team_based ?? in_array($service->service_code, Service::getTeamBasedCodes());
+        $workerIds = $data['worker_ids'] ?? [];
 
-        // 5. Ensure allocated workers are active and not double-booked (overlap check) across all dates
-        foreach ($workerIds as $workerId) {
-            $workerQuery = $service->workers()
-                ->where('workers.id', $workerId)
-                ->where('workers.status', 'active');
+        if (empty($workerIds) && !$isTeamService) {
+            throw new \Exception(__('validation.create_booking.worker_ids_required'), 422);
+        }
 
-            $gender = $data['worker_gender'] ?? null;
-            if (empty($gender) && ($service->service_code === 'DOMESTIC_HELPER_HOURLY' || $service->service_code === 'BABYSITTER_HOURLY' || (is_array($service->worker_gender_options) && count($service->worker_gender_options) === 1 && in_array('Female', $service->worker_gender_options)))) {
-                $gender = 'Female';
-            }
+        // 5. Ensure allocated workers are active and not double-booked (overlap check) across all dates (if workers are provided)
+        if (!empty($workerIds)) {
+            foreach ($workerIds as $workerId) {
+                $workerQuery = $service->workers()
+                    ->where('workers.id', $workerId)
+                    ->where('workers.status', 'active');
 
-            if ($gender) {
-                $workerQuery->where('gender', strtolower($gender));
-            }
+                $gender = $data['worker_gender'] ?? null;
+                if (empty($gender) && ($service->service_code === 'DOMESTIC_HELPER_HOURLY' || $service->service_code === 'BABYSITTER_HOURLY' || (is_array($service->worker_gender_options) && count($service->worker_gender_options) === 1 && in_array('Female', $service->worker_gender_options)))) {
+                    $gender = 'Female';
+                }
 
-            $workerExists = $workerQuery->exists();
+                if ($gender) {
+                    $workerQuery->where('gender', strtolower($gender));
+                }
 
-            if (! $workerExists) {
-                throw new \Exception(__('messages.invalid_worker_for_service'), 422);
-            }
+                $workerExists = $workerQuery->exists();
 
-            $conflictService = app(\App\Service\Booking\BookingScheduleConflictService::class);
-            $worker = \App\Models\Worker::find($workerId);
-            foreach ($dates as $date) {
-                $conflictErr = $conflictService->checkWorkerConflict($worker, $date, $times['start_str'], $times['end_str'], null, true);
-                if ($conflictErr) {
-                    throw new \Exception($conflictErr, 422);
+                if (! $workerExists) {
+                    throw new \Exception(__('messages.invalid_worker_for_service'), 422);
+                }
+
+                $conflictService = app(\App\Service\Booking\BookingScheduleConflictService::class);
+                $worker = \App\Models\Worker::find($workerId);
+                foreach ($dates as $date) {
+                    $conflictErr = $conflictService->checkWorkerConflict($worker, $date, $times['start_str'], $times['end_str'], null, true);
+                    if ($conflictErr) {
+                        throw new \Exception($conflictErr, 422);
+                    }
                 }
             }
         }
 
         // 6. Calculate prices
         $options = $data['options'] ?? $data['selected_options'] ?? [];
+        $pricingWorkerCount = !empty($workerIds) ? count($workerIds) : ($service->min_workers ?? 3);
         $pricing = $this->calculatePricing(
             $service,
             $address,
-            count($workerIds),
+            $pricingWorkerCount,
             count($dates),
             $data['visit_type'] ?? 'single_visit',
             $data['coupon_code'] ?? null,
@@ -322,19 +329,21 @@ class CustomerBookingService
         // 8. Run actual database transaction for insertion
         DB::beginTransaction();
         try {
-            // Lock database records to guard against parallel transactions
-            BookingAssignment::whereIn('worker_id', $workerIds)
-                ->where('status', 'active')
-                ->whereHas('booking', function ($q) use ($dates, $times) {
-                    $q->whereIn('booking_date', $dates)
-                        ->whereIn('status', ['Upcoming', 'inService'])
-                        ->where(function ($timeQ) use ($times) {
-                            $timeQ->where('start_time', '<', $times['end_str'])
-                                ->where('end_time', '>', $times['start_str']);
-                        });
-                })
-                ->lockForUpdate()
-                ->exists();
+            // Lock database records to guard against parallel transactions (if workers provided)
+            if (!empty($workerIds)) {
+                BookingAssignment::whereIn('worker_id', $workerIds)
+                    ->where('status', 'active')
+                    ->whereHas('booking', function ($q) use ($dates, $times) {
+                        $q->whereIn('booking_date', $dates)
+                            ->whereIn('status', ['Upcoming', 'inService'])
+                            ->where(function ($timeQ) use ($times) {
+                                $timeQ->where('start_time', '<', $times['end_str'])
+                                    ->where('end_time', '>', $times['start_str']);
+                            });
+                    })
+                    ->lockForUpdate()
+                    ->exists();
+            }
 
             $teamId = $data['team_id'] ?? null;
             if (! $teamId && ! empty($workerIds)) {
@@ -374,7 +383,7 @@ class CustomerBookingService
                 'customer_id' => $user->id,
                 'service_id' => $data['service_id'],
                 'address_id' => $data['address_id'],
-                'worker_id' => $workerIds[0],
+                'worker_id' => !empty($workerIds) ? $workerIds[0] : null,
                 'team_id' => $teamId,
                 'coupon_id' => $pricing['coupon'] ? $pricing['coupon']->id : null,
                 'booking_date' => $dates[0],
@@ -382,7 +391,7 @@ class CustomerBookingService
                 'end_time' => $times['end_str'],
                 'duration_minutes' => $times['duration_minutes'],
                 'worker_gender' => $data['worker_gender'] ?? null,
-                'number_of_workers' => count($workerIds),
+                'number_of_workers' => !empty($workerIds) ? count($workerIds) : ($service->min_workers ?? 1),
                 'number_of_children' => $service->service_code === 'BABYSITTER_HOURLY' ? ($data['number_of_children'] ?? null) : null,
                 'number_of_persons' => $service->service_code === 'PEDICURE_MANICURE' ? ($data['number_of_persons'] ?? 1) : null,
                 'child_age_groups' => $service->service_code === 'BABYSITTER_HOURLY' ? ($data['child_age_groups'] ?? null) : null,
@@ -482,7 +491,7 @@ class CustomerBookingService
                 ->findOrFail($addressId);
         }
 
-        $service = Service::with('duration')->findOrFail($data['service_id']);
+        $service = Service::findOrFail($data['service_id']);
 
         $isCovered = false;
         if ($address->service_zone_id) {
@@ -503,7 +512,7 @@ class CustomerBookingService
 
     public function calculateBookingTimes(Service $service, string $date, string $startTime, ?int $customDuration = null): array
     {
-        $periodHours = $customDuration ?: ($service->min_duration ?: ($service->duration->service_period_hours ?? 2));
+        $periodHours = $customDuration ?: ($service->min_duration ?: ($service->default_duration ?? 2));
         $durationMinutes = $periodHours * 60;
 
         $start = Carbon::parse($startTime);

@@ -4,10 +4,10 @@ namespace App\Http\Requests\Api\V1\Customer;
 
 use App\Models\Service;
 use App\Traits\ParsesChildAgeGroups;
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\Api\V1\CustomFormRequest;
 use Illuminate\Support\Facades\Log;
 
-class GetAvailableDatesRequest extends FormRequest
+class GetAvailableDatesRequest extends CustomFormRequest
 {
     use ParsesChildAgeGroups;
 

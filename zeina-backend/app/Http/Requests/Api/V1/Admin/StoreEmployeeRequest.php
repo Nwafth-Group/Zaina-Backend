@@ -2,9 +2,9 @@
 
 namespace App\Http\Requests\Api\V1\Admin;
 
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\Api\V1\CustomFormRequest;
 
-class StoreEmployeeRequest extends FormRequest
+class StoreEmployeeRequest extends CustomFormRequest
 {
     /**
      * Determine if the user is authorized to make this request.

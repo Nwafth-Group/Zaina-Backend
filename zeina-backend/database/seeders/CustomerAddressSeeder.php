@@ -12,10 +12,8 @@ class CustomerAddressSeeder extends Seeder
 {
     public function run(): void
     {
-        // استخدام Faker باللغة العربية
         $faker = Faker::create('ar_SA'); 
 
-        // جلب العملاء مع المستخدمة سارة التي أضفناها للتجارب
         $users = User::where('type', 'customer')->get(); 
 
         if ($users->isEmpty()) {
@@ -32,11 +30,10 @@ class CustomerAddressSeeder extends Seeder
         foreach ($users as $user) {
             $zoneId = $serviceZones->isNotEmpty() ? $serviceZones->random()->id : null;
             
-            // 1. إنشاء عنوان افتراضي (المنزل)
             CustomerAddress::create([
                 'user_id'            => $user->id,
                 'service_zone_id'    => $zoneId,
-                'latitude'           => $faker->latitude($min = 29.9, $max = 30.1), // إحداثيات قريبة من القاهرة
+                'latitude'           => $faker->latitude($min = 29.9, $max = 30.1),
                 'longitude'          => $faker->longitude($min = 31.1, $max = 31.4),
                 'label'              => 'Home',
                 'street'             => 'شارع ' . $faker->firstName,
@@ -44,16 +41,15 @@ class CustomerAddressSeeder extends Seeder
                 'building_no'        => (string) $faker->numberBetween(1, 100),
                 'floor'              => (string) $faker->numberBetween(1, 15),
                 'apartment_no'       => (string) $faker->numberBetween(1, 50),
-                'contact_name'       => $user->first_name . ' ' . $user->last_name, // اسم العميل نفسه
+                'contact_name'       => $user->first_name . ' ' . $user->last_name,
                 'phone_number'       => $user->phone_number ?? '010' . $faker->randomNumber(8, true),
-                'secondary_phone'    => null, // اختياري حسب الفيجما
+                'secondary_phone'    => null, 
                 'serviceable_status' => 'serviceable',
                 'notes'              => 'الرجاء الاتصال قبل الوصول بـ 15 دقيقة',
                 'is_default'         => true,
                 'is_active'          => true,
             ]);
 
-            // 2. إنشاء عنوان إضافي (العمل)
             CustomerAddress::create([
                 'user_id'            => $user->id,
                 'service_zone_id'    => $zoneId,

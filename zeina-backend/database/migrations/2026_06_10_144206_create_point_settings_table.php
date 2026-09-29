@@ -13,10 +13,11 @@ return new class extends Migration
     {
         Schema::create('point_settings', function (Blueprint $table) {
            $table->id();
-           $table->string('key')->unique(); // مثلاً: 'service_cycle_rules'
-           $table->string('action_type')->default('complete_bookings'); // نوع التصرف المربح
-           $table->integer('target_steps')->default(3); // كم خدمة مطلوب ينجزها؟
-           $table->integer('reward_points')->default(100); // كم نقطة بيكسب بس يخلص؟
+           $table->string('key')->unique();
+           $table->string('action_type')->default('complete_bookings');
+           $table->integer('target_steps')->default(3);
+           $table->integer('reward_points')->default(100);
+           $table->string('value')->nullable();
            $table->timestamps();
         });
     }

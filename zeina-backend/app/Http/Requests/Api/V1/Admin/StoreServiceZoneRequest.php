@@ -2,9 +2,9 @@
 
 namespace App\Http\Requests\Api\V1\Admin;
 
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\Api\V1\CustomFormRequest;
 
-class StoreServiceZoneRequest extends FormRequest
+class StoreServiceZoneRequest extends CustomFormRequest
 {
     public function authorize(): bool
     {

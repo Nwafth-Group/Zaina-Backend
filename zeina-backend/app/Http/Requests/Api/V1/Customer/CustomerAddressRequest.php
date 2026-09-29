@@ -2,9 +2,9 @@
 
 namespace App\Http\Requests\Api\V1\Customer;
 
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\Api\V1\CustomFormRequest;
 
-class CustomerAddressRequest extends FormRequest
+class CustomerAddressRequest extends CustomFormRequest
 {
     public function authorize(): bool
     {

@@ -13,11 +13,10 @@ return new class extends Migration
     {
         Schema::create('service_schedules', function (Blueprint $table) {
         $table->id();
-        $table->date('schedule_date')->nullable();
         $table->foreignId('service_id')->constrained('services')->cascadeOnDelete();
         $table->enum('day', ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday']);
-        $table->time('start_time'); // مثلاً 13:00:00 (1 PM)
-        $table->time('end_time');   // مثلاً 16:00:00 (4 PM)
+        $table->time('start_time');
+        $table->time('end_time');
         $table->boolean('is_active')->default(true);
         $table->timestamps();
         });

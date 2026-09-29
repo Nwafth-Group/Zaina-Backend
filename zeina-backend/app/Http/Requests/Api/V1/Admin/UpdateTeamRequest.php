@@ -4,9 +4,9 @@ namespace App\Http\Requests\Api\V1\Admin;
 
 use App\Models\Team;
 use App\Models\Worker;
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\Api\V1\CustomFormRequest;
 
-class UpdateTeamRequest extends FormRequest
+class UpdateTeamRequest extends CustomFormRequest
 {
     public function authorize(): bool
     {

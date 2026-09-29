@@ -16,9 +16,12 @@ return new class extends Migration
         $table->foreignId('booking_id')->constrained()->cascadeOnDelete();
         $table->foreignId('customer_id')->constrained('users')->cascadeOnDelete();
         $table->morphs('reviewable'); 
-        $table->tinyInteger('rating'); // من 1 لـ 5
+        $table->tinyInteger('rating');
         $table->decimal('rating_percentage', 5, 2)->default(0.00);
         $table->text('comment')->nullable();
+        $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');
+        $table->foreignId('action_by')->nullable()->constrained('users')->nullOnDelete();
+        $table->timestamp('action_at')->nullable();
         $table->timestamps();
         $table->unique(['booking_id', 'reviewable_type', 'reviewable_id'], 'unique_booking_review');
         });

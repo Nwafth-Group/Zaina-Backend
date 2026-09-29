@@ -58,7 +58,6 @@ class ServiceController extends Controller
     {
         $service = Service::with([
             'category',
-            'duration',
             'rules',
             'workers.media',
             'teams',
@@ -80,7 +79,6 @@ class ServiceController extends Controller
     {
         $service->load([
             'category',
-            'duration',
             'rules',
             'workers.media',
             'teams.workers',

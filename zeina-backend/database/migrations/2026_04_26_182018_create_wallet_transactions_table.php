@@ -14,10 +14,10 @@ return new class extends Migration
         Schema::create('wallet_transactions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
-            $table->enum('type', ['credit', 'debit']);// credit = إيداع (سهم أخضر) | debit = سحب أو خصم (سهم أحمر)
+            $table->enum('type', ['credit', 'debit']);
             $table->decimal('amount', 10, 2);
             $table->string('title'); 
-            $table->string('reference_id')->nullable();//رقم مرجعي لربط الحركة بالحجز أو بعملية الدفع (اختياري بس مهم للبزنس)
+            $table->string('reference_id')->nullable();
             $table->timestamps();
         });
     }

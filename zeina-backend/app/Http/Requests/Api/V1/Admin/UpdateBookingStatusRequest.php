@@ -3,10 +3,10 @@
 namespace App\Http\Requests\Api\V1\Admin;
 
 use App\Enums\Admin\BookingStatus;
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\Api\V1\CustomFormRequest;
 use Illuminate\Validation\Rule;
 
-class UpdateBookingStatusRequest extends FormRequest
+class UpdateBookingStatusRequest extends CustomFormRequest
 {
     public function authorize(): bool
     {

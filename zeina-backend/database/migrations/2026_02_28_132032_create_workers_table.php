@@ -21,6 +21,7 @@ return new class extends Migration
             $table->enum('gender', ['male', 'female'])->nullable();
             $table->decimal('avg_rating', 3, 2)->default(0.00); 
             $table->enum('status', ['active', 'inactive', 'suspended'])->default('active'); // متاح أو غير متاح
+            $table->foreignId('team_id')->nullable()->constrained('teams')->nullOnDelete();
             $table->timestamps();
         });
     }

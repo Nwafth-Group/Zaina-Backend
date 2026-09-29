@@ -15,9 +15,9 @@ class Service extends Model implements Auditable
     protected $fillable = [
         'category_id', 'type', 'worker_gender_options', 'pricing_type', 'name_ar', 'name_en',
         'description_ar', 'description_en', 'status', 'avg_rating', 'features',
-        'service_code', 'available_visit_types', 'discount_value', 'terms_ar',
-        'terms_en', 'acceptance_required', 'start_time', 'end_time',
-        'default_duration', 'duration_unit', 'has_duration_range',
+        'service_code', 'available_visit_types', 'terms_ar',
+        'terms_en', 'start_time', 'end_time',
+        'default_duration', 'has_duration_range',
         'min_duration', 'max_duration', 'min_workers', 'max_workers', 'base_price',
         'min_children', 'max_children', 'covered_persons_per_worker',
         'points_redemption_enabled', 'points_redemption_method', 'points_required_fixed', 'points_conversion_rate',
@@ -27,9 +27,7 @@ class Service extends Model implements Auditable
         'features' => 'array',
         'available_visit_types' => 'array',
         'worker_gender_options' => 'array',
-        'acceptance_required' => 'boolean',
         'has_duration_range' => 'boolean',
-        'discount_value' => 'decimal:2',
         'base_price' => 'decimal:2',
         'min_children' => 'integer',
         'max_children' => 'integer',
@@ -59,11 +57,6 @@ class Service extends Model implements Auditable
     public function category()
     {
         return $this->belongsTo(Category::class, 'category_id');
-    }
-
-    public function duration()
-    {
-        return $this->hasOne(ServiceDuration::class, 'service_id');
     }
 
     public function rules()

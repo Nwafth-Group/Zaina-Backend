@@ -2,9 +2,9 @@
 
 namespace App\Http\Requests\Api\V1\Customer;
 
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\Api\V1\CustomFormRequest;
 
-class GetAvailableWorker extends FormRequest
+class GetAvailableWorker extends CustomFormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -30,7 +30,7 @@ class GetAvailableWorker extends FormRequest
 
     public function messages(){ 
         return [
-        'date.reqiured' => __('validation.getAvaliable.date_required'),
+        'date.required' => __('validation.getAvaliable.date_required'),
         'date.date_format' => __('validation.getAvaliable.date_format'),
         'start_time.required' => __('validation.getAvaliable.start_time_required'),
         'start_time.date_format' => __('validation.getAvaliable.start_time_format'),

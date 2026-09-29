@@ -14,9 +14,9 @@ return new class extends Migration
         Schema::create('user_cards', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->string('card_token'); // التوكن المشفر من بوابة الدفع
-            $table->string('last_four', 4); // لعرض آخر 4 أرقام فقط
-            $table->string('card_brand'); // مثل: visa, mastercard
+            $table->string('card_token');
+            $table->string('last_four', 4);
+            $table->string('card_brand');
             $table->string('card_holder_name')->nullable();
             $table->boolean('is_default')->default(false);
             $table->timestamps();

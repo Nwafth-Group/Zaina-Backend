@@ -142,7 +142,7 @@ class BookingScheduleConflictService
 
     /**
      * Check if a specific team is fully available for a slot.
-     * All 3 male workers of the team must pass the individual conflict and 60-minute buffer checks.
+     * All workers of the team must pass the individual conflict and 60-minute buffer checks.
      */
     public function isTeamAvailable(
         Team $team,
@@ -156,7 +156,7 @@ class BookingScheduleConflictService
         }
 
         $workers = $team->workers;
-        if ($workers->count() !== 3) {
+        if ($workers->isEmpty()) {
             return false;
         }
 

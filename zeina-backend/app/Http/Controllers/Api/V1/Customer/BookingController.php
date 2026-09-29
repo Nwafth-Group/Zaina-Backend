@@ -117,12 +117,6 @@ class BookingController extends Controller
         // Branch A: Team-Based Services (Services 6 to 11)
         // -------------------------------------------------------------
         if ($service->isTeamBased()) {
-            $teams = $service->teams()->where('teams.status', 'active')->with('workers')->get();
-            if ($teams->isEmpty()) {
-                return $this->successResponse([], 'No active teams available for this service.');
-            }
-
-            $conflictService = app(\App\Service\Booking\BookingScheduleConflictService::class);
             $durationHours = (int) ($data['duration'] ?? ($service->default_duration ?? 2));
 
             for ($date = $startDate->copy(); $date->lte($endDate); $date->addDay()) {
@@ -162,44 +156,9 @@ class BookingController extends Controller
                         }
                     }
 
-                    $teamAvailable = false;
-                    foreach ($teams as $team) {
-                        if ($conflictService->isTeamAvailable($team, $dateStr, $shiftStart, $shiftEnd)) {
-                            $teamAvailable = true;
-                            break;
-                        }
-                    }
-
-                    if ($teamAvailable) {
-                        $dates[] = $dateStr.' 00:00:00';
-                    }
+                    $dates[] = $dateStr.' 00:00:00';
                 } else {
-                    $windowStart = Carbon::parse($service->start_time ?? '08:00');
-                    $windowEnd = Carbon::parse($service->end_time ?? '20:00');
-
-                    $slots = [];
-                    $cur = $windowStart->copy();
-                    while ($cur->copy()->addHours($durationHours)->lte($windowEnd)) {
-                        $slots[] = [
-                            'start' => $cur->format('H:i:s'),
-                            'end' => $cur->copy()->addHours($durationHours)->format('H:i:s'),
-                        ];
-                        $cur->addHours(2);
-                    }
-
-                    $dateHasAvailableTeam = false;
-                    foreach ($slots as $slot) {
-                        foreach ($teams as $team) {
-                            if ($conflictService->isTeamAvailable($team, $dateStr, $slot['start'], $slot['end'])) {
-                                $dateHasAvailableTeam = true;
-                                break 2;
-                            }
-                        }
-                    }
-
-                    if ($dateHasAvailableTeam) {
-                        $dates[] = $dateStr.' 00:00:00';
-                    }
+                    $dates[] = $dateStr.' 00:00:00';
                 }
             }
 
@@ -466,7 +425,7 @@ class BookingController extends Controller
             ->where('is_active', true)
             ->get();
 
-        $periodMinutes = $booking->duration_minutes ?? (($booking->service->duration->service_period_hours ?? 2) * 60);
+        $periodMinutes = $booking->duration_minutes ?? (($booking->service->default_duration ?? 2) * 60);
         $workerIds = $booking->workers->pluck('id')->toArray();
 
         $existingBookings = BookingAssignment::whereIn('worker_id', $workerIds)

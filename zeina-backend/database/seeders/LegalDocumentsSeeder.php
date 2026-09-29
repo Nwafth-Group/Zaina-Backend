@@ -9,7 +9,6 @@ class LegalDocumentsSeeder extends Seeder
 {
     public function run(): void
     {
-        // 1. بيانات الشروط والأحكام (Terms)
         $terms = [
             [
                 'type'     => 'terms',
@@ -29,7 +28,6 @@ class LegalDocumentsSeeder extends Seeder
             ]
         ];
 
-        // 2. بيانات سياسة الخصوصية (Privacy)
         $privacy = [
             [
                 'type'     => 'privacy',
@@ -41,7 +39,6 @@ class LegalDocumentsSeeder extends Seeder
             ]
         ];
 
-        // 3. بيانات من نحن (About Us)
         $aboutUs = [
             [
                 'type'     => 'about_us',
@@ -53,7 +50,6 @@ class LegalDocumentsSeeder extends Seeder
             ]
         ];
 
-        // إدخال البيانات بأمان ومقاومة التكرار بناءً على العنوان المفتاحي
         foreach (array_merge($terms, $privacy, $aboutUs) as $doc) {
             DB::table('legal_documents')->updateOrInsert(
                 ['type' => $doc['type'], 'title_en' => $doc['title_en']],

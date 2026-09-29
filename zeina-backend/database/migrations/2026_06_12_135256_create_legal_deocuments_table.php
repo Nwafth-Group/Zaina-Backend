@@ -14,12 +14,12 @@ return new class extends Migration
         
         Schema::create('legal_documents', function (Blueprint $table) {
            $table->id();
-            $table->enum('type', ['terms', 'privacy', 'about_us']); // تحديد نوع المستند
+            $table->enum('type', ['terms', 'privacy', 'about_us']);
             $table->string('title_ar');
             $table->string('title_en');
             $table->text('content_ar');
             $table->text('content_en');
-            $table->integer('sort_order')->default(0); // لترتيب ظهور البنود في التطبيق
+            $table->integer('sort_order')->default(0);
             $table->boolean('is_active')->default(true);
             $table->timestamps();
         });

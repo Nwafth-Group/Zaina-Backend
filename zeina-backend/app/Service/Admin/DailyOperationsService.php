@@ -29,7 +29,6 @@ class DailyOperationsService
             'address.serviceZone',
             'starter',
             'completer',
-            'provider'
         ])->where('booking_date', $date);
 
         if (!empty($filters['status'])) {

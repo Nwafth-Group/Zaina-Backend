@@ -14,8 +14,8 @@ return new class extends Migration
         Schema::create('user_devices', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
-            $table->text('fcm_token'); // الرمز الفريد للجهاز الراجع من الفايربيز
-            $table->string('device_type')->nullable(); // ios, android, web (لغايات الإحصاء)
+            $table->text('fcm_token');
+            $table->string('device_type')->nullable();
             $table->timestamps();
         });
     }

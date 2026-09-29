@@ -2,9 +2,9 @@
 
 namespace App\Http\Requests\Api\V1\Customer;
 
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\Api\V1\CustomFormRequest;
 
-class CancelBookingRequest extends FormRequest
+class CancelBookingRequest extends CustomFormRequest
 {
     /**
      * Determine if the user is authorized to make this request.

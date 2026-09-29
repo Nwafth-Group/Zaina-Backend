@@ -13,10 +13,8 @@ class CouponSeeder extends Seeder
 {
     public function run(): void
     {
-        // 1. جلب عينات من البيانات لربط الكوبونات المخصصة
         $customers = User::where('type', 'customer')->take(2)->get();
         
-        // جلب خدمات التنظيف (التي تبدأ بـ Regular أو Deep أو Post-Construction) لتخصيص كوبون لها
         $cleaningServices = Service::where('name_en', 'like', '%Cleaning%')->pluck('id')->toArray();
         $allServices = Service::pluck('id')->toArray();
 
@@ -29,8 +27,8 @@ class CouponSeeder extends Seeder
             [
                 'type' => 'fixed',
                 'value' => 50.00,
-                'usage_limit' => 1000, // متاح لأول 1000 مستخدم في التطبيق
-                'user_usage_limit' => 1, // كل كستمر يستعمله مرة واحدة فقط
+                'usage_limit' => 1000,
+                'user_usage_limit' => 1,
                 'used_count' => 0,
                 'start_date' => Carbon::now(),
                 'end_date' => Carbon::now()->addMonths(1),
@@ -66,16 +64,15 @@ class CouponSeeder extends Seeder
                 'type' => 'fixed',
                 'value' => 150.00,
                 'usage_limit' => 50,
-                'user_usage_limit' => 2, // مسموح للمستخدم المخصص استعماله مرتين
+                'user_usage_limit' => 2,
                 'used_count' => 0,
                 'start_date' => Carbon::now(),
                 'end_date' => Carbon::now()->addWeeks(2),
-                'is_for_all_users' => false, // 🌟 مخصص وليس عام
+                'is_for_all_users' => false,
                 'is_for_all_services' => true,
                 'status' => 'active',
             ]
         );
-        // ربط الكوبون بالمستخدمين الذين جلبناهم في البداية
         $vipCoupon->users()->sync($customers->pluck('id')->toArray());
         ;
 
@@ -89,18 +86,17 @@ class CouponSeeder extends Seeder
                 ['code' => 'CLEAN20'],
                 [
                     'type' => 'percentage',
-                    'value' => 20.00, // 20%
+                    'value' => 20.00,
                     'usage_limit' => 500,
                     'user_usage_limit' => 1,
                     'used_count' => 0,
                     'start_date' => Carbon::now(),
                     'end_date' => Carbon::now()->addDays(10),
                     'is_for_all_users' => true,
-                    'is_for_all_services' => false, // 🌟 مخصص لخدمات معينة وليس الكل
+                    'is_for_all_services' => false,
                     'status' => 'active',
                 ]
             );
-            // ربط الكوبون بخدمات التنظيف فقط في الجدول الوسيط
             $cleanCoupon->services()->sync($cleaningServices);
         }
 
@@ -117,8 +113,8 @@ class CouponSeeder extends Seeder
                 'usage_limit' => 100,
                 'user_usage_limit' => 1,
                 'used_count' => 0,
-                'start_date' => Carbon::now()->subMonths(2), // بدأ قبل شهرين
-                'end_date' => Carbon::now()->subMonth(),    // انتهى قبل شهر ❌
+                'start_date' => Carbon::now()->subMonths(2),
+                'end_date' => Carbon::now()->subMonth(),
                 'is_for_all_users' => true,
                 'is_for_all_services' => true,
                 'status' => 'active',
@@ -141,13 +137,12 @@ class CouponSeeder extends Seeder
                     'used_count' => 0,
                     'start_date' => Carbon::now(),
                     'end_date' => Carbon::now()->addDays(5),
-                    'is_for_all_users' => false,    // 🌟 كستمر محدد
-                    'is_for_all_services' => false, // 🌟 خدمة محددة
+                    'is_for_all_users' => false,
+                    'is_for_all_services' => false,
                     'status' => 'active',
                 ]
             );
             
-            // قفل التقاطع في الجداول الوسيطة
             $exclusiveCoupon->users()->sync([$customers->first()->id]);
             $exclusiveCoupon->services()->sync([$cleaningServices[0]]);
         }

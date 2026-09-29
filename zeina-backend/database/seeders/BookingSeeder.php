@@ -20,7 +20,7 @@ class BookingSeeder extends Seeder
     {
         // 1. جلب البيانات الأساسية
         $customers = User::where('type', 'customer')->get();
-        $services = Service::with(['workers', 'schedules', 'duration'])->get();
+        $services = Service::with(['workers', 'schedules'])->get();
 
         if ($customers->isEmpty() || $services->isEmpty()) {
             $this->command->error('يجب أن يكون لديك عملاء وخدمات مسجلة لتشغيل الـ Seeder.');
@@ -46,7 +46,7 @@ class BookingSeeder extends Seeder
                 }
                 $validTestDateStr = $testDate->format('Y-m-d');
 
-                $periodHours = $service->duration->service_period_hours ?? 2;
+                $periodHours = $service->default_duration ?? 2;
                 $testWorkers = $service->workers->take(3);
                 
                 if ($testWorkers->count() >= 2 && $testAddress) {
@@ -101,7 +101,7 @@ class BookingSeeder extends Seeder
 
                     $randomWorker = $randomService->workers->random();
                     $randomStatus = $statuses[array_rand($statuses)];
-                    $periodHours  = $randomService->duration->service_period_hours ?? 2;
+                    $periodHours  = $randomService->default_duration ?? 2;
                     
                     // توليد تاريخ منطقي بناءً على حالة الحجز
                     if ($randomStatus === 'Upcoming') {

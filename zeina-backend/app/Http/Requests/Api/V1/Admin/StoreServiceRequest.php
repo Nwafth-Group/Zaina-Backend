@@ -67,7 +67,6 @@ class StoreServiceRequest extends CustomFormRequest
             'available_visit_types' => 'required|array|min:1',
             'available_visit_types.*.type' => 'required|string|in:single_visit,3_days_per_week',
             'available_visit_types.*.discount' => 'nullable|numeric|min:0|max:100',
-            'discount_value' => 'nullable|numeric|min:0',
             'base_price' => 'nullable|numeric|min:0',
 
             // Service Sub-Items / Options
@@ -92,7 +91,6 @@ class StoreServiceRequest extends CustomFormRequest
             'start_time' => 'nullable|date_format:H:i',
             'end_time' => 'nullable|date_format:H:i|after:start_time',
             'default_duration' => 'required|integer|min:1',
-            'duration_unit' => 'nullable|string|in:Hours,Days',
             'has_duration_range' => 'nullable|boolean',
             'min_duration' => 'nullable|integer|min:1',
             'max_duration' => 'nullable|integer|min:1|gte:min_duration',
@@ -110,12 +108,6 @@ class StoreServiceRequest extends CustomFormRequest
             'child_age_groups.*.children_count' => 'required_with:child_age_groups|integer|min:1',
             'child_age_groups.*.required_worker_count' => 'required_with:child_age_groups|integer|min:1',
             'child_age_groups.*.status' => 'required_with:child_age_groups|in:active,inactive',
-
-            // Durations array for backward compatibility
-            'durations' => 'nullable|array',
-            'durations.service_period_hours' => 'nullable|integer|min:1',
-            'durations.allowed_contract_durations' => 'nullable|array',
-            'durations.min_contract_months' => 'nullable|integer|min:1',
 
             // Service Shifts & Schedules
             'working_days' => 'nullable|array|min:1',
@@ -139,20 +131,12 @@ class StoreServiceRequest extends CustomFormRequest
             'rules.reschedule_cutoff_hours' => 'required_if:rules.allow_reschedule,true|integer|min:0',
             'rules.allow_same_day' => 'nullable|boolean',
             'rules.max_advance_booking_days' => 'nullable|integer|min:0',
-            'rules.lead_time_min_hours' => 'nullable|integer|min:0',
-            'rules.lead_time_max_days' => 'nullable|integer|min:1',
-            'rules.late_cancel_action' => 'nullable|in:fee,block,manual',
-            'rules.late_cancel_fee_type' => 'nullable|in:percent,fixed',
-            'rules.late_cancel_fee_value' => 'nullable|numeric|min:0',
-            'rules.no_show_policy' => 'nullable|in:compensate,consumed',
-            'rules.max_changes_per_booking' => 'nullable|integer|min:0',
             'rules.arrival_buffer_minutes' => 'nullable|integer|min:0',
             'rules.late_arrival_grace_minutes' => 'nullable|integer|min:0',
 
             // Terms & Conditions
             'terms_ar' => 'required|string|max:5000',
             'terms_en' => 'required|string|max:5000',
-            'acceptance_required' => 'nullable|boolean',
         ];
 
         $serviceCode = $this->input('service_code');
@@ -330,17 +314,17 @@ class StoreServiceRequest extends CustomFormRequest
                     $maxChildren = $this->input('max_children');
 
                     if ($minChildren === null || $minChildren < 1) {
-                        $validator->errors()->add('min_children', 'Minimum number of children must be at least 1.');
+                        $validator->errors()->add('min_children', $isAr ? 'الحد الأدنى لعدد الأطفال يجب أن يكون 1 على الأقل.' : 'Minimum number of children must be at least 1.');
                     }
                     if ($minChildren !== null && $maxChildren !== null && $minChildren > $maxChildren) {
-                        $validator->errors()->add('max_children', 'Maximum number of children must be greater than or equal to minimum.');
+                        $validator->errors()->add('max_children', $isAr ? 'الحد الأقصى لعدد الأطفال يجب أن يكون أكبر من أو يساوي الحد الأدنى.' : 'Maximum number of children must be greater than or equal to minimum.');
                     }
 
                     $ageGroups = $this->input('child_age_groups', []);
                     $activeGroups = array_filter($ageGroups, fn ($g) => ($g['status'] ?? '') === 'active');
 
                     if (empty($activeGroups)) {
-                        $validator->errors()->add('child_age_groups', 'At least one active child age group must be configured before publishing.');
+                        $validator->errors()->add('child_age_groups', $isAr ? 'يجب تهيئة وتفعيل فئة عمرية واحدة للأطفال على الأقل قبل النشر.' : 'At least one active child age group must be configured before publishing.');
                     } else {
                         // Check for overlaps: sort active groups by age_from
                         usort($activeGroups, fn ($a, $b) => ($a['age_from'] ?? 0) <=> ($b['age_from'] ?? 0));
@@ -351,7 +335,7 @@ class StoreServiceRequest extends CustomFormRequest
                             $to = (int) ($current['age_to'] ?? 0);
 
                             if ($from > $to) {
-                                $validator->errors()->add("child_age_groups.{$i}.age_from", 'Age From must be less than or equal to Age To.');
+                                $validator->errors()->add("child_age_groups.{$i}.age_from", $isAr ? 'العمر من يجب أن يكون أقل من أو يساوي العمر إلى.' : 'Age From must be less than or equal to Age To.');
                             }
                         }
                     }
@@ -366,7 +350,7 @@ class StoreServiceRequest extends CustomFormRequest
                         $validator->errors()->add('worker_gender_options', $isAr ? 'خيار الجنس لهذه الخدمة يجب تحديده.' : 'Worker gender option must be selected.');
                     }
                 } elseif ($this->filled('pricing_type') && ! $isSecondService && ! $isThirdService && $this->input('type') !== 'other' && ! $isPedicureManicure) {
-                    $validator->errors()->add('pricing_type', 'Pricing type configuration is only allowed for the Hospitality, Babysitting, and Other services.');
+                    $validator->errors()->add('pricing_type', $isAr ? 'تهيئة نوع التسعير متاحة فقط لخدمات الضيافة، وجليسة الأطفال، والخدمات الأخرى.' : 'Pricing type configuration is only allowed for the Hospitality, Babysitting, and Other services.');
                 }
             },
         ];
@@ -394,29 +378,7 @@ class StoreServiceRequest extends CustomFormRequest
             'workers.min' => __('validation.create_service.workers_min'),
             'workers.*.integer' => __('validation.create_service.workers_integer'),
             'workers.*.exists' => __('validation.create_service.workers_exists'),
-            // 2. المدد (Durations)
-            'duration.required' => __('validation.create_service.duration_required'),
-            'duration.array' => __('validation.create_service.duration_array'),
-            // 'duration.allowed_durations.required_if'          => __('validation.create_service.allowed_durations_required_if'),
-            // 'duration.allowed_durations.array'                => __('validation.create_service.allowed_durations_array'),
-            // 'duration.allowed_durations.*.numeric'            => __('validation.create_service.allowed_durations_numeric'),
-
-            // 'duration.min_duration_hours.required_if'         => __('validation.create_service.min_duration_hours_required_if'),
-            // 'duration.min_duration_hours.numeric'             => __('validation.create_service.min_duration_hours_numeric'),
-            // 'duration.min_duration_hours.lte'                 => __('validation.create_service.min_duration_hours_lte'),
-            'duration.service_period_hours.required_if' => __('validation.create_service.service_period_hours_required_if'),
-            'duration.service_period_hours.integer' => __('validation.create_service.service_period_hours_integer'),
-            'duration.service_period_hours.min' => __('validation.create_service.service_period_hours_min'),
-
-            'duration.allowed_contract_durations.required_if' => __('validation.create_service.allowed_contract_durations_required_if'),
-            'duration.allowed_contract_durations.array' => __('validation.create_service.allowed_contract_durations_array'),
-            'duration.allowed_contract_durations.*.numeric' => __('validation.create_service.allowed_contract_durations_numeric'),
-
-            'duration.min_contract_months.required_if' => __('validation.create_service.min_contract_months_required_if'),
-            'duration.min_contract_months.numeric' => __('validation.create_service.min_contract_months_numeric'),
-            'duration.min_contract_months.lte' => __('validation.create_service.min_contract_months_lte'),
-
-            // 3. القواعد (Rules)
+            // 2. القواعد (Rules)
             'rules.required' => __('validation.create_service.rules_required'),
             'rules.array' => __('validation.create_service.rules_array'),
 
@@ -427,31 +389,6 @@ class StoreServiceRequest extends CustomFormRequest
             'rules.reschedule_cutoff_hours.required' => __('validation.create_service.reschedule_cutoff_hours_required'),
             'rules.reschedule_cutoff_hours.integer' => __('validation.create_service.reschedule_cutoff_hours_integer'),
             'rules.reschedule_cutoff_hours.min' => __('validation.create_service.reschedule_cutoff_hours_min'),
-
-            'rules.lead_time_min_hours.required' => __('validation.create_service.lead_time_min_hours_required'),
-            'rules.lead_time_min_hours.integer' => __('validation.create_service.lead_time_min_hours_integer'),
-            'rules.lead_time_min_hours.min' => __('validation.create_service.lead_time_min_hours_min'),
-
-            'rules.lead_time_max_days.required' => __('validation.create_service.lead_time_max_days_required'),
-            'rules.lead_time_max_days.integer' => __('validation.create_service.lead_time_max_days_integer'),
-            'rules.lead_time_max_days.min' => __('validation.create_service.lead_time_max_days_min'),
-
-            'rules.late_cancel_action.required' => __('validation.create_service.late_cancel_action_required'),
-            'rules.late_cancel_action.in' => __('validation.create_service.late_cancel_action_in'),
-
-            'rules.late_cancel_fee_type.required_if' => __('validation.create_service.late_cancel_fee_type_required_if'),
-            'rules.late_cancel_fee_type.in' => __('validation.create_service.late_cancel_fee_type_in'),
-
-            'rules.late_cancel_fee_value.required_if' => __('validation.create_service.late_cancel_fee_value_required_if'),
-            'rules.late_cancel_fee_value.numeric' => __('validation.create_service.late_cancel_fee_value_numeric'),
-            'rules.late_cancel_fee_value.min' => __('validation.create_service.late_cancel_fee_value_min'),
-
-            'rules.no_show_policy.required' => __('validation.create_service.no_show_policy_required'),
-            'rules.no_show_policy.in' => __('validation.create_service.no_show_policy_in'),
-
-            'rules.max_changes_per_booking.required' => __('validation.create_service.max_changes_per_booking_required'),
-            'rules.max_changes_per_booking.integer' => __('validation.create_service.max_changes_per_booking_integer'),
-            'rules.max_changes_per_booking.min' => __('validation.create_service.max_changes_per_booking_min'),
 
             // 5. الصورة
             'image.image' => __('validation.create_category.image_image'),

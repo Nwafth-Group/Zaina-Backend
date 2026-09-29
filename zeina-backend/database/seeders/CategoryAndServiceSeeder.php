@@ -6,7 +6,6 @@ use App\Models\Category;
 use App\Models\Service;
 use App\Models\ServiceZone;
 use App\Models\User;
-use App\Models\Worker;
 use App\Service\ServiceWriter;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Arr;
@@ -209,13 +208,12 @@ class CategoryAndServiceSeeder extends Seeder
                 'base_price' => $data['price'],
                 'start_time' => '08:00',
                 'end_time' => '20:00',
-                'duration_unit' => 'Hours',
                 'default_duration' => ($isSecondService || $isThirdService) ? 4 : $data['period'],
                 'has_duration_range' => ($isSecondService || $isThirdService),
                 'min_duration' => ($isSecondService || $isThirdService) ? 4 : null,
                 'max_duration' => ($isSecondService || $isThirdService) ? 6 : null,
-                'min_workers' => $isDeepCleaning ? 10 : ($isOtherNewService ? 3 : 1),
-                'max_workers' => $isDeepCleaning ? 10 : ($isOtherNewService ? 3 : 1),
+                'min_workers' => $isDeepCleaning ? 6 : ($isOtherNewService ? 6 : 1),
+                'max_workers' => $isDeepCleaning ? 6 : ($isOtherNewService ? 6 : 1),
                 'min_children' => $isThirdService ? 1 : null,
                 'max_children' => $isThirdService ? 6 : null,
                 'covered_persons_per_worker' => $data['covered_persons_per_worker'] ?? null,
@@ -230,7 +228,6 @@ class CategoryAndServiceSeeder extends Seeder
 
                 'terms_ar' => "1. يجب توفير بيئة عمل آمنة ومناسبة للعمالة.\n2. لا يحق للعميل تكليف العمال بأي أعمال خارج نطاق الخدمة المتفق عليها.\n3. يجب إبلاغ الشركة بأي تغييرات في موعد الخدمة قبل 24 ساعة على الأقل.\n4. الشركة غير مسؤولة عن فقدان المقتنيات الثمينة غير المصرح عنها.",
                 'terms_en' => "1. A safe and suitable working environment must be provided for the worker.\n2. The client is not entitled to assign any tasks to the worker outside the scope of the agreed service.\n3. The company must be notified of any changes to the service schedule at least 24 hours in advance.\n4. The company is not responsible for the loss of undeclared valuable items.",
-                'acceptance_required' => true,
 
                 'rules' => [
                     'allow_cancel' => true,

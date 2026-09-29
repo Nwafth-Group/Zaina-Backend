@@ -20,7 +20,7 @@ return new class extends Migration
                 $table->foreignId('worker_id')->nullable()->constrained('workers')->nullOnDelete();
                 $table->foreignId('assigned_admin_id')->nullable()->constrained('users')->nullOnDelete();
                 $table->string('reason'); // 'worker_didnt_show_up', 'late_arrival', 'poor_service_quality', 'wrong_charges', 'other'
-                $table->text('description')->nullable(); // when 'other' is selected
+                $table->text('description')->nullable();
                 $table->text('admin_notes')->nullable();
                 $table->string('status')->default('submitted');
                 $table->timestamps();

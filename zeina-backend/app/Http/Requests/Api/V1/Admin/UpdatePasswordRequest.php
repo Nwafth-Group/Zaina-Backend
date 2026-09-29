@@ -3,10 +3,10 @@
 namespace App\Http\Requests\Api\V1\Admin;
 
 use Illuminate\Contracts\Validation\Validator;
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\Api\V1\CustomFormRequest;
 use Illuminate\Support\Facades\Hash;
 
-class UpdatePasswordRequest extends FormRequest
+class UpdatePasswordRequest extends CustomFormRequest
 {
     public function authorize(): bool
     {
