@@ -169,6 +169,15 @@ Route::prefix('admin')->group(function () {
         });
 
         Route::prefix('transport-dispatch')->controller(TransportDispatchController::class)->group(function () {
+            // New Shift-Based Endpoints
+            Route::get('/shifts-overview', 'shiftsOverview')->middleware('permission:transport_dispatch.view');
+            Route::get('/shift-details', 'shiftDetails')->middleware('permission:transport_dispatch.view');
+            Route::post('/assign-worker', 'assignWorker')->middleware('permission:transport_dispatch.edit');
+            Route::post('/unassign-worker', 'unassignWorker')->middleware('permission:transport_dispatch.edit');
+            Route::get('/drivers/{id}/export-excel', 'exportDriverManifest')->middleware('permission:transport_dispatch.view');
+            Route::get('/shifts/export-excel', 'exportShiftManifest')->middleware('permission:transport_dispatch.view');
+
+            // Legacy / Region-Based Endpoints
             Route::get('/daily-overview', 'dailyOverview')->middleware('permission:transport_dispatch.view');
             Route::get('/region-details', 'regionGroupDetails')->middleware('permission:transport_dispatch.view');
             Route::get('/groups/{id}/export-excel', 'exportGroupExcel')->middleware('permission:transport_dispatch.view');
