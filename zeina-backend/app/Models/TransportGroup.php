@@ -50,4 +50,16 @@ class TransportGroup extends Model
                     ->withPivot('dropoff_sequence')
                     ->withTimestamps();
     }
+
+    public function groupWorkers()
+    {
+        return $this->hasMany(TransportGroupWorker::class, 'transport_group_id');
+    }
+
+    public function workers()
+    {
+        return $this->belongsToMany(Worker::class, 'transport_group_workers')
+                    ->withPivot('booking_id', 'dropoff_sequence', 'status', 'notes')
+                    ->withTimestamps();
+    }
 }

@@ -76,8 +76,8 @@ class DailyOperationsService
             'active_workers' => $allDayBookings->whereNotNull('worker_id')->pluck('worker_id')->unique()->count(),
         ];
 
-        // Fetch Transport Groups for this date
-        $transportGroups = TransportGroup::with(['driver', 'departurePoint', 'bookings'])
+        // Fetch Transport Groups and Group Workers for this date
+        $transportGroups = TransportGroup::with(['driver', 'departurePoint', 'bookings', 'groupWorkers'])
             ->whereDate('service_date', $date)
             ->get();
 
@@ -96,6 +96,22 @@ class DailyOperationsService
                     'vehicle_plate' => $tg->vehicle_plate ?? $tg->driver?->vehicle_plate,
                     'vehicle_capacity' => $tg->vehicle_capacity ?? $tg->driver?->vehicle_capacity ?? 5,
                 ];
+            }
+            foreach ($tg->groupWorkers as $gw) {
+                if ($gw->booking_id && !isset($groupLookup[$gw->booking_id])) {
+                    $groupLookup[$gw->booking_id] = [
+                        'group_id' => $tg->id,
+                        'start_time' => $tg->start_time,
+                        'departure_time' => $tg->departure_time,
+                        'departure_point' => $tg->departurePoint?->name,
+                        'driver_id' => $tg->driver?->id,
+                        'driver_name' => $tg->driver?->name,
+                        'driver_phone' => $tg->driver?->mobile ?? $tg->driver?->phone,
+                        'vehicle_type' => $tg->vehicle_type ?? $tg->driver?->vehicle_type,
+                        'vehicle_plate' => $tg->vehicle_plate ?? $tg->driver?->vehicle_plate,
+                        'vehicle_capacity' => $tg->vehicle_capacity ?? $tg->driver?->vehicle_capacity ?? 5,
+                    ];
+                }
             }
         }
 
