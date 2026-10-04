@@ -199,6 +199,7 @@ Route::prefix('admin')->group(function () {
                 Route::get('/{booking}/eligible-teams', 'eligibleTeams')->middleware('permission:bookings.edit');
                 Route::post('/{booking}/assign-team', 'assignTeam')->middleware('permission:bookings.edit');
                 Route::post('/{booking}/reschedule', 'reschedule')->middleware('permission:bookings.edit');
+                Route::get('/{booking}/reschedule-shifts', 'rescheduleShifts')->middleware('permission:bookings.view');
             });
             Route::get('/{booking}/contract', [BookingContractController::class, 'downloadContractForAdmin'])->middleware('permission:bookings.view');
         });

@@ -212,8 +212,8 @@ class CategoryAndServiceSeeder extends Seeder
                 'has_duration_range' => ($isSecondService || $isThirdService),
                 'min_duration' => ($isSecondService || $isThirdService) ? 4 : null,
                 'max_duration' => ($isSecondService || $isThirdService) ? 6 : null,
-                'min_workers' => $isDeepCleaning ? 6 : ($isOtherNewService ? 6 : 1),
-                'max_workers' => $isDeepCleaning ? 6 : ($isOtherNewService ? 6 : 1),
+                'min_workers' => $isDeepCleaning ? 6 : ($isOtherNewService ? 3 : 1),
+                'max_workers' => $isDeepCleaning ? 6 : ($isOtherNewService ? 3 : 6),
                 'min_children' => $isThirdService ? 1 : null,
                 'max_children' => $isThirdService ? 6 : null,
                 'covered_persons_per_worker' => $data['covered_persons_per_worker'] ?? null,
@@ -221,7 +221,7 @@ class CategoryAndServiceSeeder extends Seeder
                 'service_zone_ids' => $allZoneIds,
 
                 'working_days' => ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'saturday'],
-                'shifts' => ($isSecondService || $isThirdService || $isPedicureManicure || $isOtherNewService) ? [] : [
+                'shifts' => ($isSecondService || $isThirdService || $isPedicureManicure) ? [] : [
                     ['start_time' => '08:00'],
                     ['start_time' => '14:00'],
                 ],

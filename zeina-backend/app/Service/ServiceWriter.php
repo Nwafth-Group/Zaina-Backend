@@ -24,7 +24,7 @@ class ServiceWriter
      * @var list<string>
      */
     private const BASE_FIELDS = [
-        'category_id', 'type', 'worker_gender_options', 'pricing_type', 'name_ar', 'name_en',
+        'category_id', 'type', 'worker_gender_options', 'pricing_type', 'is_team_based', 'name_ar', 'name_en',
         'description_ar', 'description_en', 'status', 'features',
         'service_code', 'available_visit_types', 'terms_ar',
         'terms_en', 'start_time', 'end_time',
@@ -40,7 +40,7 @@ class ServiceWriter
      * @var list<string>
      */
     private const RESPONSE_RELATIONS = [
-        'category', 'rules', 'workers', 'media', 'schedules',
+        'category', 'rules', 'workers', 'teams', 'media', 'schedules',
         'childAgeGroups', 'serviceZones', 'options',
     ];
 
@@ -103,51 +103,58 @@ class ServiceWriter
             $service->rules()->updateOrCreate(['service_id' => $service->id], $data['rules']);
         }
 
-        if (array_key_exists('workers', $data)) {
-            $workerIds = is_array($data['workers']) ? array_values(array_filter($data['workers'])) : [];
-            if (! empty($workerIds)) {
-                $isTeamBased = $service->isTeamBased();
+        $isTeamBased = $service->isTeamBased();
 
-                if ($isTeamBased) {
-                    // For team-based services (6 to 11), workers cannot be assigned to standard services (1 to 5)
-                    $assignedToStandard = DB::table('service_workers')
-                        ->join('services', 'services.id', '=', 'service_workers.service_id')
-                        ->whereIn('service_workers.worker_id', $workerIds)
-                        ->whereNotIn('services.service_code', Service::getTeamBasedCodes())
-                        ->exists();
+        if ($isTeamBased) {
+            if (array_key_exists('teams', $data)) {
+                $teamIds = is_array($data['teams']) ? array_values(array_filter($data['teams'])) : [];
+                $service->teams()->sync($teamIds);
 
-                    if ($assignedToStandard) {
-                        throw ValidationException::withMessages([
-                            'workers' => 'أحد العمال محجوز في خدمات بالساعة (1-5)، ولا يمكن إسناده لخدمات تخصصية.',
-                        ]);
-                    }
+                // Automatically sync workers belonging to these teams
+                if (!empty($teamIds)) {
+                    $teamWorkerIds = Worker::whereIn('team_id', $teamIds)->pluck('id')->toArray();
+                    $service->workers()->sync($teamWorkerIds);
                 } else {
-                    // For standard services (1 to 5), worker can only be assigned to one service
-                    $alreadyAssigned = DB::table('service_workers')
-                        ->whereIn('worker_id', $workerIds)
-                        ->where('service_id', '!=', $service->id)
-                        ->exists();
-
-                    if ($alreadyAssigned) {
-                        throw ValidationException::withMessages([
-                            'workers' => 'هذا العامل مسند لخدمة أخرى بالفعل. العامل في الخدمات العادية يسند لخدمة واحدة فقط.',
-                        ]);
-                    }
+                    $service->workers()->sync([]);
                 }
             }
-            $service->workers()->sync($workerIds);
-        }
+        } else {
+            // Worker-based service: clear teams to prevent inconsistency
+            $service->teams()->sync([]);
 
-        if (array_key_exists('teams', $data)) {
-            $teamIds = is_array($data['teams']) ? array_values(array_filter($data['teams'])) : [];
-            $service->teams()->sync($teamIds);
+            if (array_key_exists('workers', $data)) {
+                $workerIds = is_array($data['workers']) ? array_values(array_filter($data['workers'])) : [];
+                if (! empty($workerIds)) {
+                    $isSpecialized = in_array(strtoupper($service->service_code ?? ''), array_map('strtoupper', Service::getTeamBasedCodes()), true);
 
-            // Automatically sync workers belonging to these teams
-            if ($service->isTeamBased() && !empty($teamIds)) {
-                $teamWorkerIds = Worker::whereIn('team_id', $teamIds)->pluck('id')->toArray();
-                if (!empty($teamWorkerIds)) {
-                    $service->workers()->sync($teamWorkerIds);
+                    if ($isSpecialized) {
+                        // For specialized services (6 to 11), workers cannot be assigned to standard services (1 to 5)
+                        $assignedToStandard = DB::table('service_workers')
+                            ->join('services', 'services.id', '=', 'service_workers.service_id')
+                            ->whereIn('service_workers.worker_id', $workerIds)
+                            ->whereNotIn('services.service_code', Service::getTeamBasedCodes())
+                            ->exists();
+
+                        if ($assignedToStandard) {
+                            throw ValidationException::withMessages([
+                                'workers' => 'أحد العمال محجوز في خدمات بالساعة (1-5)، ولا يمكن إسناده لخدمات تخصصية.',
+                            ]);
+                        }
+                    } else {
+                        // For standard services (1 to 5), worker can only be assigned to one service
+                        $alreadyAssigned = DB::table('service_workers')
+                            ->whereIn('worker_id', $workerIds)
+                            ->where('service_id', '!=', $service->id)
+                            ->exists();
+
+                        if ($alreadyAssigned) {
+                            throw ValidationException::withMessages([
+                                'workers' => 'هذا العامل مسند لخدمة أخرى بالفعل. العامل في الخدمات العادية يسند لخدمة واحدة فقط.',
+                            ]);
+                        }
+                    }
                 }
+                $service->workers()->sync($workerIds);
             }
         }
 

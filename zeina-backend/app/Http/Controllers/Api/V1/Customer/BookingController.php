@@ -173,8 +173,20 @@ class BookingController extends Controller
             $data['duration'] = $service->default_duration ?? 6;
             $genderOptions = $service->worker_gender_options ?? [];
             $data['worker_gender'] = in_array('Male', $genderOptions) ? 'Male' : (count($genderOptions) > 0 ? $genderOptions[0] : 'Male');
-        } elseif ($service->service_code === 'BABYSITTER_HOURLY' || $service->service_code === 'DOMESTIC_HELPER_HOURLY') {
+        } elseif ($service->service_code === 'BABYSITTER_HOURLY' || $service->service_code === 'DOMESTIC_HELPER_HOURLY' || $service->service_code === 'PEDICURE_MANICURE') {
             $data['worker_gender'] = 'Female';
+        } else {
+            // Worker-based specialized services:
+            if (empty($data['workers_count'])) {
+                $data['workers_count'] = $service->min_workers ?? 1;
+            }
+            if (empty($data['duration'])) {
+                $data['duration'] = $service->default_duration ?? 2;
+            }
+            if (empty($data['worker_gender'])) {
+                $genderOptions = $service->worker_gender_options ?? [];
+                $data['worker_gender'] = in_array('Male', $genderOptions) ? 'Male' : (count($genderOptions) > 0 ? $genderOptions[0] : 'Male');
+            }
         }
 
         if ($service->service_code === 'BABYSITTER_HOURLY') {

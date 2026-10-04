@@ -106,17 +106,44 @@ class ServiceResource extends JsonResource
             'available_days' => $this->relationLoaded('schedules') && $this->schedules
                 ? $this->schedules->where('is_active', true)->pluck('day')->unique()->values()->toArray()
                 : [],
-            'available_shifts' => $this->relationLoaded('schedules') && $this->schedules
-                ? $this->schedules->where('is_active', true)->map(function ($s) {
-                    return [
-                        'start_time' => substr($s->start_time, 0, 5),
-                        'end_time' => substr($s->end_time, 0, 5),
-                    ];
-                })->unique(function ($item) {
-                    return $item['start_time'].'-'.$item['end_time'];
-                })->values()->toArray()
-                : [],
+            'available_shifts' => $this->getAvailableShifts(),
         ];
+    }
+
+    private function getAvailableShifts(): array
+    {
+        if (! $this->relationLoaded('schedules') || ! $this->schedules) {
+            return [];
+        }
+
+        $activeSchedules = $this->schedules->where('is_active', true);
+        if ($activeSchedules->isEmpty()) {
+            return [];
+        }
+
+        $uniqueShifts = $activeSchedules->map(function ($s) {
+            return [
+                'start_time' => substr($s->start_time, 0, 5),
+                'end_time' => substr($s->end_time, 0, 5),
+            ];
+        })->unique(function ($item) {
+            return $item['start_time'].'-'.$item['end_time'];
+        })->values();
+
+        // If there is only 1 schedule range and it spans the service's full daily operating window (>= 8 hours or matches service start/end),
+        // it represents daily working hours, NOT discrete shifts.
+        if ($uniqueShifts->count() === 1) {
+            $shift = $uniqueShifts->first();
+            $serviceStart = substr($this->start_time ?? '08:00', 0, 5);
+            $serviceEnd = substr($this->end_time ?? '20:00', 0, 5);
+
+            $durationMinutes = Carbon::parse($shift['start_time'])->diffInMinutes(Carbon::parse($shift['end_time']));
+            if (($shift['start_time'] === $serviceStart && $shift['end_time'] === $serviceEnd) || $durationMinutes >= 480) {
+                return [];
+            }
+        }
+
+        return $uniqueShifts->toArray();
     }
 
     private function getAvailableDates(): array

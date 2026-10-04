@@ -27,6 +27,7 @@ class AdminBookingResource extends JsonResource
                 ? trim(($this->customer->first_name ?? '') . ' ' . ($this->customer->last_name ?? ''))
                 : null,
             'customer_phone' => $this->customer?->phone_number,
+            'service_id' => $this->service_id,
             'service_name' => $this->service
                 ? ($lang === 'ar' ? $this->service->name_ar : $this->service->name_en)
                 : null,
@@ -50,6 +51,7 @@ class AdminBookingResource extends JsonResource
                 'code' => $this->team->code,
                 'name' => $lang === 'ar' ? $this->team->name_ar : $this->team->name_en,
             ] : null,
+            'is_team_based' => !empty($this->team_id) || ($this->service && $this->service->isTeamBased()),
             'selected_options' => is_array($this->selected_options)
                 ? $this->selected_options
                 : json_decode($this->selected_options ?? '[]', true),
