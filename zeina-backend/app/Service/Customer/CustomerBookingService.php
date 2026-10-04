@@ -44,6 +44,18 @@ class CustomerBookingService
             $data['worker_gender'] = in_array('Male', $genderOpts) ? 'Male' : (count($genderOpts) > 0 ? $genderOpts[0] : 'Male');
         } elseif ($service->service_code === 'BABYSITTER_HOURLY' || $service->service_code === 'DOMESTIC_HELPER_HOURLY' || $service->service_code === 'PEDICURE_MANICURE') {
             $data['worker_gender'] = 'Female';
+        } else {
+            // Worker-based specialized services (Services 6 to 11 when set to individual workers):
+            $genderOpts = $service->worker_gender_options ?? [];
+            if (empty($data['workers_count'])) {
+                $data['workers_count'] = $service->min_workers ?? 1;
+            }
+            if (empty($data['duration'])) {
+                $data['duration'] = $service->default_duration ?? 2;
+            }
+            if (empty($data['worker_gender'])) {
+                $data['worker_gender'] = in_array('Male', $genderOpts) ? 'Male' : (count($genderOpts) > 0 ? $genderOpts[0] : 'Male');
+            }
         }
 
         if ($service->service_code === 'BABYSITTER_HOURLY') {
@@ -128,7 +140,7 @@ class CustomerBookingService
         $availableWorkers = $availableWorkersQuery->get();
 
         // 7. Allocate team for team-based services, or individual workers for standard services
-        $isTeamService = $service->is_team_based ?? in_array($service->service_code, Service::getTeamBasedCodes());
+        $isTeamService = $service->isTeamBased();
         if ($isTeamService) {
             $conflictService = app(\App\Service\Booking\BookingScheduleConflictService::class);
             $selectedTeam = null;
@@ -239,6 +251,15 @@ class CustomerBookingService
             if (empty($data['worker_gender'])) {
                 $data['worker_gender'] = 'Female';
             }
+        } else {
+            // Worker-based specialized services (Services 6 to 11 when set to individual workers):
+            if (empty($data['duration'])) {
+                $data['duration'] = $service->default_duration ?? 2;
+            }
+            if (empty($data['worker_gender'])) {
+                $genderOpts = $service->worker_gender_options ?? [];
+                $data['worker_gender'] = in_array('Male', $genderOpts) ? 'Male' : (count($genderOpts) > 0 ? $genderOpts[0] : 'Male');
+            }
         }
 
         // 2. Enforce wallet checks
@@ -264,7 +285,7 @@ class CustomerBookingService
             $this->validateShiftBoundaries($service, $date, $times['start_str'], $times['end_str']);
         }
 
-        $isTeamService = $service->is_team_based ?? in_array($service->service_code, Service::getTeamBasedCodes());
+        $isTeamService = $service->isTeamBased();
         $workerIds = $data['worker_ids'] ?? [];
 
         if (empty($workerIds) && !$isTeamService) {
@@ -346,11 +367,15 @@ class CustomerBookingService
             }
 
             $teamId = $data['team_id'] ?? null;
-            if (! $teamId && ! empty($workerIds)) {
-                $firstWorker = Worker::find($workerIds[0]);
-                if ($firstWorker && $firstWorker->team_id) {
-                    $teamId = $firstWorker->team_id;
+            if ($service->isTeamBased()) {
+                if (! $teamId && ! empty($workerIds)) {
+                    $firstWorker = Worker::find($workerIds[0]);
+                    if ($firstWorker && $firstWorker->team_id) {
+                        $teamId = $firstWorker->team_id;
+                    }
                 }
+            } else {
+                $teamId = null;
             }
 
             // Build snapshot of selected_options for team-based services
@@ -631,8 +656,9 @@ class CustomerBookingService
         $isPedicureManicure = ($service->service_code === 'PEDICURE_MANICURE');
         $isDeepCleaning = ($service->service_code === 'DEEP_CLEANING');
         $isTeamService = $service->isTeamBased();
+        $isSpecialized = in_array(strtoupper($service->service_code ?? ''), array_map('strtoupper', Service::getTeamBasedCodes()), true);
 
-        if ($isTeamService && ! empty($options)) {
+        if (($isTeamService || $isSpecialized) && ! empty($options)) {
             $optionsSubtotal = 0;
             foreach ($options as $item) {
                 $optionId = $item['id'] ?? null;
@@ -648,7 +674,7 @@ class CustomerBookingService
             $pricePerPeriod = $optionsSubtotal;
         } elseif ($isPedicureManicure) {
             $subtotal = $pricePerPeriod * $workersCount * max(1, $numberOfPersons);
-        } elseif ($isDeepCleaning || $isTeamService) {
+        } elseif ($isDeepCleaning || $isTeamService || ($isSpecialized && $service->pricing_type === 'per_service')) {
             $subtotal = $pricePerPeriod * $visitsCount;
         } elseif ($service->pricing_type === 'per_hour' && ! $isFirstService && $startTime && $endTime) {
             $start = Carbon::parse($startTime);

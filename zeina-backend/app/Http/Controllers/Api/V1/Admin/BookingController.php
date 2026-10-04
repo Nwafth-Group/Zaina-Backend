@@ -521,7 +521,7 @@ class BookingController extends Controller
         }
 
         // If team service or booking has team_id: must be male
-        $isTeamService = $service->is_team_based ?? in_array($service->service_code, Service::getTeamBasedCodes());
+        $isTeamService = $service->isTeamBased();
         if (($isTeamService || $booking->team_id) && strtolower($newWorker->gender ?? '') !== 'male') {
             return $this->errorResponse(__('validation.replace_worker.worker_not_male_team', ['name' => $newWorker->name]), 422);
         }
@@ -661,8 +661,7 @@ class BookingController extends Controller
             return $this->errorResponse(__('validation.replace_worker.booking_not_upcoming'), 422);
         }
 
-        $service = $booking->service;
-        $isTeamService = $service && ($service->isTeamBased() || in_array($service->service_code, Service::getTeamBasedCodes()));
+        $isTeamService = $service && $service->isTeamBased();
         if (!$isTeamService && !$booking->team_id) {
             return $this->errorResponse(__('validation.assign_team.not_team_service'), 422);
         }
@@ -823,5 +822,111 @@ class BookingController extends Controller
             $statusCode = in_array($e->getCode(), [400, 422]) ? $e->getCode() : 500;
             return $this->errorResponse($e->getMessage(), $statusCode);
         }
+    }
+
+    /**
+     * Get available shifts and time slots for rescheduling an existing booking.
+     */
+    public function rescheduleShifts(Request $request, Booking $booking)
+    {
+        $date = $request->query('date', $booking->booking_date);
+        $parsedDate = $date ? Carbon::parse($date) : Carbon::today();
+        $dayName = strtolower($parsedDate->format('l'));
+
+        $booking->load(['service.schedules', 'workers', 'team.workers']);
+        $service = $booking->service;
+
+        if (!$service) {
+            return $this->errorResponse(__('messages.service_not_found') ?? 'Service not found.', 404);
+        }
+
+        // Schedules for the selected day
+        $daySchedules = $service->schedules()
+            ->where('day', $dayName)
+            ->where('is_active', true)
+            ->orderBy('start_time', 'asc')
+            ->get();
+
+        // Fallback: all active schedules across all days if this day has none
+        $allActiveSchedules = $service->schedules()
+            ->where('is_active', true)
+            ->orderBy('start_time', 'asc')
+            ->get();
+
+        $effectiveSchedules = $daySchedules->isNotEmpty() ? $daySchedules : $allActiveSchedules;
+
+        $durationMinutes = (int) ($booking->duration_minutes ?? (($service->default_duration ?? 2) * 60));
+
+        // Format shifts from schedules
+        $shifts = $effectiveSchedules->unique(function ($s) {
+            return substr($s->start_time, 0, 5) . '-' . substr($s->end_time, 0, 5);
+        })->values()->map(function ($s) {
+            $startStr = substr($s->start_time, 0, 5);
+            $endStr = substr($s->end_time, 0, 5);
+            $startCarbon = Carbon::parse($s->start_time);
+            $endCarbon = Carbon::parse($s->end_time);
+            $isMorning = $startCarbon->hour < 12;
+
+            return [
+                'id' => $s->id,
+                'start_time' => $startStr,
+                'end_time' => $endStr,
+                'label' => $startCarbon->format('h:i A') . ' - ' . $endCarbon->format('h:i A'),
+                'label_ar' => ($isMorning ? 'الفترة الصباحية' : 'الفترة المسائية') . ' (' . $startCarbon->format('h:i A') . ' - ' . $endCarbon->format('h:i A') . ')',
+                'label_en' => ($isMorning ? 'Morning Shift' : 'Evening Shift') . ' (' . $startCarbon->format('h:i A') . ' - ' . $endCarbon->format('h:i A') . ')',
+                'period_type' => $isMorning ? 'morning' : 'evening',
+                'duration_minutes' => $startCarbon->diffInMinutes($endCarbon),
+            ];
+        });
+
+        // Determine if service has discrete shifts
+        // (e.g. 2 or more shifts on the schedule, OR shift duration matches booking duration closely)
+        $hasDiscreteShifts = $shifts->count() > 1 || ($shifts->count() === 1 && $shifts->first()['duration_minutes'] <= ($durationMinutes + 60));
+
+        // Generate time slots (useful when shift window is large, e.g. 08:00 - 20:00)
+        $slots = [];
+        foreach ($shifts as $shift) {
+            $shiftStart = Carbon::parse($shift['start_time']);
+            $shiftEnd = Carbon::parse($shift['end_time']);
+            $curr = $shiftStart->copy();
+
+            // If shift duration equals or is less than booking duration, the shift itself is the only slot
+            if ($shift['duration_minutes'] <= $durationMinutes) {
+                $slots[] = [
+                    'start_time' => $shift['start_time'],
+                    'end_time' => $shift['end_time'],
+                    'label' => $shift['label'],
+                    'shift_id' => $shift['id'],
+                ];
+                continue;
+            }
+
+            while ($curr->lt($shiftEnd)) {
+                $slotEnd = $curr->copy()->addMinutes($durationMinutes);
+                if ($slotEnd->gt($shiftEnd)) {
+                    break;
+                }
+                $slots[] = [
+                    'start_time' => $curr->format('H:i'),
+                    'end_time' => $slotEnd->format('H:i'),
+                    'label' => $curr->format('h:i A') . ' - ' . $slotEnd->format('h:i A'),
+                    'shift_id' => $shift['id'],
+                ];
+                $stepMinutes = min($durationMinutes, 120);
+                $curr->addMinutes($stepMinutes > 0 ? $stepMinutes : 60);
+            }
+        }
+
+        return $this->successResponse([
+            'service_id' => $service->id,
+            'service_name' => $service->name_en ?? $service->name_ar,
+            'service_code' => $service->service_code,
+            'booking_date' => $parsedDate->toDateString(),
+            'day_name' => $dayName,
+            'duration_minutes' => $durationMinutes,
+            'has_discrete_shifts' => $hasDiscreteShifts,
+            'shifts' => $hasDiscreteShifts ? $shifts : [],
+            'slots' => $hasDiscreteShifts ? $slots : [],
+        ], __('messages.shifts_retrieved') ?? 'Shifts retrieved successfully.');
     }
 }

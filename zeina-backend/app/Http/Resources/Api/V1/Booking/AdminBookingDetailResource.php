@@ -86,9 +86,20 @@ class AdminBookingDetailResource extends JsonResource
                 'email' => $this->customer->email,
             ] : null,
 
+            'service_id' => $this->service_id,
             'service_name' => $this->service
                 ? ($lang === 'ar' ? $this->service->name_ar : $this->service->name_en)
                 : null,
+            'service' => $this->service ? [
+                'id' => $this->service->id,
+                'service_code' => $this->service->service_code,
+                'name' => $lang === 'ar' ? $this->service->name_ar : $this->service->name_en,
+                'name_ar' => $this->service->name_ar,
+                'name_en' => $this->service->name_en,
+                'default_duration' => $this->service->default_duration,
+                'is_team_based' => $this->service->isTeamBased(),
+            ] : null,
+            'is_team_based' => !empty($this->team_id) || ($this->service && $this->service->isTeamBased()),
 
             'booking_date' => $this->booking_date ? Carbon::parse($this->booking_date)->format('d M, Y') : null,
             'raw_booking_date' => $this->booking_date ? Carbon::parse($this->booking_date)->toDateString() : null,

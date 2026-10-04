@@ -59,9 +59,17 @@ class GetAvailableDatesRequest extends CustomFormRequest
                 if (!$this->filled('worker_gender')) {
                     $mergeData['worker_gender'] = 'Male';
                 }
-            } elseif (!$this->filled('worker_gender')) {
-                $genderOptions = $service->worker_gender_options ?? [];
-                $mergeData['worker_gender'] = count($genderOptions) > 0 ? $genderOptions[0] : 'Female';
+            } else {
+                if (!$this->filled('duration')) {
+                    $mergeData['duration'] = (int) ($service->default_duration ?? 2);
+                }
+                if (!$this->filled('workers_count')) {
+                    $mergeData['workers_count'] = (int) ($service->min_workers ?? 1);
+                }
+                if (!$this->filled('worker_gender')) {
+                    $genderOptions = $service->worker_gender_options ?? [];
+                    $mergeData['worker_gender'] = count($genderOptions) > 0 ? $genderOptions[0] : 'Female';
+                }
             }
         }
 

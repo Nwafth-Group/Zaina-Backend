@@ -13,7 +13,7 @@ class Service extends Model implements Auditable
     use HasFactory, \OwenIt\Auditing\Auditable;
 
     protected $fillable = [
-        'category_id', 'type', 'worker_gender_options', 'pricing_type', 'name_ar', 'name_en',
+        'category_id', 'type', 'worker_gender_options', 'pricing_type', 'is_team_based', 'name_ar', 'name_en',
         'description_ar', 'description_en', 'status', 'avg_rating', 'features',
         'service_code', 'available_visit_types', 'terms_ar',
         'terms_en', 'start_time', 'end_time',
@@ -24,6 +24,7 @@ class Service extends Model implements Auditable
     ];
 
     protected $casts = [
+        'is_team_based' => 'boolean',
         'features' => 'array',
         'available_visit_types' => 'array',
         'worker_gender_options' => 'array',
@@ -130,6 +131,10 @@ class Service extends Model implements Auditable
 
     public function isTeamBased(): bool
     {
+        if (!is_null($this->is_team_based)) {
+            return (bool) $this->is_team_based;
+        }
+
         $code = strtoupper($this->service_code ?? '');
         $teamCodes = array_map('strtoupper', self::getTeamBasedCodes());
         return in_array($code, $teamCodes, true);

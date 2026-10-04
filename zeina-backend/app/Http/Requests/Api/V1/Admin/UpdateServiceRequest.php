@@ -54,6 +54,7 @@ class UpdateServiceRequest extends CustomFormRequest
             'worker_gender_options' => 'sometimes|required|array|min:1',
             'worker_gender_options.*' => 'required_with:worker_gender_options|string|in:Male,Female',
             'pricing_type' => 'nullable|string|in:per_hour,per_service',
+            'is_team_based' => 'sometimes|nullable|boolean',
             'name_ar' => [
                 'sometimes',
                 'required',
@@ -116,8 +117,31 @@ class UpdateServiceRequest extends CustomFormRequest
             'has_duration_range' => 'sometimes|nullable|boolean',
             'min_duration' => 'sometimes|nullable|integer|min:1',
             'max_duration' => 'sometimes|nullable|integer|min:1|gte:min_duration',
-            'min_workers' => 'sometimes|required|integer|min:1',
-            'max_workers' => 'sometimes|required|integer|min:1|gte:min_workers',
+            'min_workers' => [
+                'sometimes',
+                Rule::requiredIf(function () use ($service) {
+                    $isTeamBased = $this->has('is_team_based')
+                        ? $this->boolean('is_team_based')
+                        : ($service instanceof Service ? $service->isTeamBased() : false);
+                    return ! $isTeamBased;
+                }),
+                'nullable',
+                'integer',
+                'min:1',
+            ],
+            'max_workers' => [
+                'sometimes',
+                Rule::requiredIf(function () use ($service) {
+                    $isTeamBased = $this->has('is_team_based')
+                        ? $this->boolean('is_team_based')
+                        : ($service instanceof Service ? $service->isTeamBased() : false);
+                    return ! $isTeamBased;
+                }),
+                'nullable',
+                'integer',
+                'min:1',
+                'gte:min_workers',
+            ],
             'min_children' => 'sometimes|nullable|integer|min:1',
             'max_children' => 'sometimes|nullable|integer|min:1|gte:min_children',
             'covered_persons_per_worker' => 'sometimes|nullable|integer|min:1',
