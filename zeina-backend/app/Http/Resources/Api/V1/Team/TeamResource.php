@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\Api\V1\Team;
 
+use App\Http\Resources\Api\V1\Booking\AdminBookingResource;
 use App\Http\Resources\Api\V1\Media\MediaResource;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -16,6 +17,8 @@ class TeamResource extends JsonResource
         $workers = $this->relationLoaded('workers') ? $this->workers : $this->workers()->get();
         $services = $this->relationLoaded('services') ? $this->services : $this->services()->get();
 
+        $isDetailView = $request->route('team') !== null || $request->filled('include_details');
+
         return [
             'id' => $this->id,
             'name_ar' => $this->name_ar,
@@ -25,6 +28,21 @@ class TeamResource extends JsonResource
             'notes' => $this->notes,
             'workers_count' => $workers->count(),
             'bookings_count' => $this->bookings()->count(),
+            'stats' => [
+                'total_bookings' => $this->bookings()->count(),
+                'completed_bookings' => $this->bookings()->where('status', 'completed')->count(),
+                'upcoming_bookings' => $this->bookings()->where('status', 'Upcoming')->count(),
+                'in_service_bookings' => $this->bookings()->where('status', 'inService')->count(),
+            ],
+            'latest_bookings' => $isDetailView
+                ? AdminBookingResource::collection(
+                    $this->bookings()
+                        ->with(['customer', 'service', 'workers'])
+                        ->orderByDesc('created_at')
+                        ->limit(20)
+                        ->get()
+                )
+                : [],
             'workers' => $workers->map(function ($w) {
                 $media = $w->media ? ($w->media->where('collection', 'worker/image')->first() ?? $w->media->first()) : null;
                 return [
