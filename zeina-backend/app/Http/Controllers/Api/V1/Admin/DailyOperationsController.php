@@ -40,12 +40,14 @@ class DailyOperationsController extends Controller
     {
         $request->validate([
             'actual_start_time' => 'nullable|string|regex:/^\d{1,2}:\d{2}$/',
+            'date' => 'nullable|date',
         ]);
 
         $updatedBooking = $this->operationsService->startService(
             $booking,
             $request->user(),
-            $request->input('actual_start_time')
+            $request->input('actual_start_time'),
+            $request->input('date')
         );
 
         return $this->successResponse($updatedBooking, __('messages.service_started_successfully') ?: 'Service execution started successfully');
@@ -58,12 +60,14 @@ class DailyOperationsController extends Controller
     {
         $request->validate([
             'actual_end_time' => 'nullable|string|regex:/^\d{1,2}:\d{2}$/',
+            'date' => 'nullable|date',
         ]);
 
         $updatedBooking = $this->operationsService->completeService(
             $booking,
             $request->user(),
-            $request->input('actual_end_time')
+            $request->input('actual_end_time'),
+            $request->input('date')
         );
 
         return $this->successResponse($updatedBooking, __('messages.service_completed_successfully') ?: 'Service execution completed successfully');

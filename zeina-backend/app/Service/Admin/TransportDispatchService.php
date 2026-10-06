@@ -21,11 +21,11 @@ class TransportDispatchService
     public function getDailyOverview(?string $date = null, ?string $governorate = null, ?string $area = null, ?string $startTime = null, ?string $status = null)
     {
         $query = Booking::query()
-            ->with(['address.serviceZone', 'assignedWorkers', 'workers', 'service'])
+            ->with(['address.serviceZone', 'assignedWorkers', 'workers', 'service', 'visits'])
             ->whereNotIn('status', ['cancelled', 'Cancelled', 'refunded', 'Refunded']);
 
         if (!empty($date)) {
-            $query->whereDate('booking_date', $date);
+            $query->forDate($date);
         }
 
         if ($governorate) {
@@ -53,7 +53,8 @@ class TransportDispatchService
             $zoneName = is_object($rawZone) ? ($rawZone->name_ar ?? $rawZone->name_en ?? 'منطقة غير محددة') : (string) $rawZone;
 
             $zoneId = $zone?->id;
-            $bStartTime = substr($booking->start_time ?? '09:00', 0, 5);
+            $visit = $booking->visits ? $booking->visits->first(fn($v) => Carbon::parse($v->visit_date)->toDateString() === $date) : null;
+            $bStartTime = substr(($visit ? $visit->start_time : $booking->start_time) ?? '09:00', 0, 5);
 
             if ($area && strpos($zoneName, $area) === false) {
                 continue;
@@ -138,8 +139,8 @@ class TransportDispatchService
     public function getRegionGroupDetails(string $date, string $governorate, string $areaName)
     {
         $bookings = Booking::query()
-            ->with(['address.serviceZone', 'assignedWorkers', 'workers', 'service', 'customer'])
-            ->whereDate('booking_date', $date)
+            ->with(['address.serviceZone', 'assignedWorkers', 'workers', 'service', 'customer', 'visits'])
+            ->forDate($date)
             ->whereNotIn('status', ['cancelled', 'Cancelled', 'refunded', 'Refunded'])
             ->get();
 
@@ -157,14 +158,17 @@ class TransportDispatchService
         }
 
         // Sort bookings by start time
-        $sortedBookings = $filteredBookings->sortBy(function ($b) {
-            return strtotime('1970-01-01 ' . ($b->start_time ?? '09:00:00'));
+        $sortedBookings = $filteredBookings->sortBy(function ($b) use ($date) {
+            $visit = $b->visits ? $b->visits->first(fn($v) => Carbon::parse($v->visit_date)->toDateString() === $date) : null;
+            $time = $visit ? $visit->start_time : $b->start_time;
+            return strtotime('1970-01-01 ' . ($time ?? '09:00:00'));
         });
 
         // Group into shift batches where start times within 1 hour belong to the same batch
         $timeGroups = [];
         foreach ($sortedBookings as $b) {
-            $timeStr = substr($b->start_time ?? '09:00', 0, 5);
+            $visit = $b->visits ? $b->visits->first(fn($v) => Carbon::parse($v->visit_date)->toDateString() === $date) : null;
+            $timeStr = substr(($visit ? $visit->start_time : $b->start_time) ?? '09:00', 0, 5);
             $timeTs = strtotime('1970-01-01 ' . $timeStr . ':00');
 
             $matchedGroupKey = null;
@@ -586,8 +590,8 @@ class TransportDispatchService
     {
         $date = $date ?: Carbon::today('Africa/Cairo')->toDateString();
         $query = Booking::query()
-            ->with(['address.serviceZone', 'assignedWorkers', 'workers', 'service', 'team.workers'])
-            ->whereDate('booking_date', $date)
+            ->with(['address.serviceZone', 'assignedWorkers', 'workers', 'service', 'team.workers', 'visits'])
+            ->forDate($date)
             ->whereNotIn('status', ['cancelled', 'Cancelled', 'refunded', 'Refunded']);
 
         if (!empty($filters['governorate'])) {
@@ -608,7 +612,8 @@ class TransportDispatchService
         $shiftsMap = [];
 
         foreach ($bookings as $b) {
-            $timeStr = substr($b->start_time ?? '09:00', 0, 5);
+            $visit = $b->visits ? $b->visits->first(fn($v) => Carbon::parse($v->visit_date)->toDateString() === $date) : null;
+            $timeStr = substr(($visit ? $visit->start_time : $b->start_time) ?? '09:00', 0, 5);
             if (!isset($shiftsMap[$timeStr])) {
                 $shiftsMap[$timeStr] = [
                     'start_time' => $timeStr,
@@ -709,9 +714,17 @@ class TransportDispatchService
         $startTimePrefix = substr($startTime, 0, 5);
 
         $query = Booking::query()
-            ->with(['address.serviceZone', 'assignedWorkers', 'workers', 'service', 'customer', 'team.workers'])
-            ->whereDate('booking_date', $date)
-            ->where('start_time', 'like', $startTimePrefix . '%')
+            ->with(['address.serviceZone', 'assignedWorkers', 'workers', 'service', 'customer', 'team.workers', 'visits'])
+            ->forDate($date)
+            ->where(function ($q) use ($date, $startTimePrefix) {
+                $q->whereHas('visits', function ($vq) use ($date, $startTimePrefix) {
+                    $vq->whereDate('visit_date', $date)->where('start_time', 'like', $startTimePrefix . '%');
+                })->orWhere(function ($sub) use ($date, $startTimePrefix) {
+                    $sub->doesntHave('visits')
+                        ->whereDate('booking_date', $date)
+                        ->where('start_time', 'like', $startTimePrefix . '%');
+                });
+            })
             ->whereNotIn('status', ['cancelled', 'Cancelled', 'refunded', 'Refunded']);
 
         if (!empty($filters['governorate'])) {
@@ -830,50 +843,59 @@ class TransportDispatchService
                 $totalWorkersCount++;
             }
 
-            $formattedBookings[] = [
-                'id' => $b->id,
-                'booking_ref' => $b->booking_ref ?? ('BKG-' . $b->id),
-                'service_name' => $b->service?->name_ar ?? $b->service?->name_en ?? '—',
-                'customer_name' => $custName,
-                'customer_phone' => $custPhone,
-                'governorate' => $govName,
-                'area' => $areaName,
-                'service_address' => $serviceAddr,
-                'start_time' => substr($b->start_time ?? '09:00', 0, 5),
-                'end_time' => $b->end_time ? substr($b->end_time, 0, 5) : '—',
-                'status' => $b->status,
-                'team_id' => $b->team_id,
-                'team_name' => $teamName,
-                'is_service_started' => in_array($b->status, ['inService', 'completed', 'cancelled'])
-                    || Carbon::now('Africa/Cairo')->gte(Carbon::parse("{$b->booking_date} {$b->start_time}", 'Africa/Cairo')),
-                'is_locked' => in_array($b->status, ['inService', 'completed', 'cancelled'])
-                    || Carbon::now('Africa/Cairo')->gte(Carbon::parse("{$b->booking_date} {$b->start_time}", 'Africa/Cairo')),
-                'workers' => $bookingWorkers,
-            ];
-        }
+            $visit = $b->visits ? $b->visits->first(fn($v) => Carbon::parse($v->visit_date)->toDateString() === $date) : null;
+            $bStartTime = substr(($visit ? $visit->start_time : $b->start_time) ?? '09:00', 0, 5);
+            $bEndTime = ($visit ? $visit->end_time : $b->end_time) ? substr(($visit ? $visit->end_time : $b->end_time), 0, 5) : '—';
+            $bStatus = $visit ? $visit->status : $b->status;
 
-        // Build Driver Manifests (table below)
-        $driverManifests = [];
-        foreach ($groups as $g) {
-            if (!$g->driver) {
-                continue;
+            $formattedBookings[] = [
+                    'id' => $b->id,
+                    'booking_ref' => $b->booking_ref ?? ('BKG-' . $b->id),
+                    'service_name' => $b->service?->name_ar ?? $b->service?->name_en ?? '—',
+                    'customer_name' => $custName,
+                    'customer_phone' => $custPhone,
+                    'governorate' => $govName,
+                    'area' => $areaName,
+                    'service_address' => $serviceAddr,
+                    'start_time' => $bStartTime,
+                    'end_time' => $bEndTime,
+                    'status' => $bStatus,
+                    'team_id' => $b->team_id,
+                    'team_name' => $teamName,
+                    'is_service_started' => in_array($bStatus, ['inService', 'completed', 'cancelled'])
+                        || Carbon::now('Africa/Cairo')->gte(Carbon::parse("{$date} {$bStartTime}", 'Africa/Cairo')),
+                    'is_locked' => in_array($bStatus, ['inService', 'completed', 'cancelled'])
+                        || Carbon::now('Africa/Cairo')->gte(Carbon::parse("{$date} {$bStartTime}", 'Africa/Cairo')),
+                    'workers' => $bookingWorkers,
+                ];
             }
 
-            $passengers = [];
-            foreach ($g->groupWorkers as $gw) {
-                $w = $gw->worker;
-                $b = $gw->booking;
-                if (!$w || !$b) continue;
+            // Build Driver Manifests (table below)
+            $driverManifests = [];
+            foreach ($groups as $g) {
+                if (!$g->driver) {
+                    continue;
+                }
 
-                $cName = $b->customer?->full_name
-                    ?? (trim(($b->customer?->first_name ?? '') . ' ' . ($b->customer?->last_name ?? '')) ?: null)
-                    ?? $b->customer?->name
-                    ?? '—';
-                $cPhone = $b->customer?->phone_number ?? $b->customer?->mobile ?? $b->customer?->phone ?? $b->address?->phone_number ?? '—';
-                $sAddr = $b->address?->formatted_address ?? $b->address?->street ?? '—';
+                $passengers = [];
+                foreach ($g->groupWorkers as $gw) {
+                    $w = $gw->worker;
+                    $b = $gw->booking;
+                    if (!$w || !$b) continue;
 
-                $pBookingStarted = in_array($b->status, ['inService', 'completed', 'cancelled'])
-                    || Carbon::now('Africa/Cairo')->gte(Carbon::parse("{$b->booking_date} {$b->start_time}", 'Africa/Cairo'));
+                    $cName = $b->customer?->full_name
+                        ?? (trim(($b->customer?->first_name ?? '') . ' ' . ($b->customer?->last_name ?? '')) ?: null)
+                        ?? $b->customer?->name
+                        ?? '—';
+                    $cPhone = $b->customer?->phone_number ?? $b->customer?->mobile ?? $b->customer?->phone ?? $b->address?->phone_number ?? '—';
+                    $sAddr = $b->address?->formatted_address ?? $b->address?->street ?? '—';
+
+                    $pVisit = $b->visits ? $b->visits->first(fn($v) => Carbon::parse($v->visit_date)->toDateString() === $date) : null;
+                    $pStartTime = substr(($pVisit ? $pVisit->start_time : $b->start_time) ?? '09:00', 0, 5);
+                    $pStatus = $pVisit ? $pVisit->status : $b->status;
+
+                    $pBookingStarted = in_array($pStatus, ['inService', 'completed', 'cancelled'])
+                        || Carbon::now('Africa/Cairo')->gte(Carbon::parse("{$date} {$pStartTime}", 'Africa/Cairo'));
 
                 $passengers[] = [
                     'group_worker_id' => $gw->id,
@@ -952,8 +974,13 @@ class TransportDispatchService
         $booking = Booking::findOrFail($bookingId);
 
         // Guard: If worker already has an assigned driver and service has started, cannot change or reassign
-        $isBookingStarted = in_array($booking->status, ['inService', 'completed', 'cancelled'])
-            || Carbon::now('Africa/Cairo')->gte(Carbon::parse("{$booking->booking_date} {$booking->start_time}", 'Africa/Cairo'));
+        $visit = $booking->visits()->whereDate('visit_date', $date)->first();
+        $checkDate = $visit ? $visit->visit_date : $booking->booking_date;
+        $checkTime = $visit ? $visit->start_time : $booking->start_time;
+        $checkStatus = $visit ? $visit->status : $booking->status;
+
+        $isBookingStarted = in_array($checkStatus, ['inService', 'completed', 'cancelled'])
+            || Carbon::now('Africa/Cairo')->gte(Carbon::parse("{$checkDate} {$checkTime}", 'Africa/Cairo'));
 
         $isAlreadyAssigned = TransportGroupWorker::where('booking_id', $bookingId)
             ->where('worker_id', $workerId)
@@ -1074,9 +1101,25 @@ class TransportDispatchService
     {
         $booking = Booking::findOrFail($bookingId);
 
+        $checkDate = $booking->booking_date;
+        $checkTime = $booking->start_time;
+        $checkStatus = $booking->status;
+
+        if ($transportGroupId) {
+            $tg = TransportGroup::find($transportGroupId);
+            if ($tg) {
+                $visit = $booking->visits()->whereDate('visit_date', $tg->service_date)->first();
+                if ($visit) {
+                    $checkDate = $visit->visit_date;
+                    $checkTime = $visit->start_time;
+                    $checkStatus = $visit->status;
+                }
+            }
+        }
+
         // Guard: Cannot unassign if service has already started
-        $isBookingStarted = in_array($booking->status, ['inService', 'completed', 'cancelled'])
-            || Carbon::now('Africa/Cairo')->gte(Carbon::parse("{$booking->booking_date} {$booking->start_time}", 'Africa/Cairo'));
+        $isBookingStarted = in_array($checkStatus, ['inService', 'completed', 'cancelled'])
+            || Carbon::now('Africa/Cairo')->gte(Carbon::parse("{$checkDate} {$checkTime}", 'Africa/Cairo'));
 
         if ($isBookingStarted) {
             throw ValidationException::withMessages([

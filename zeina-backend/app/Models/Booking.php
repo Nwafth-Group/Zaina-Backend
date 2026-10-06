@@ -95,4 +95,29 @@ class Booking extends Model
     {
         return $this->belongsTo(User::class, 'completed_by');
     }
+
+    public function scopeForDate($query, string $date)
+    {
+        return $query->where(function ($q) use ($date) {
+            $q->whereHas('visits', function ($vq) use ($date) {
+                $vq->whereDate('visit_date', $date);
+            })->orWhere(function ($sub) use ($date) {
+                $sub->doesntHave('visits')
+                    ->whereDate('booking_date', $date);
+            });
+        });
+    }
+
+    public function scopeForDateBetween($query, string $startDate, string $endDate)
+    {
+        return $query->where(function ($q) use ($startDate, $endDate) {
+            $q->whereHas('visits', function ($vq) use ($startDate, $endDate) {
+                $vq->whereBetween('visit_date', [$startDate, $endDate]);
+            })->orWhere(function ($sub) use ($startDate, $endDate) {
+                $sub->doesntHave('visits')
+                    ->whereBetween('booking_date', [$startDate, $endDate]);
+            });
+        });
+    }
 }
+

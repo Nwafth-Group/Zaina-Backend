@@ -29,10 +29,18 @@ class DailyOperationsService
             'address.serviceZone',
             'starter',
             'completer',
-        ])->where('booking_date', $date);
+            'visits',
+        ])->forDate($date);
 
         if (!empty($filters['status'])) {
-            $query->where('status', $filters['status']);
+            $status = $filters['status'];
+            $query->where(function ($sq) use ($date, $status) {
+                $sq->whereHas('visits', function ($vq) use ($date, $status) {
+                    $vq->whereDate('visit_date', $date)->where('status', $status);
+                })->orWhere(function ($sub) use ($status) {
+                    $sub->doesntHave('visits')->where('status', $status);
+                });
+            });
         }
 
         if (isset($filters['is_at_risk']) && $filters['is_at_risk'] !== '') {
@@ -59,18 +67,28 @@ class DailyOperationsService
             });
         }
 
-        $allDayBookings = Booking::where('booking_date', $date)->get();
+        $allDayBookings = Booking::with('visits')->forDate($date)->get();
 
-        // Calculate KPI Metrics
+        $effectiveStatus = function ($b) use ($date) {
+            if ($b->visits && $b->visits->isNotEmpty()) {
+                $matchingVisit = $b->visits->first(fn($v) => Carbon::parse($v->visit_date)->toDateString() === $date);
+                if ($matchingVisit) {
+                    return $matchingVisit->status;
+                }
+            }
+            return $b->status;
+        };
+
+        // Calculate KPI Metrics based on the specific visit status for this date
         $metrics = [
             'total_bookings' => $allDayBookings->count(),
-            'upcoming' => $allDayBookings->where('status', 'Upcoming')->count(),
-            'in_service' => $allDayBookings->where('status', 'inService')->count(),
-            'completed' => $allDayBookings->where('status', 'completed')->count(),
-            'cancelled' => $allDayBookings->where('status', 'cancelled')->count(),
+            'upcoming' => $allDayBookings->filter(fn($b) => $effectiveStatus($b) === 'Upcoming')->count(),
+            'in_service' => $allDayBookings->filter(fn($b) => $effectiveStatus($b) === 'inService')->count(),
+            'completed' => $allDayBookings->filter(fn($b) => $effectiveStatus($b) === 'completed')->count(),
+            'cancelled' => $allDayBookings->filter(fn($b) => $effectiveStatus($b) === 'cancelled')->count(),
             'at_risk' => $allDayBookings->where('is_at_risk', true)->count(),
-            'unassigned' => $allDayBookings->filter(function ($b) {
-                return in_array($b->status, ['Upcoming']) && empty($b->worker_id) && empty($b->team_id);
+            'unassigned' => $allDayBookings->filter(function ($b) use ($effectiveStatus) {
+                return in_array($effectiveStatus($b), ['Upcoming']) && empty($b->worker_id) && empty($b->team_id);
             })->count(),
             'active_teams' => $allDayBookings->whereNotNull('team_id')->pluck('team_id')->unique()->count(),
             'active_workers' => $allDayBookings->whereNotNull('worker_id')->pluck('worker_id')->unique()->count(),
@@ -115,7 +133,7 @@ class DailyOperationsService
             }
         }
 
-        $bookings = $query->orderBy('start_time', 'asc')->get()->map(function ($b) use ($groupLookup) {
+        $bookings = $query->orderBy('start_time', 'asc')->get()->map(function ($b) use ($groupLookup, $date) {
             $isTeam = !empty($b->team_id) || ($b->service && $b->service->isTeamBased());
             $crew = [];
 
@@ -133,8 +151,33 @@ class DailyOperationsService
                 ])->toArray();
             }
 
+            // Identify current visit for this date (handles 3-shift / multi-visit subscriptions)
+            $currentVisit = null;
+            $visitNumber = null;
+            $totalVisits = null;
+            $visitLabel = null;
+
+            if ($b->visits && $b->visits->isNotEmpty()) {
+                $sortedVisits = $b->visits->sortBy('visit_date')->values();
+                $totalVisits = $sortedVisits->count();
+                $visitIndex = $sortedVisits->search(fn($v) => Carbon::parse($v->visit_date)->toDateString() === $date);
+                if ($visitIndex !== false) {
+                    $currentVisit = $sortedVisits->get($visitIndex);
+                    $visitNumber = $visitIndex + 1;
+                    if ($totalVisits > 1) {
+                        $visitLabel = app()->getLocale() === 'ar'
+                            ? "الزيارة {$visitNumber} من {$totalVisits}"
+                            : "Visit {$visitNumber} of {$totalVisits}";
+                    }
+                }
+            }
+
+            $currentStatus = $currentVisit ? $currentVisit->status : $b->status;
+            $plannedStart = $currentVisit ? $currentVisit->start_time : $b->start_time;
+            $plannedEnd = $currentVisit ? $currentVisit->end_time : $b->end_time;
+
             $unassignedReason = null;
-            if (empty($b->worker_id) && empty($b->team_id) && in_array($b->status, ['Upcoming'])) {
+            if (empty($b->worker_id) && empty($b->team_id) && in_array($currentStatus, ['Upcoming'])) {
                 $unassignedReason = app()->getLocale() === 'ar'
                     ? 'بانتظار تعيين مورد مؤهل (عامل أو فريق).'
                     : 'Awaiting qualification and resource assignment (worker or team).';
@@ -143,17 +186,21 @@ class DailyOperationsService
             return [
                 'id' => $b->id,
                 'booking_ref' => $b->booking_ref,
-                'booking_date' => $b->booking_date,
-                'planned_start_time' => $b->start_time,
-                'planned_end_time' => $b->end_time,
+                'booking_date' => $currentVisit ? $currentVisit->visit_date : $b->booking_date,
+                'planned_start_time' => $plannedStart,
+                'planned_end_time' => $plannedEnd,
                 'actual_start_time' => $b->actual_start_time,
                 'actual_end_time' => $b->actual_end_time,
                 'started_by' => $b->starter?->first_name ? ($b->starter->first_name . ' ' . $b->starter->last_name) : null,
                 'completed_by' => $b->completer?->first_name ? ($b->completer->first_name . ' ' . $b->completer->last_name) : null,
-                'status' => $b->status,
+                'status' => $currentStatus,
                 'is_at_risk' => (bool)$b->is_at_risk,
                 'at_risk_reason' => $b->at_risk_reason,
                 'unassigned_reason' => $unassignedReason,
+                'visit_id' => $currentVisit?->id,
+                'visit_number' => $visitNumber,
+                'total_visits' => $totalVisits,
+                'visit_label' => $visitLabel,
                 'service' => [
                     'id' => $b->service?->id,
                     'name' => app()->getLocale() === 'ar' ? ($b->service?->name_ar ?: $b->service?->name_en) : ($b->service?->name_en ?: $b->service?->name_ar),
@@ -196,22 +243,36 @@ class DailyOperationsService
     /**
      * US-A34: Start Service Execution (Recording actual_start_time & status -> inService).
      */
-    public function startService(Booking $booking, User $user, ?string $actualStart = null): Booking
+    public function startService(Booking $booking, User $user, ?string $actualStart = null, ?string $date = null): Booking
     {
-        if (in_array($booking->status, ['completed', 'cancelled'])) {
+        // Resolve matching visit if visits exist
+        $visit = null;
+        if ($booking->visits()->exists()) {
+            if ($date) {
+                $visit = $booking->visits()->whereDate('visit_date', $date)->first();
+            }
+            if (!$visit) {
+                $visit = $booking->visits()->whereDate('visit_date', now()->toDateString())->first()
+                    ?? $booking->visits()->where('status', 'Upcoming')->orderBy('visit_date')->first();
+            }
+        }
+
+        $currentStatus = $visit ? $visit->status : $booking->status;
+
+        if (in_array($currentStatus, ['completed', 'cancelled'])) {
             throw ValidationException::withMessages([
                 'status' => [app()->getLocale() === 'ar'
-                    ? 'لا يمكن بدء حجز تم اكتماله أو إلغاؤه مسبقًا.'
-                    : 'Cannot start a booking that is already completed or cancelled.'
+                    ? 'لا يمكن بدء زيارة أو حجز تم اكتماله أو إلغاؤه مسبقًا.'
+                    : 'Cannot start a visit or booking that is already completed or cancelled.'
                 ],
             ]);
         }
 
-        if (!empty($booking->actual_start_time) && $booking->status === 'inService') {
+        if ($currentStatus === 'inService') {
             throw ValidationException::withMessages([
                 'actual_start_time' => [app()->getLocale() === 'ar'
-                    ? 'تم تسجيل بدء الخدمة مسبقًا في تمام الساعة ' . $booking->actual_start_time
-                    : 'Service was already started at ' . $booking->actual_start_time
+                    ? 'تم تسجيل بدء الخدمة لهذه الزيارة مسبقًا.'
+                    : 'Service was already started for this visit.'
                 ],
             ]);
         }
@@ -219,43 +280,65 @@ class DailyOperationsService
         $startTimeStr = $actualStart ?: now()->format('H:i');
         $oldStatus = $booking->status;
 
+        if ($visit) {
+            $visit->update(['status' => 'inService']);
+        }
+
         $booking->update([
             'actual_start_time' => $startTimeStr,
             'started_by' => $user->id,
             'status' => 'inService',
         ]);
 
+        $visitNote = $visit ? " (Visit on {$visit->visit_date})" : "";
         BookingHistory::create([
             'booking_id' => $booking->id,
             'old_status' => $oldStatus,
             'new_status' => 'inService',
-            'note' => "Service execution started at {$startTimeStr} by {$user->first_name} {$user->last_name}",
+            'note' => "Service execution started{$visitNote} at {$startTimeStr} by {$user->first_name} {$user->last_name}",
             'created_by' => $user->id,
         ]);
 
         // Evaluate potential cascade delay if started much later than planned
-        if ($booking->start_time && $startTimeStr > $booking->start_time) {
-            $plannedMins = Carbon::parse($booking->start_time)->diffInMinutes(Carbon::parse($startTimeStr), false);
+        $plannedStart = $visit ? $visit->start_time : $booking->start_time;
+        if ($plannedStart && $startTimeStr > $plannedStart) {
+            $plannedMins = Carbon::parse($plannedStart)->diffInMinutes(Carbon::parse($startTimeStr), false);
             if ($plannedMins > 15) {
                 // If delayed by > 15 min, re-evaluate next booking risk
                 $this->evaluateRiskForSubsequentBookings($booking);
             }
         }
 
-        return $booking->fresh(['customer', 'service', 'team', 'workers', 'starter']);
+        return $booking->fresh(['customer', 'service', 'team', 'workers', 'starter', 'visits']);
     }
 
     /**
      * US-A35: Complete Service Execution (Recording actual_end_time & status -> completed).
      * Triggers US-A36 At-Risk cascade evaluation.
      */
-    public function completeService(Booking $booking, User $user, ?string $actualEnd = null): Booking
+    public function completeService(Booking $booking, User $user, ?string $actualEnd = null, ?string $date = null): Booking
     {
-        if ($booking->status === 'completed') {
+        // Resolve matching visit if visits exist
+        $visit = null;
+        $hasVisits = $booking->visits()->exists();
+        if ($hasVisits) {
+            if ($date) {
+                $visit = $booking->visits()->whereDate('visit_date', $date)->first();
+            }
+            if (!$visit) {
+                $visit = $booking->visits()->where('status', 'inService')->first()
+                    ?? $booking->visits()->whereDate('visit_date', now()->toDateString())->first()
+                    ?? $booking->visits()->orderBy('visit_date')->first();
+            }
+        }
+
+        $currentStatus = $visit ? $visit->status : $booking->status;
+
+        if ($currentStatus === 'completed') {
             throw ValidationException::withMessages([
                 'status' => [app()->getLocale() === 'ar'
-                    ? 'الحجز مكتمل بالفعل مسبقًا.'
-                    : 'Booking is already completed.'
+                    ? 'الزيارة أو الحجز مكتمل بالفعل مسبقًا.'
+                    : 'Visit or booking is already completed.'
                 ],
             ]);
         }
@@ -263,7 +346,7 @@ class DailyOperationsService
         $endTimeStr = $actualEnd ?: now()->format('H:i');
 
         // Verify end time comes after start time
-        $startComp = $booking->actual_start_time ?: $booking->start_time;
+        $startComp = $booking->actual_start_time ?: ($visit ? $visit->start_time : $booking->start_time);
         if ($startComp && $endTimeStr <= $startComp) {
             throw ValidationException::withMessages([
                 'actual_end_time' => [app()->getLocale() === 'ar'
@@ -275,24 +358,54 @@ class DailyOperationsService
 
         $oldStatus = $booking->status;
 
-        $booking->update([
-            'actual_end_time' => $endTimeStr,
-            'completed_by' => $user->id,
-            'status' => 'completed',
-        ]);
+        if ($visit) {
+            $visit->update(['status' => 'completed']);
+        }
 
-        BookingHistory::create([
-            'booking_id' => $booking->id,
-            'old_status' => $oldStatus,
-            'new_status' => 'completed',
-            'note' => "Service execution completed at {$endTimeStr} by {$user->first_name} {$user->last_name}",
-            'created_by' => $user->id,
-        ]);
+        // Check if ALL visits under this parent booking are now completed
+        $allVisitsCompleted = true;
+        if ($hasVisits) {
+            $allVisitsCompleted = !$booking->visits()->where('status', '!=', 'completed')->exists();
+        }
+
+        if ($allVisitsCompleted) {
+            $booking->update([
+                'actual_end_time' => $endTimeStr,
+                'completed_by' => $user->id,
+                'status' => 'completed',
+            ]);
+
+            BookingHistory::create([
+                'booking_id' => $booking->id,
+                'old_status' => $oldStatus,
+                'new_status' => 'completed',
+                'note' => "All scheduled visits completed. Service execution completed at {$endTimeStr} by {$user->first_name} {$user->last_name}",
+                'created_by' => $user->id,
+            ]);
+
+            \App\Service\LoyaltyPointService::awardPointsForCompletedBooking($booking);
+        } else {
+            // Partial visit completed (e.g., 1 of 3 shifts/visits). Keep booking Upcoming for next visits.
+            $booking->update([
+                'actual_end_time' => $endTimeStr,
+                'completed_by' => $user->id,
+                'status' => 'Upcoming',
+            ]);
+
+            $visitDateStr = $visit ? $visit->visit_date : 'scheduled visit';
+            BookingHistory::create([
+                'booking_id' => $booking->id,
+                'old_status' => $oldStatus,
+                'new_status' => 'Upcoming',
+                'note' => "Visit on {$visitDateStr} completed at {$endTimeStr} by {$user->first_name} {$user->last_name}. Remaining scheduled visits exist.",
+                'created_by' => $user->id,
+            ]);
+        }
 
         // Evaluate At-Risk condition for the subsequent booking of this resource
         $this->evaluateRiskForSubsequentBookings($booking);
 
-        return $booking->fresh(['customer', 'service', 'team', 'workers', 'completer']);
+        return $booking->fresh(['customer', 'service', 'team', 'workers', 'completer', 'visits']);
     }
 
     /**
@@ -307,7 +420,7 @@ class DailyOperationsService
         }
 
         // Find the next booking on the same date for the same team or worker
-        $nextBookingQuery = Booking::where('booking_date', $booking->booking_date)
+        $nextBookingQuery = Booking::forDate($booking->booking_date)
             ->where('id', '!=', $booking->id)
             ->where('start_time', '>=', $booking->start_time)
             ->whereIn('status', ['Upcoming', 'inService'])
@@ -413,7 +526,7 @@ class DailyOperationsService
 
                 // Check team booking conflict
                 $conflict = Booking::where('team_id', $team->id)
-                    ->where('booking_date', $date)
+                    ->forDate($date)
                     ->where('id', '!=', $booking->id)
                     ->whereNotIn('status', ['cancelled'])
                     ->where(function ($q) use ($startMinus60, $endPlus60) {
@@ -474,7 +587,7 @@ class DailyOperationsService
                                $aw->where('workers.id', $worker->id);
                            });
                     })
-                    ->where('booking_date', $date)
+                    ->forDate($date)
                     ->where('id', '!=', $booking->id)
                     ->whereNotIn('status', ['cancelled'])
                     ->where(function ($q) use ($startMinus60, $endPlus60) {
@@ -592,7 +705,7 @@ class DailyOperationsService
                   });
             })
             ->whereNotIn('status', ['completed', 'cancelled'])
-            ->whereBetween('booking_date', [$start->toDateString(), $end->toDateString()])
+            ->forDateBetween($start->toDateString(), $end->toDateString())
             ->get();
 
         foreach ($affectedIndividualBookings as $b) {
@@ -619,7 +732,7 @@ class DailyOperationsService
             $team = Team::find($worker->team_id);
             $affectedTeamBookings = Booking::where('team_id', $worker->team_id)
                 ->whereNotIn('status', ['completed', 'cancelled'])
-                ->whereBetween('booking_date', [$start->toDateString(), $end->toDateString()])
+                ->forDateBetween($start->toDateString(), $end->toDateString())
                 ->get();
 
             foreach ($affectedTeamBookings as $tb) {
@@ -677,15 +790,14 @@ class DailyOperationsService
     {
         $worker = Worker::with('team')->findOrFail($workerId);
 
-        $bookings = Booking::where(function ($q) use ($workerId) {
+        $bookings = Booking::with('visits')->where(function ($q) use ($workerId) {
                 $q->where('worker_id', $workerId)
                   ->orWhereHas('workers', function ($wq) use ($workerId) {
                       $wq->where('workers.id', $workerId);
                   });
             })
-            ->where('booking_date', $date)
+            ->forDate($date)
             ->whereNotIn('status', ['cancelled'])
-            ->orderBy('start_time', 'asc')
             ->get();
 
         $absences = WorkerAbsence::where('worker_id', $workerId)
@@ -693,16 +805,26 @@ class DailyOperationsService
             ->whereDate('absence_end', '>=', $date)
             ->get();
 
+        $sortedBookings = $bookings->sortBy(function ($b) use ($date) {
+            $visit = $b->visits ? $b->visits->first(fn($v) => Carbon::parse($v->visit_date)->toDateString() === $date) : null;
+            return $visit ? $visit->start_time : $b->start_time;
+        });
+
         $items = [];
         $prevEnd = null;
 
-        foreach ($bookings as $b) {
+        foreach ($sortedBookings as $b) {
+            $visit = $b->visits ? $b->visits->first(fn($v) => Carbon::parse($v->visit_date)->toDateString() === $date) : null;
+            $pStart = $visit ? $visit->start_time : $b->start_time;
+            $pEnd = $visit ? $visit->end_time : $b->end_time;
+            $bStatus = $visit ? $visit->status : $b->status;
+
             if ($prevEnd) {
-                $gap = Carbon::parse($prevEnd)->diffInMinutes(Carbon::parse($b->start_time), false);
+                $gap = Carbon::parse($prevEnd)->diffInMinutes(Carbon::parse($pStart), false);
                 $items[] = [
                     'type' => 'transition_gap',
                     'start_time' => $prevEnd,
-                    'end_time' => $b->start_time,
+                    'end_time' => $pStart,
                     'gap_minutes' => $gap,
                     'is_valid' => $gap >= 60,
                 ];
@@ -715,16 +837,16 @@ class DailyOperationsService
                 'service_name' => $b->service?->name,
                 'customer_name' => $b->customer ? ($b->customer->first_name . ' ' . $b->customer->last_name) : '—',
                 'address' => $b->address?->short_address ?? '—',
-                'planned_start' => $b->start_time,
-                'planned_end' => $b->end_time,
+                'planned_start' => $pStart,
+                'planned_end' => $pEnd,
                 'actual_start' => $b->actual_start_time,
                 'actual_end' => $b->actual_end_time,
-                'status' => $b->status,
+                'status' => $bStatus,
                 'is_at_risk' => (bool)$b->is_at_risk,
                 'at_risk_reason' => $b->at_risk_reason,
             ];
 
-            $prevEnd = $b->actual_end_time ?: $b->end_time;
+            $prevEnd = $b->actual_end_time ?: $pEnd;
         }
 
         return [
