@@ -75,7 +75,7 @@ Route::prefix('admin')->group(function () {
             Route::get('/', 'index')->middleware('permission:users.view');
             Route::get('/{user}', 'show')->middleware('permission:users.view');
             Route::put('/{user}', 'update')->middleware('permission:users.edit');
-            Route::patch('/{user}/toggle-status', 'toggleStatus')->middleware('permission:users.edit');
+            Route::match(['post', 'patch'], '/{user}/toggle-status', 'toggleStatus')->middleware('permission:users.edit');
             Route::post('/{user}/reset-password', 'resetPassword')->middleware('permission:users.edit');
             Route::match(['post', 'put'], '/{user}/verify', 'verifyUser');
         });
@@ -85,7 +85,7 @@ Route::prefix('admin')->group(function () {
             Route::post('/', 'store')->middleware('permission:employees.create');
             Route::get('/{employee}', 'show')->middleware('permission:employees.view');
             Route::match(['put', 'patch'], '/{employee}', 'update')->middleware('permission:employees.edit');
-            Route::patch('/{employee}/toggle-status', 'toggleStatus')->middleware('permission:employees.edit');
+            Route::match(['post', 'patch'], '/{employee}/toggle-status', 'toggleStatus')->middleware('permission:employees.edit');
             Route::delete('/{employee}', 'destroy')->middleware('permission:employees.delete');
         });
 
@@ -106,7 +106,7 @@ Route::prefix('admin')->group(function () {
             Route::get('/{worker}', 'show')->middleware('permission:workers.view');
             Route::get('/{worker}/details', 'details')->middleware('permission:workers.view');
             Route::match(['put', 'patch'], '/{worker}', 'update')->middleware('permission:workers.edit');
-            Route::post('/{worker}/toggle-status', 'changeStatus')->middleware('permission:workers.edit');
+            Route::match(['post', 'patch'], '/{worker}/toggle-status', 'changeStatus')->middleware('permission:workers.edit');
             Route::delete('/{worker}', 'destroy')->middleware('permission:workers.delete');
         });
 
@@ -126,7 +126,7 @@ Route::prefix('admin')->group(function () {
             Route::post('/', 'store')->middleware('permission:categories.create');
             Route::get('/{category}', 'show')->middleware('permission:categories.view');
             Route::match(['put', 'patch'], '/{category}', 'update')->middleware('permission:categories.edit');
-            Route::post('/{category}/toggle-status', 'toggleStatus')->middleware('permission:categories.edit');
+            Route::match(['post', 'patch'], '/{category}/toggle-status', 'toggleStatus')->middleware('permission:categories.edit');
             Route::delete('/{category}', 'destroy')->middleware('permission:categories.delete');
         });
 
@@ -136,7 +136,7 @@ Route::prefix('admin')->group(function () {
             Route::get('/{service}', 'show')->middleware('permission:services.view');
             Route::get('/{service}/details', 'details')->middleware('permission:services.view');
             Route::match(['put', 'patch'], '/{service}', 'update')->middleware('permission:services.edit');
-            Route::post('/{service}/toggle-status', 'toggleStatus')->middleware('permission:services.edit');
+            Route::match(['post', 'patch'], '/{service}/toggle-status', 'toggleStatus')->middleware('permission:services.edit');
             Route::delete('/{service}', 'destroy')->middleware('permission:services.delete');
         });
 
@@ -226,7 +226,7 @@ Route::prefix('admin')->group(function () {
             Route::post('/', 'store')->middleware('permission:banners.create');
             Route::get('/{ad}', 'show')->middleware('permission:banners.view');
             Route::match(['put', 'patch'], '/{ad}', 'update')->middleware('permission:banners.edit');
-            Route::patch('/{ad}/toggle-status', 'toggleStatus')->middleware('permission:banners.edit');
+            Route::match(['post', 'patch'], '/{ad}/toggle-status', 'toggleStatus')->middleware('permission:banners.edit');
             Route::delete('/{ad}', 'destroy')->middleware('permission:banners.delete');
         });
 
