@@ -61,6 +61,7 @@ Route::prefix('admin')->group(function () {
         Route::controller(ProfileController::class)->group(function () {
             Route::get('me', 'me');
             Route::get('me/notifications', 'notifications');
+            Route::get('me/notifications/stream', 'notificationStream');
             Route::post('me/notifications/read', 'markNotificationsAsRead');
 
             Route::get('profile', 'show');

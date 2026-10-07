@@ -19,6 +19,30 @@ class StoreServiceRequest extends CustomFormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('workers') || array_key_exists('workers', $this->all())) {
+            $workers = $this->input('workers');
+            if (empty($workers) || $workers === '' || $workers === 'null' || $workers === '[]') {
+                $this->merge(['workers' => []]);
+            }
+        }
+
+        if ($this->has('teams') || array_key_exists('teams', $this->all())) {
+            $teams = $this->input('teams');
+            if (empty($teams) || $teams === '' || $teams === 'null' || $teams === '[]') {
+                $this->merge(['teams' => []]);
+            }
+        }
+
+        if ($this->has('service_zone_ids') || array_key_exists('service_zone_ids', $this->all())) {
+            $zones = $this->input('service_zone_ids');
+            if (empty($zones) || $zones === '' || $zones === 'null' || $zones === '[]') {
+                $this->merge(['service_zone_ids' => []]);
+            }
+        }
+    }
+
     /**
      * Get the validation rules that apply to the request.
      *
@@ -68,7 +92,7 @@ class StoreServiceRequest extends CustomFormRequest
             'available_visit_types' => 'required|array|min:1',
             'available_visit_types.*.type' => 'required|string|in:single_visit,3_days_per_week',
             'available_visit_types.*.discount' => 'nullable|numeric|min:0|max:100',
-            'base_price' => 'nullable|numeric|min:0',
+            'base_price' => 'nullable|numeric|min:0|max:99999999.99',
 
             // Service Sub-Items / Options
             'options' => 'nullable|array',
@@ -76,9 +100,9 @@ class StoreServiceRequest extends CustomFormRequest
             'options.*.name_en' => 'required_with:options|string|max:100',
             'options.*.description_ar' => 'nullable|string|max:255',
             'options.*.description_en' => 'nullable|string|max:255',
-            'options.*.unit_price' => 'required_with:options|numeric|min:0',
-            'options.*.min_qty' => 'nullable|integer|min:0',
-            'options.*.max_qty' => 'nullable|integer',
+            'options.*.unit_price' => 'required_with:options|numeric|min:0|max:99999999.99',
+            'options.*.min_qty' => 'nullable|integer|min:0|max:999999',
+            'options.*.max_qty' => 'nullable|integer|min:0|max:999999',
             'options.*.status' => 'nullable|in:active,inactive',
 
             // Service Image
@@ -91,26 +115,28 @@ class StoreServiceRequest extends CustomFormRequest
             // Service Duration & Time
             'start_time' => 'nullable|date_format:H:i',
             'end_time' => 'nullable|date_format:H:i|after:start_time',
-            'default_duration' => 'required|integer|min:1',
+            'default_duration' => 'required|integer|min:1|max:1440',
             'has_duration_range' => 'nullable|boolean',
-            'min_duration' => 'nullable|integer|min:1',
-            'max_duration' => 'nullable|integer|min:1|gte:min_duration',
+            'min_duration' => 'nullable|integer|min:1|max:1440',
+            'max_duration' => 'nullable|integer|min:1|max:1440|gte:min_duration',
             'min_workers' => [
                 Rule::requiredIf(fn () => ! $this->boolean('is_team_based')),
                 'nullable',
                 'integer',
                 'min:1',
+                'max:100',
             ],
             'max_workers' => [
                 Rule::requiredIf(fn () => ! $this->boolean('is_team_based')),
                 'nullable',
                 'integer',
                 'min:1',
+                'max:100',
                 'gte:min_workers',
             ],
-            'min_children' => 'nullable|integer|min:1',
-            'max_children' => 'nullable|integer|min:1|gte:min_children',
-            'covered_persons_per_worker' => 'nullable|integer|min:1',
+            'min_children' => 'nullable|integer|min:1|max:100',
+            'max_children' => 'nullable|integer|min:1|max:100|gte:min_children',
+            'covered_persons_per_worker' => 'nullable|integer|min:1|max:100',
             'child_age_groups' => 'nullable|array',
             'child_age_groups.*.name_ar' => 'required_with:child_age_groups|string|max:100',
             'child_age_groups.*.name_en' => 'required_with:child_age_groups|string|max:100',
@@ -406,6 +432,26 @@ class StoreServiceRequest extends CustomFormRequest
             'image.image' => __('validation.create_category.image_image'),
             'image.mimes' => __('validation.create_category.image_mimes'),
             'image.max' => __('validation.create_category.image_max'),
+
+            // 6. الأسعار والخيارات
+            'base_price.numeric' => __('validation.create_service.base_price_numeric'),
+            'base_price.min' => __('validation.create_service.base_price_min'),
+            'base_price.max' => __('validation.create_service.base_price_max'),
+            'options.*.unit_price.numeric' => __('validation.create_service.unit_price_numeric'),
+            'options.*.unit_price.min' => __('validation.create_service.unit_price_min'),
+            'options.*.unit_price.max' => __('validation.create_service.unit_price_max'),
+        ];
+    }
+
+    public function attributes(): array
+    {
+        $isAr = app()->getLocale() === 'ar';
+
+        return [
+            'base_price' => $isAr ? 'السعر الأساسي' : 'base price',
+            'options.*.unit_price' => $isAr ? 'سعر الوحدة' : 'unit price',
+            'options.*.min_qty' => $isAr ? 'الحد الأدنى للكمية' : 'minimum quantity',
+            'options.*.max_qty' => $isAr ? 'الحد الأقصى للكمية' : 'maximum quantity',
         ];
     }
 }

@@ -159,7 +159,8 @@ class ServiceWriter
         }
 
         if (array_key_exists('service_zone_ids', $data)) {
-            $service->serviceZones()->sync($data['service_zone_ids'] ?? []);
+            $zoneIds = is_array($data['service_zone_ids']) ? array_values(array_filter($data['service_zone_ids'])) : [];
+            $service->serviceZones()->sync($zoneIds);
         }
 
         if (array_key_exists('working_days', $data) || array_key_exists('shifts', $data)) {

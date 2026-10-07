@@ -58,10 +58,13 @@ class BookingListResource extends JsonResource
             'booking_status' => $this->status,
             'visit_type' => $this->visit_type ?? 'single_visit',
             'visit_schedule' => $this->relationLoaded('visits') && $this->visits ? $this->visits->map(fn($v) => [
+                'id' => $v->id,
                 'visit_date' => $v->visit_date,
                 'visit_day' => Carbon::parse($v->visit_date)->isoFormat('dddd'),
                 'start_time' => Carbon::parse($v->start_time)->format('H:i'),
                 'end_time' => Carbon::parse($v->end_time)->format('H:i'),
+                'actual_start_time' => $v->actual_start_time ? Carbon::parse($v->actual_start_time)->format('H:i') : null,
+                'actual_end_time' => $v->actual_end_time ? Carbon::parse($v->actual_end_time)->format('H:i') : null,
                 'duration' => (int) ceil($this->duration_minutes / 60),
                 'visit_status' => $v->status,
             ])->values()->toArray() : [],

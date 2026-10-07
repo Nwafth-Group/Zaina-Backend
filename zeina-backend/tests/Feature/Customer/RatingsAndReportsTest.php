@@ -259,7 +259,7 @@ class RatingsAndReportsTest extends TestCase
     public function customer_cannot_submit_duplicate_open_reports_for_same_reason()
     {
         // First report
-        Report::create([
+        $firstReport = Report::create([
             'booking_id' => $this->booking->id,
             'customer_id' => $this->customer->id,
             'report_number' => 'REP-111111',
@@ -276,9 +276,10 @@ class RatingsAndReportsTest extends TestCase
             ->postJson("/api/v1/customer/bookings/{$this->booking->id}/report", $payload);
 
         $response->assertStatus(400);
+        $expectedDate = $firstReport->created_at ? $firstReport->created_at->format('Y-m-d') : null;
         $response->assertJson([
             'success' => false,
-            'message' => __('messages.open_report_exists') ?? 'You already have an open report for this reason on this booking.',
+            'message' => __('messages.open_report_exists', ['date' => $expectedDate]),
         ]);
     }
 

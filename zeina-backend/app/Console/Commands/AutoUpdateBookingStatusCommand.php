@@ -56,8 +56,11 @@ class AutoUpdateBookingStatusCommand extends Command
                     continue;
                 }
 
-                DB::transaction(function () use ($visit, $booking) {
-                    $visit->update(['status' => 'inService']);
+                DB::transaction(function () use ($visit, $booking, $now) {
+                    $visit->update([
+                        'status' => 'inService',
+                        'actual_start_time' => $visit->actual_start_time ?: ($visit->start_time ?: $now->format('H:i')),
+                    ]);
 
                     if ($booking->status === 'Upcoming') {
                         $booking->update(['status' => 'inService']);
@@ -154,8 +157,11 @@ class AutoUpdateBookingStatusCommand extends Command
                     continue;
                 }
 
-                DB::transaction(function () use ($visit, $booking) {
-                    $visit->update(['status' => 'completed']);
+                DB::transaction(function () use ($visit, $booking, $now) {
+                    $visit->update([
+                        'status' => 'completed',
+                        'actual_end_time' => $visit->actual_end_time ?: ($visit->end_time ?: $now->format('H:i')),
+                    ]);
 
                     // Check if ALL visits under this parent booking are now completed
                     $allVisitsCompleted = !BookingVisit::where('booking_id', $booking->id)

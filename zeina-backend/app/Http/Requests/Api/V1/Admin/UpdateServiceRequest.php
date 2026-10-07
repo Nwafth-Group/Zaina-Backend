@@ -27,6 +27,20 @@ class UpdateServiceRequest extends CustomFormRequest
                 $this->merge(['workers' => []]);
             }
         }
+
+        if ($this->has('teams') || array_key_exists('teams', $this->all())) {
+            $teams = $this->input('teams');
+            if (empty($teams) || $teams === '' || $teams === 'null' || $teams === '[]') {
+                $this->merge(['teams' => []]);
+            }
+        }
+
+        if ($this->has('service_zone_ids') || array_key_exists('service_zone_ids', $this->all())) {
+            $zones = $this->input('service_zone_ids');
+            if (empty($zones) || $zones === '' || $zones === 'null' || $zones === '[]') {
+                $this->merge(['service_zone_ids' => []]);
+            }
+        }
     }
 
     /**
@@ -90,7 +104,7 @@ class UpdateServiceRequest extends CustomFormRequest
             'available_visit_types' => 'sometimes|required|array|min:1',
             'available_visit_types.*.type' => 'required_with:available_visit_types|string|in:single_visit,3_days_per_week',
             'available_visit_types.*.discount' => 'nullable|numeric|min:0|max:100',
-            'base_price' => 'sometimes|nullable|numeric|min:0',
+            'base_price' => 'sometimes|nullable|numeric|min:0|max:99999999.99',
 
             // Service Sub-Items / Options
             'options' => 'sometimes|nullable|array',
@@ -98,9 +112,9 @@ class UpdateServiceRequest extends CustomFormRequest
             'options.*.name_en' => 'required_with:options|string|max:100',
             'options.*.description_ar' => 'nullable|string|max:255',
             'options.*.description_en' => 'nullable|string|max:255',
-            'options.*.unit_price' => 'required_with:options|numeric|min:0',
-            'options.*.min_qty' => 'nullable|integer|min:0',
-            'options.*.max_qty' => 'nullable|integer',
+            'options.*.unit_price' => 'required_with:options|numeric|min:0|max:99999999.99',
+            'options.*.min_qty' => 'nullable|integer|min:0|max:999999',
+            'options.*.max_qty' => 'nullable|integer|min:0|max:999999',
             'options.*.status' => 'nullable|in:active,inactive',
 
             // Service Image
@@ -113,10 +127,10 @@ class UpdateServiceRequest extends CustomFormRequest
             // Service Duration & Time
             'start_time' => 'sometimes|nullable|date_format:H:i',
             'end_time' => 'sometimes|nullable|date_format:H:i|after:start_time',
-            'default_duration' => 'sometimes|required|integer|min:1',
+            'default_duration' => 'sometimes|required|integer|min:1|max:1440',
             'has_duration_range' => 'sometimes|nullable|boolean',
-            'min_duration' => 'sometimes|nullable|integer|min:1',
-            'max_duration' => 'sometimes|nullable|integer|min:1|gte:min_duration',
+            'min_duration' => 'sometimes|nullable|integer|min:1|max:1440',
+            'max_duration' => 'sometimes|nullable|integer|min:1|max:1440|gte:min_duration',
             'min_workers' => [
                 'sometimes',
                 Rule::requiredIf(function () use ($service) {
@@ -128,6 +142,7 @@ class UpdateServiceRequest extends CustomFormRequest
                 'nullable',
                 'integer',
                 'min:1',
+                'max:100',
             ],
             'max_workers' => [
                 'sometimes',
@@ -140,11 +155,12 @@ class UpdateServiceRequest extends CustomFormRequest
                 'nullable',
                 'integer',
                 'min:1',
+                'max:100',
                 'gte:min_workers',
             ],
-            'min_children' => 'sometimes|nullable|integer|min:1',
-            'max_children' => 'sometimes|nullable|integer|min:1|gte:min_children',
-            'covered_persons_per_worker' => 'sometimes|nullable|integer|min:1',
+            'min_children' => 'sometimes|nullable|integer|min:1|max:100',
+            'max_children' => 'sometimes|nullable|integer|min:1|max:100|gte:min_children',
+            'covered_persons_per_worker' => 'sometimes|nullable|integer|min:1|max:100',
             'child_age_groups' => 'sometimes|nullable|array',
             'child_age_groups.*.name_ar' => 'required_with:child_age_groups|string|max:100',
             'child_age_groups.*.name_en' => 'required_with:child_age_groups|string|max:100',
@@ -427,6 +443,26 @@ class UpdateServiceRequest extends CustomFormRequest
             'image.image' => __('validation.update_service.image_invalid'),
             'image.mimes' => __('validation.update_service.image_mimes'),
             'image.max' => __('validation.update_service.image_max'),
+
+            // الأسعار والخيارات
+            'base_price.numeric' => __('validation.update_service.base_price_numeric'),
+            'base_price.min' => __('validation.update_service.base_price_min'),
+            'base_price.max' => __('validation.update_service.base_price_max'),
+            'options.*.unit_price.numeric' => __('validation.update_service.unit_price_numeric'),
+            'options.*.unit_price.min' => __('validation.update_service.unit_price_min'),
+            'options.*.unit_price.max' => __('validation.update_service.unit_price_max'),
+        ];
+    }
+
+    public function attributes(): array
+    {
+        $isAr = app()->getLocale() === 'ar';
+
+        return [
+            'base_price' => $isAr ? 'السعر الأساسي' : 'base price',
+            'options.*.unit_price' => $isAr ? 'سعر الوحدة' : 'unit price',
+            'options.*.min_qty' => $isAr ? 'الحد الأدنى للكمية' : 'minimum quantity',
+            'options.*.max_qty' => $isAr ? 'الحد الأقصى للكمية' : 'maximum quantity',
         ];
     }
 }

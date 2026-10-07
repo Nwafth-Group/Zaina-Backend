@@ -29,7 +29,8 @@ class DailyOperationsService
             'address.serviceZone',
             'starter',
             'completer',
-            'visits',
+            'visits.starter',
+            'visits.completer',
         ])->forDate($date);
 
         if (!empty($filters['status'])) {
@@ -183,16 +184,36 @@ class DailyOperationsService
                     : 'Awaiting qualification and resource assignment (worker or team).';
             }
 
+            if ($currentVisit) {
+                $actualStart = $currentVisit->actual_start_time;
+                $actualEnd = $currentVisit->actual_end_time;
+                $startedByName = $currentVisit->starter
+                    ? trim($currentVisit->starter->first_name . ' ' . $currentVisit->starter->last_name)
+                    : null;
+                $completedByName = $currentVisit->completer
+                    ? trim($currentVisit->completer->first_name . ' ' . $currentVisit->completer->last_name)
+                    : null;
+            } else {
+                $actualStart = $b->actual_start_time;
+                $actualEnd = $b->actual_end_time;
+                $startedByName = $b->starter
+                    ? trim($b->starter->first_name . ' ' . $b->starter->last_name)
+                    : null;
+                $completedByName = $b->completer
+                    ? trim($b->completer->first_name . ' ' . $b->completer->last_name)
+                    : null;
+            }
+
             return [
                 'id' => $b->id,
                 'booking_ref' => $b->booking_ref,
                 'booking_date' => $currentVisit ? $currentVisit->visit_date : $b->booking_date,
                 'planned_start_time' => $plannedStart,
                 'planned_end_time' => $plannedEnd,
-                'actual_start_time' => $b->actual_start_time,
-                'actual_end_time' => $b->actual_end_time,
-                'started_by' => $b->starter?->first_name ? ($b->starter->first_name . ' ' . $b->starter->last_name) : null,
-                'completed_by' => $b->completer?->first_name ? ($b->completer->first_name . ' ' . $b->completer->last_name) : null,
+                'actual_start_time' => $actualStart,
+                'actual_end_time' => $actualEnd,
+                'started_by' => $startedByName,
+                'completed_by' => $completedByName,
                 'status' => $currentStatus,
                 'is_at_risk' => (bool)$b->is_at_risk,
                 'at_risk_reason' => $b->at_risk_reason,
@@ -281,7 +302,11 @@ class DailyOperationsService
         $oldStatus = $booking->status;
 
         if ($visit) {
-            $visit->update(['status' => 'inService']);
+            $visit->update([
+                'actual_start_time' => $startTimeStr,
+                'started_by' => $user->id,
+                'status' => 'inService',
+            ]);
         }
 
         $booking->update([
@@ -345,8 +370,11 @@ class DailyOperationsService
 
         $endTimeStr = $actualEnd ?: now()->format('H:i');
 
-        // Verify end time comes after start time
-        $startComp = $booking->actual_start_time ?: ($visit ? $visit->start_time : $booking->start_time);
+        // Verify end time comes after start time (check visit actual start time first)
+        $startComp = $visit
+            ? ($visit->actual_start_time ?: $visit->start_time)
+            : ($booking->actual_start_time ?: $booking->start_time);
+
         if ($startComp && $endTimeStr <= $startComp) {
             throw ValidationException::withMessages([
                 'actual_end_time' => [app()->getLocale() === 'ar'
@@ -359,7 +387,11 @@ class DailyOperationsService
         $oldStatus = $booking->status;
 
         if ($visit) {
-            $visit->update(['status' => 'completed']);
+            $visit->update([
+                'actual_end_time' => $endTimeStr,
+                'completed_by' => $user->id,
+                'status' => 'completed',
+            ]);
         }
 
         // Check if ALL visits under this parent booking are now completed
@@ -830,6 +862,9 @@ class DailyOperationsService
                 ];
             }
 
+            $actStart = $visit ? $visit->actual_start_time : $b->actual_start_time;
+            $actEnd = $visit ? $visit->actual_end_time : $b->actual_end_time;
+
             $items[] = [
                 'type' => 'service',
                 'booking_id' => $b->id,
@@ -839,14 +874,14 @@ class DailyOperationsService
                 'address' => $b->address?->short_address ?? '—',
                 'planned_start' => $pStart,
                 'planned_end' => $pEnd,
-                'actual_start' => $b->actual_start_time,
-                'actual_end' => $b->actual_end_time,
+                'actual_start' => $actStart,
+                'actual_end' => $actEnd,
                 'status' => $bStatus,
                 'is_at_risk' => (bool)$b->is_at_risk,
                 'at_risk_reason' => $b->at_risk_reason,
             ];
 
-            $prevEnd = $b->actual_end_time ?: $pEnd;
+            $prevEnd = $actEnd ?: $pEnd;
         }
 
         return [

@@ -29,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
         ]);
 
+        $middleware->append(\App\Http\Middleware\QueryTokenToAuthHeader::class);
         $middleware->append(LanguageMiddleware::class);
     })
     ->withExceptions(function (Exceptions $exceptions) {
@@ -107,13 +108,42 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
 
+        $exceptions->renderable(function (\Illuminate\Database\QueryException $e, Request $request) {
+            if ($request->is('api/*')) {
+                \Illuminate\Support\Facades\Log::error('Database QueryException: ' . $e->getMessage(), [
+                    'sql' => $e->getSql(),
+                    'bindings' => $e->getBindings(),
+                ]);
+
+                return response()->json([
+                    'status' => 500,
+                    'success' => false,
+                    'message' => __('app.database_error'),
+                    'data' => null,
+                    'error' => config('app.debug') ? $e->getMessage() : null,
+                ], 500);
+            }
+        });
+
         $exceptions->renderable(function (Throwable $e, Request $request) {
             if ($request->is('api/*')) {
-                // You will no longer hit this handler for this error
-                return ApiResponseTrait::handlingErrorResponse(
-                    $e->getMessage() ?: __('app.unexpected_error'),
-                    500
-                );
+                \Illuminate\Support\Facades\Log::error('Unhandled Exception: ' . $e->getMessage(), [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                ]);
+
+                $isDbError = $e instanceof \PDOException;
+                $friendlyMessage = $isDbError
+                    ? __('app.database_error')
+                    : (config('app.debug') ? ($e->getMessage() ?: __('app.unexpected_error')) : __('app.unexpected_error'));
+
+                return response()->json([
+                    'status' => 500,
+                    'success' => false,
+                    'message' => $friendlyMessage,
+                    'data' => null,
+                    'error' => config('app.debug') ? $e->getMessage() : null,
+                ], 500);
             }
         });
     })->create();

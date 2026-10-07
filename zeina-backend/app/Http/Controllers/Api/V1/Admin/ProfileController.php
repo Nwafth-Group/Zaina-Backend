@@ -74,4 +74,37 @@ class ProfileController extends Controller
 
         return $this->successResponse(null, __('messages.notifications_marked_read') ?? 'Marked as read');
     }
+
+    public function notificationStream(Request $request)
+    {
+        $user = $request->user();
+        if (! $user) {
+            return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
+
+        $response = new \Symfony\Component\HttpFoundation\StreamedResponse(function () use ($user) {
+            while (ob_get_level() > 0) {
+                ob_end_clean();
+            }
+
+            $unreadCount = $user->unreadNotifications()->count();
+            $notifications = $user->notifications()->latest()->limit(20)->get();
+
+            echo "retry: 3000\n\n";
+            echo "event: sync\n";
+            echo 'data: ' . json_encode([
+                'status' => 'connected',
+                'unread_count' => $unreadCount,
+                'notifications' => $notifications,
+            ], JSON_UNESCAPED_UNICODE) . "\n\n";
+            flush();
+        });
+
+        $response->headers->set('Content-Type', 'text/event-stream');
+        $response->headers->set('Cache-Control', 'no-cache, no-store, must-revalidate');
+        $response->headers->set('Connection', 'keep-alive');
+        $response->headers->set('X-Accel-Buffering', 'no');
+
+        return $response;
+    }
 }

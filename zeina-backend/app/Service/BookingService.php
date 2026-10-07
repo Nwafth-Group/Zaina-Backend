@@ -240,14 +240,31 @@ class BookingService
 
             // Update visits
             if ($booking->relationLoaded('visits') && $booking->visits) {
-                foreach ($booking->visits as $index => $visit) {
-                    if (isset($sortedDates[$index])) {
-                        $visit->update([
-                            'visit_date' => $sortedDates[$index],
-                            'start_time' => $newStartStr,
-                            'end_time' => $newEndStr,
-                            'status' => 'Upcoming',
-                        ]);
+                $nonCompletedVisits = $booking->visits->whereNotIn('status', ['completed', 'cancelled'])->values();
+                if ($nonCompletedVisits->count() < $booking->visits->count() && count($sortedDates) === $nonCompletedVisits->count()) {
+                    foreach ($nonCompletedVisits as $index => $visit) {
+                        if (isset($sortedDates[$index])) {
+                            $visit->update([
+                                'visit_date' => $sortedDates[$index],
+                                'start_time' => $newStartStr,
+                                'end_time' => $newEndStr,
+                                'status' => 'Upcoming',
+                            ]);
+                        }
+                    }
+                } else {
+                    foreach ($booking->visits as $index => $visit) {
+                        if (isset($sortedDates[$index])) {
+                            if ($visit->status === 'completed') {
+                                continue;
+                            }
+                            $visit->update([
+                                'visit_date' => $sortedDates[$index],
+                                'start_time' => $newStartStr,
+                                'end_time' => $newEndStr,
+                                'status' => 'Upcoming',
+                            ]);
+                        }
                     }
                 }
             }
@@ -646,9 +663,15 @@ class BookingService
         $existingReport = Report::query()->where('booking_id', $booking->id)
             ->where('reason', $data['reason'])
             ->where('status', '!=', 'resolved')
-            ->exists();
+            ->latest()
+            ->first();
+
         if ($existingReport) {
-            throw new \Exception(__('messages.open_report_exists'), 400);
+            $reportDate = $existingReport->created_at ? $existingReport->created_at->format('Y-m-d') : null;
+            $message = $reportDate
+                ? __('messages.open_report_exists', ['date' => $reportDate])
+                : __('messages.open_report_exists_generic');
+            throw new \Exception($message, 400);
         }
 
         // 3. إنشاء رقم تذكرة فريد
