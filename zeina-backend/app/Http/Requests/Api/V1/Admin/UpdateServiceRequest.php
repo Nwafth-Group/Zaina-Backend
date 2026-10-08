@@ -202,28 +202,18 @@ class UpdateServiceRequest extends CustomFormRequest
         ];
 
         $service = $this->route('service');
+        if (is_numeric($service)) {
+            $service = Service::find($service);
+        }
         $serviceCode = $this->input('service_code') ?? ($service ? (is_object($service) ? $service->service_code : Service::find($service)?->service_code) : null);
         $categoryId = $this->input('category_id') ?? ($service ? (is_object($service) ? $service->category_id : Service::find($service)?->category_id) : null);
 
-        $isSecondOrThird = false;
-        if ($serviceCode === 'HOSPITALITY_WORKER_HOURLY' || $serviceCode === 'BABYSITTER_HOURLY' || $serviceCode === 'PEDICURE_MANICURE' || $this->input('type') === 'other') {
-            $isSecondOrThird = true;
-        } elseif ($categoryId) {
-            $category = Category::find($categoryId);
-            if ($category) {
-                $catEn = strtolower($category->name_en);
-                if (str_contains($catEn, 'hospitality') || str_contains($category->name_ar, 'ضيافة') ||
-                    str_contains($catEn, 'babysitting') || str_contains($catEn, 'nanny') || str_contains($category->name_ar, 'أطفال') || str_contains($catEn, 'babysitter') ||
-                    str_contains($catEn, 'other') || str_contains($category->name_ar, 'أخرى') || str_contains($catEn, 'pedicure') || str_contains($category->name_ar, 'أقدام')
-                ) {
-                    $isSecondOrThird = true;
-                }
-            }
-        }
+        $isServiceWithoutShifts = Service::isServiceWithoutShifts($serviceCode, $categoryId ? (int)$categoryId : null);
 
-        if ($isSecondOrThird) {
+        if ($isServiceWithoutShifts) {
             $rules['shifts'] = 'nullable|array';
             $rules['shifts.*.start_time'] = 'nullable';
+            $rules['shifts.*.end_time'] = 'nullable';
         }
 
         return $rules;
@@ -235,6 +225,9 @@ class UpdateServiceRequest extends CustomFormRequest
             function ($validator) {
                 $isAr = app()->getLocale() === 'ar';
                 $service = $this->route('service');
+                if (is_numeric($service)) {
+                    $service = Service::find($service);
+                }
                 if ($this->has('service_code') && $service && $this->input('service_code') !== $service->service_code) {
                     $validator->errors()->add('service_code', $isAr ? 'لا يمكن تعديل كود الخدمة.' : 'The service code cannot be updated.');
                 }
@@ -243,7 +236,12 @@ class UpdateServiceRequest extends CustomFormRequest
                 $shifts = $this->input('shifts', []);
                 $defaultDuration = (int) ($this->input('default_duration') ?? ($service ? $service->default_duration : 1));
 
-                if ($startTime && $endTime) {
+                $categoryId = $this->input('category_id') ?? ($service ? $service->category_id : null);
+                $serviceCode = $this->input('service_code') ?? ($service ? $service->service_code : null);
+                $isServiceWithoutShifts = Service::isServiceWithoutShifts($serviceCode, $categoryId ? (int)$categoryId : null);
+
+                // Only validate discrete shifts against service window if the service actually uses shifts
+                if (! $isServiceWithoutShifts && $startTime && $endTime) {
                     foreach ($shifts as $index => $shift) {
                         if (! empty($shift['start_time'])) {
                             try {

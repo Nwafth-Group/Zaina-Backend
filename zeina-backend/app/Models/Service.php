@@ -139,5 +139,44 @@ class Service extends Model implements Auditable
         $teamCodes = array_map('strtoupper', self::getTeamBasedCodes());
         return in_array($code, $teamCodes, true);
     }
+
+    public static function getServicesWithoutShiftsCodes(): array
+    {
+        return [
+            'HOSPITALITY_WORKER_HOURLY',
+            'BABYSITTER_HOURLY',
+            'PEDICURE_MANICURE',
+        ];
+    }
+
+    public static function isServiceWithoutShifts(?string $serviceCode, ?int $categoryId = null): bool
+    {
+        $code = strtoupper($serviceCode ?? '');
+        if (in_array($code, self::getServicesWithoutShiftsCodes(), true)) {
+            return true;
+        }
+
+        if ($categoryId) {
+            $category = Category::find($categoryId);
+            if ($category) {
+                $catEn = strtolower($category->name_en ?? '');
+                $catAr = $category->name_ar ?? '';
+                if (
+                    str_contains($catEn, 'hospitality') || str_contains($catAr, 'ضيافة') ||
+                    str_contains($catEn, 'babysitting') || str_contains($catEn, 'nanny') || str_contains($catAr, 'أطفال') || str_contains($catEn, 'babysitter') ||
+                    str_contains($catEn, 'pedicure') || str_contains($catAr, 'أقدام')
+                ) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    public function hasDiscreteShifts(): bool
+    {
+        return ! self::isServiceWithoutShifts($this->service_code, $this->category_id);
+    }
 }
 
