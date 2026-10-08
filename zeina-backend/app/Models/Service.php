@@ -131,13 +131,21 @@ class Service extends Model implements Auditable
 
     public function isTeamBased(): bool
     {
-        if (!is_null($this->is_team_based)) {
-            return (bool) $this->is_team_based;
+        if ((bool) $this->is_team_based) {
+            return true;
         }
 
         $code = strtoupper($this->service_code ?? '');
         $teamCodes = array_map('strtoupper', self::getTeamBasedCodes());
-        return in_array($code, $teamCodes, true);
+        if (in_array($code, $teamCodes, true)) {
+            return true;
+        }
+
+        if ($this->id >= 6 && $this->id <= 11) {
+            return true;
+        }
+
+        return false;
     }
 
     public static function getServicesWithoutShiftsCodes(): array

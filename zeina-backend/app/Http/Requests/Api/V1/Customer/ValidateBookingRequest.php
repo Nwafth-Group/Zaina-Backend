@@ -286,7 +286,7 @@ class ValidateBookingRequest extends CustomFormRequest
 
                 $isDeepCleaning = ($service->service_code === 'DEEP_CLEANING');
 
-                if (! $isDeepCleaning && $service->service_code !== 'BABYSITTER_HOURLY') {
+                if (! $isDeepCleaning && $service->service_code !== 'BABYSITTER_HOURLY' && ! $service->isTeamBased()) {
                     $workersCount = (int) $this->input('workers_count');
                     $minWorkers = $service->min_workers ?? 1;
                     $maxWorkers = $service->max_workers ?? 3;
