@@ -127,29 +127,72 @@ class ServiceWriter
                 if (! empty($workerIds)) {
                     $isSpecialized = in_array(strtoupper($service->service_code ?? ''), array_map('strtoupper', Service::getTeamBasedCodes()), true);
 
+                    $isAr = app()->getLocale() === 'ar';
+
                     if ($isSpecialized) {
                         // For specialized services (6 to 11), workers cannot be assigned to standard services (1 to 5)
-                        $assignedToStandard = DB::table('service_workers')
+                        $conflictingStandard = DB::table('service_workers')
+                            ->join('workers', 'workers.id', '=', 'service_workers.worker_id')
                             ->join('services', 'services.id', '=', 'service_workers.service_id')
                             ->whereIn('service_workers.worker_id', $workerIds)
                             ->whereNotIn('services.service_code', Service::getTeamBasedCodes())
-                            ->exists();
+                            ->where('service_workers.service_id', '!=', $service->id)
+                            ->select(
+                                'workers.id as worker_id',
+                                'workers.name as worker_name',
+                                'services.name_ar as service_name_ar',
+                                'services.name_en as service_name_en'
+                            )
+                            ->get();
 
-                        if ($assignedToStandard) {
+                        if ($conflictingStandard->isNotEmpty()) {
+                            $details = $conflictingStandard->map(function ($cw) use ($isAr) {
+                                $serviceName = $isAr ? ($cw->service_name_ar ?: $cw->service_name_en) : ($cw->service_name_en ?: $cw->service_name_ar);
+                                return "«{$cw->worker_name}» (مسند لخدمة: {$serviceName})";
+                            })->implode('، ');
+
+                            $detailsEn = $conflictingStandard->map(function ($cw) {
+                                $serviceName = $cw->service_name_en ?: $cw->service_name_ar;
+                                return "\"{$cw->worker_name}\" (assigned to: {$serviceName})";
+                            })->implode(', ');
+
                             throw ValidationException::withMessages([
-                                'workers' => 'أحد العمال محجوز في خدمات بالساعة (1-5)، ولا يمكن إسناده لخدمات تخصصية.',
+                                'workers' => $isAr
+                                    ? "العمال التالية مسندون لخدمات بالساعة (1-5): {$details}، ولا يمكن إسنادهم لخدمات تخصصية."
+                                    : "The following worker(s) are assigned to hourly services (1-5): {$detailsEn}, and cannot be assigned to specialized services.",
                             ]);
                         }
                     } else {
                         // For standard services (1 to 5), worker can only be assigned to one service
-                        $alreadyAssigned = DB::table('service_workers')
-                            ->whereIn('worker_id', $workerIds)
-                            ->where('service_id', '!=', $service->id)
-                            ->exists();
+                        $conflictingWorkers = DB::table('service_workers')
+                            ->join('workers', 'workers.id', '=', 'service_workers.worker_id')
+                            ->join('services', 'services.id', '=', 'service_workers.service_id')
+                            ->whereIn('service_workers.worker_id', $workerIds)
+                            ->where('service_workers.service_id', '!=', $service->id)
+                            ->select(
+                                'workers.id as worker_id',
+                                'workers.name as worker_name',
+                                'services.id as service_id',
+                                'services.name_ar as service_name_ar',
+                                'services.name_en as service_name_en'
+                            )
+                            ->get();
 
-                        if ($alreadyAssigned) {
+                        if ($conflictingWorkers->isNotEmpty()) {
+                            $details = $conflictingWorkers->map(function ($cw) use ($isAr) {
+                                $serviceName = $isAr ? ($cw->service_name_ar ?: $cw->service_name_en) : ($cw->service_name_en ?: $cw->service_name_ar);
+                                return "«{$cw->worker_name}» (مسند لخدمة: {$serviceName})";
+                            })->implode('، ');
+
+                            $detailsEn = $conflictingWorkers->map(function ($cw) {
+                                $serviceName = $cw->service_name_en ?: $cw->service_name_ar;
+                                return "\"{$cw->worker_name}\" (assigned to: {$serviceName})";
+                            })->implode(', ');
+
                             throw ValidationException::withMessages([
-                                'workers' => 'هذا العامل مسند لخدمة أخرى بالفعل. العامل في الخدمات العادية يسند لخدمة واحدة فقط.',
+                                'workers' => $isAr
+                                    ? "لا يمكن حفظ التعديل: العمال التالية مسندون لخدمات أخرى بالفعل: {$details}. في الخدمات العادية، يمكن إسناد العامل لخدمة واحدة فقط."
+                                    : "Cannot save: the following worker(s) are already assigned to other services: {$detailsEn}. In standard services, each worker can only belong to one service.",
                             ]);
                         }
                     }

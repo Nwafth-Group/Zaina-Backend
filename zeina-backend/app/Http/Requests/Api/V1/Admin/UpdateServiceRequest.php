@@ -7,6 +7,7 @@ use App\Models\Service;
 use Carbon\Carbon;
 use Illuminate\Contracts\Validation\ValidationRule;
 use App\Http\Requests\Api\V1\CustomFormRequest;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class UpdateServiceRequest extends CustomFormRequest
@@ -99,6 +100,8 @@ class UpdateServiceRequest extends CustomFormRequest
                 'integer',
                 Rule::exists('teams', 'id')->where('status', 'active'),
             ],
+            'worker_gender_options' => 'nullable|array',
+            'worker_gender_options.*' => 'in:Male,Female,male,female',
 
             // Available Visit Type & Pricing
             'available_visit_types' => 'sometimes|required|array|min:1',
@@ -301,14 +304,17 @@ class UpdateServiceRequest extends CustomFormRequest
 
                 $isAr = app()->getLocale() === 'ar';
 
+                if ($service && ($service->id == 2 || $service->service_code === 'HOSPITALITY_WORKER_HOURLY')) {
+                    $isSecondService = true;
+                }
+
                 if ($isSecondService) {
-                    if ($this->has('worker_gender_options')) {
-                        $genders = $this->input('worker_gender_options', []);
-                        if (empty($genders)) {
-                            $validator->errors()->add('worker_gender_options', $isAr 
-                                ? 'يجب اختيار خيار جنس واحد على الأقل لخدمة الضيافة.' 
-                                : 'At least one worker gender option must be enabled for the Hourly Hospitality Worker service.');
-                        }
+                    $genders = $this->input('worker_gender_options');
+                    $genders = is_array($genders) ? array_filter($genders) : [];
+                    if (empty($genders)) {
+                        $validator->errors()->add('worker_gender_options', $isAr 
+                            ? 'يجب اختيار جنس عمالة واحد على الأقل (ذكور أو إناث) لخدمة الضيافة.' 
+                            : 'At least one worker gender option must be selected (Male or Female) for the Hourly Hospitality Worker service.');
                     }
                 }
 
@@ -336,6 +342,73 @@ class UpdateServiceRequest extends CustomFormRequest
                             $validator->errors()->add('workers', $msg);
                         }
                     }
+
+                // Check if any selected worker is already assigned to another service
+                $workersInput = $this->input('workers');
+                if (is_array($workersInput) && !empty($workersInput) && $service && !$service->isTeamBased()) {
+                    $isSpecialized = in_array(strtoupper($serviceCode ?? ''), array_map('strtoupper', Service::getTeamBasedCodes()), true);
+
+                    if ($isSpecialized) {
+                        $conflictingStandard = DB::table('service_workers')
+                            ->join('workers', 'workers.id', '=', 'service_workers.worker_id')
+                            ->join('services', 'services.id', '=', 'service_workers.service_id')
+                            ->whereIn('service_workers.worker_id', $workersInput)
+                            ->whereNotIn('services.service_code', Service::getTeamBasedCodes())
+                            ->where('service_workers.service_id', '!=', $service->id)
+                            ->select(
+                                'workers.id as worker_id',
+                                'workers.name as worker_name',
+                                'services.name_ar as service_name_ar',
+                                'services.name_en as service_name_en'
+                            )
+                            ->get();
+
+                        if ($conflictingStandard->isNotEmpty()) {
+                            $details = $conflictingStandard->map(function ($cw) use ($isAr) {
+                                $serviceName = $isAr ? ($cw->service_name_ar ?: $cw->service_name_en) : ($cw->service_name_en ?: $cw->service_name_ar);
+                                return "«{$cw->worker_name}» (مسند لخدمة: {$serviceName})";
+                            })->implode('، ');
+
+                            $detailsEn = $conflictingStandard->map(function ($cw) {
+                                $serviceName = $cw->service_name_en ?: $cw->service_name_ar;
+                                return "\"{$cw->worker_name}\" (assigned to: {$serviceName})";
+                            })->implode(', ');
+
+                            $validator->errors()->add('workers', $isAr
+                                ? "العمال التالية مسندون لخدمات بالساعة (1-5): {$details}، ولا يمكن إسنادهم لخدمات تخصصية."
+                                : "The following worker(s) are assigned to hourly services (1-5): {$detailsEn}, and cannot be assigned to specialized services.");
+                        }
+                    } else {
+                        $conflictingWorkers = DB::table('service_workers')
+                            ->join('workers', 'workers.id', '=', 'service_workers.worker_id')
+                            ->join('services', 'services.id', '=', 'service_workers.service_id')
+                            ->whereIn('service_workers.worker_id', $workersInput)
+                            ->where('service_workers.service_id', '!=', $service->id)
+                            ->select(
+                                'workers.id as worker_id',
+                                'workers.name as worker_name',
+                                'services.name_ar as service_name_ar',
+                                'services.name_en as service_name_en'
+                            )
+                            ->get();
+
+                        if ($conflictingWorkers->isNotEmpty()) {
+                            $details = $conflictingWorkers->map(function ($cw) use ($isAr) {
+                                $serviceName = $isAr ? ($cw->service_name_ar ?: $cw->service_name_en) : ($cw->service_name_en ?: $cw->service_name_ar);
+                                return "«{$cw->worker_name}» (مسند لخدمة: {$serviceName})";
+                            })->implode('، ');
+
+                            $detailsEn = $conflictingWorkers->map(function ($cw) {
+                                $serviceName = $cw->service_name_en ?: $cw->service_name_ar;
+                                return "\"{$cw->worker_name}\" (assigned to: {$serviceName})";
+                            })->implode(', ');
+
+                            $validator->errors()->add('workers', $isAr
+                                ? "لا يمكن حفظ التعديل: العمال التالية مسندون لخدمات أخرى بالفعل: {$details}. في الخدمات العادية، يمكن إسناد العامل لخدمة واحدة فقط."
+                                : "Cannot save: the following worker(s) are already assigned to other services: {$detailsEn}. In standard services, each worker can only belong to one service.");
+                        }
+                    }
+                }
 
                     $minDuration = $this->input('min_duration') ?? ($service ? $service->min_duration : null);
                     $maxDuration = $this->input('max_duration') ?? ($service ? $service->max_duration : null);

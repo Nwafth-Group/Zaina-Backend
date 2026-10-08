@@ -371,13 +371,23 @@
 
         <!-- 5. Allocated Worker Details -->
         @php
-            $workerTitlesAr = [
+            $isSingleWorker = count($allocatedWorkers) === 1;
+
+            $femaleTitlesAr = [
                 0 => 'تفاصيل العاملة الأولى',
                 1 => 'تفاصيل العاملة الثانية',
                 2 => 'تفاصيل العاملة الثالثة',
                 3 => 'تفاصيل العاملة الرابعة',
                 4 => 'تفاصيل العاملة الخامسة',
             ];
+            $maleTitlesAr = [
+                0 => 'تفاصيل العامل الأول',
+                1 => 'تفاصيل العامل الثاني',
+                2 => 'تفاصيل العامل الثالث',
+                3 => 'تفاصيل العامل الرابع',
+                4 => 'تفاصيل العامل الخامس',
+            ];
+
             $workerTitlesEn = [
                 0 => 'First Worker Details',
                 1 => 'Second Worker Details',
@@ -389,9 +399,23 @@
 
         @if(!empty($allocatedWorkers))
             @foreach($allocatedWorkers as $idx => $worker)
+                @php
+                    $isFemale = in_array(strtolower($worker['gender'] ?? ''), ['female', 'أنثى', 'f']);
+                    if ($lang === 'ar') {
+                        if ($isSingleWorker) {
+                            $headerTitle = $isFemale ? 'تفاصيل العاملة' : 'تفاصيل العامل';
+                        } else {
+                            $headerTitle = $isFemale
+                                ? ($femaleTitlesAr[$idx] ?? 'تفاصيل العاملة')
+                                : ($maleTitlesAr[$idx] ?? 'تفاصيل العامل');
+                        }
+                    } else {
+                        $headerTitle = $isSingleWorker ? 'Worker Details' : ($workerTitlesEn[$idx] ?? 'Worker Details');
+                    }
+                @endphp
                 <div class="card">
                     <div class="card-header">
-                        {{ $lang === 'ar' ? ($workerTitlesAr[$idx] ?? 'تفاصيل العاملة') : ($workerTitlesEn[$idx] ?? 'Worker Details') }}
+                        {{ $headerTitle }}
                     </div>
                     <div class="card-body">
                         <table class="details-table">
@@ -408,7 +432,7 @@
                             <tr>
                                 <td>
                                     <div class="label">{{ $lang === 'ar' ? 'الجنس' : 'Gender' }}</div>
-                                    <div class="value">{{ $lang === 'ar' && strtolower($worker['gender']) === 'female' ? 'أنثى' : ($lang === 'ar' ? 'ذكر' : ucfirst($worker['gender'])) }}</div>
+                                    <div class="value">{{ $lang === 'ar' && $isFemale ? 'أنثى' : ($lang === 'ar' ? 'ذكر' : ucfirst($worker['gender'])) }}</div>
                                 </td>
                                 <td>
                                     <div class="label">{{ $lang === 'ar' ? 'رقم الهوية/الإقامة' : 'ID/Iqama Number' }}</div>
