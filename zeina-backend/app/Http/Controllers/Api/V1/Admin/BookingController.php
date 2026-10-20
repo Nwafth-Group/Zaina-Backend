@@ -44,7 +44,9 @@ class BookingController extends Controller
     /** Columns an admin may sort the listing by. */
     private const ALLOWED_SORTS = ['booking_date', 'total_amount', 'created_at', 'id'];
 
-    public function __construct(private readonly BookingStatusService $bookingStatus) {}
+    public function __construct(private readonly BookingStatusService $bookingStatus)
+    {
+    }
 
     /**
      * Admin bookings listing — filterable by status, payment status, service,
@@ -137,7 +139,7 @@ class BookingController extends Controller
 
         $bookings = $query->get();
 
-        $filename = 'bookings_export_'.now()->format('Y-m-d_Hi').'.xls';
+        $filename = 'bookings_export_' . now()->format('Y-m-d_Hi') . '.xls';
 
         $headers = [
             'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
@@ -170,42 +172,65 @@ class BookingController extends Controller
             echo '<body dir="rtl">';
 
             echo '<table>';
-            echo '<tr><td colSpan="33" class="header-brand">👑 '.$companyName.' — Zeina Home Services</td></tr>';
-            echo '<tr><td colSpan="33" class="header-meta">📅 <b>تاريخ ووقت التصدير:</b> '.$currentDateStr.'</td></tr>';
-            echo '<tr><td colSpan="33" class="header-meta">📊 <b>إجمالي عدد الحجوزات:</b> '.$totalCount.' حجز &nbsp;|&nbsp; <b>إجمالي المبالغ:</b> '.$totalAmountSum.' EGP</td></tr>';
+            echo '<tr><td colSpan="33" class="header-brand">👑 ' . $companyName . ' — Zeina Home Services</td></tr>';
+            echo '<tr><td colSpan="33" class="header-meta">📅 <b>تاريخ ووقت التصدير:</b> ' . $currentDateStr . '</td></tr>';
+            echo '<tr><td colSpan="33" class="header-meta">📊 <b>إجمالي عدد الحجوزات:</b> ' . $totalCount . ' حجز &nbsp;|&nbsp; <b>إجمالي المبالغ:</b> ' . $totalAmountSum . ' EGP</td></tr>';
             echo '<tr><td colSpan="33" style="height: 10px; border: none;"></td></tr>';
             echo '</table>';
 
             echo '<table>';
             echo '<thead><tr>';
             $cols = [
-                '#', 'رقم مرجعي (Booking Ref)', 'اسم العميل (Customer Name)', 'رقم جوال العميل (Customer Phone)',
-                'إيميل العميل (Customer Email)', 'اسم الخدمة (Service Name)', 'كود الخدمة (Service Code)',
-                'العمال المخصصين (Assigned Workers)', 'جنس العاملة (Worker Gender)', 'عدد العمال (Workers Count)',
-                'عدد الأشخاص (Persons Count)', 'عدد الأطفال (Children Count)', 'المدينة (City)', 'المنطقة (Area)',
-                'العنوان التفصيلي (Detailed Address)', 'تاريخ الحجز (Booking Date)', 'وقت البداية (Start Time)',
-                'وقت النهاية (End Time)', 'المدة (Duration)', 'نوع الزيارة (Visit Type)', 'رقم الزيارة الحالية (Current Visit #)',
-                'عدد الزيارات المتعددة (Visits Count)', 'جدول مواعيد الزيارات (Visits Schedule Details)',
-                'المبلغ الفرعي (Subtotal)', 'قيمة الخصم (Discount)', 'الضريبة (Tax)', 'المبلغ الإجمالي (Total Amount)',
-                'النقاط المستخدمة (Paid Points)', 'طريقة الدفع (Payment Method)', 'حالة الدفع (Payment Status)',
-                'حالة الحجز (Booking Status)', 'ملاحظات العميل (Customer Notes)', 'تاريخ الإنشاء (Created At)'
+                '#',
+                'رقم مرجعي (Booking Ref)',
+                'اسم العميل (Customer Name)',
+                'رقم جوال العميل (Customer Phone)',
+                'إيميل العميل (Customer Email)',
+                'اسم الخدمة (Service Name)',
+                'كود الخدمة (Service Code)',
+                'العمال المخصصين (Assigned Workers)',
+                'جنس العاملة (Worker Gender)',
+                'عدد العمال (Workers Count)',
+                'عدد الأشخاص (Persons Count)',
+                'عدد الأطفال (Children Count)',
+                'المدينة (City)',
+                'المنطقة (Area)',
+                'العنوان التفصيلي (Detailed Address)',
+                'تاريخ الحجز (Booking Date)',
+                'وقت البداية (Start Time)',
+                'وقت النهاية (End Time)',
+                'المدة (Duration)',
+                'نوع الزيارة (Visit Type)',
+                'رقم الزيارة الحالية (Current Visit #)',
+                'عدد الزيارات المتعددة (Visits Count)',
+                'جدول مواعيد الزيارات (Visits Schedule Details)',
+                'المبلغ الفرعي (Subtotal)',
+                'قيمة الخصم (Discount)',
+                'الضريبة (Tax)',
+                'المبلغ الإجمالي (Total Amount)',
+                'النقاط المستخدمة (Paid Points)',
+                'طريقة الدفع (Payment Method)',
+                'حالة الدفع (Payment Status)',
+                'حالة الحجز (Booking Status)',
+                'ملاحظات العميل (Customer Notes)',
+                'تاريخ الإنشاء (Created At)'
             ];
             foreach ($cols as $col) {
-                echo '<th class="th-column">'.$col.'</th>';
+                echo '<th class="th-column">' . $col . '</th>';
             }
             echo '</tr></thead>';
             echo '<tbody>';
 
             foreach ($bookings as $idx => $b) {
-                $customerName = $b->customer ? trim(($b->customer->first_name ?? '').' '.($b->customer->last_name ?? '')) : 'N/A';
+                $customerName = $b->customer ? trim(($b->customer->first_name ?? '') . ' ' . ($b->customer->last_name ?? '')) : 'N/A';
                 $customerPhone = $b->customer?->phone_number ?? $b->customer?->phone ?? 'N/A';
                 $customerEmail = $b->customer?->email ?? 'N/A';
                 $serviceName = $b->service ? ($b->service->name_ar ?: $b->service->name_en) : 'N/A';
                 $workersNames = $b->workers->isNotEmpty() ? $b->workers->pluck('name')->implode(' | ') : 'N/A';
                 $city = $b->address?->city ?? $b->address?->serviceZone?->city ?? 'N/A';
                 $area = $b->address?->serviceZone?->name ?? 'N/A';
-                $detailedAddress = $b->address ? ($b->address->formatted_address ?? trim(($b->address->street ?? '').' '.($b->address->building_name ?? ''))) : 'N/A';
-                $duration = $b->duration_minutes ? round($b->duration_minutes / 60, 1).' ساعة' : 'N/A';
+                $detailedAddress = $b->address ? ($b->address->formatted_address ?? trim(($b->address->street ?? '') . ' ' . ($b->address->building_name ?? ''))) : 'N/A';
+                $duration = $b->duration_minutes ? round($b->duration_minutes / 60, 1) . ' ساعة' : 'N/A';
                 $rowClass = ($idx % 2 === 0) ? 'tr-even' : 'tr-odd';
 
                 $visitsCount = $b->visits->isNotEmpty() ? $b->visits->count() : 1;
@@ -220,40 +245,40 @@ class BookingController extends Controller
                     })->implode(' | ');
                 }
 
-                echo '<tr class="'.$rowClass.'">';
-                echo '<td>'.$b->id.'</td>';
-                echo '<td><b>'.htmlspecialchars($b->booking_ref ?? 'N/A').'</b></td>';
-                echo '<td>'.htmlspecialchars($customerName).'</td>';
-                echo '<td dir="ltr">'.htmlspecialchars($customerPhone).'</td>';
-                echo '<td>'.htmlspecialchars($customerEmail).'</td>';
-                echo '<td><b>'.htmlspecialchars($serviceName).'</b></td>';
-                echo '<td>'.htmlspecialchars($b->service?->service_code ?? 'N/A').'</td>';
-                echo '<td>'.htmlspecialchars($workersNames).'</td>';
-                echo '<td>'.htmlspecialchars($b->worker_gender ?? 'N/A').'</td>';
-                echo '<td>'.($b->number_of_workers ?? 1).'</td>';
-                echo '<td>'.($b->number_of_persons ?? '—').'</td>';
-                echo '<td>'.($b->number_of_children ?? '—').'</td>';
-                echo '<td>'.htmlspecialchars($city).'</td>';
-                echo '<td>'.htmlspecialchars($area).'</td>';
-                echo '<td>'.htmlspecialchars($detailedAddress).'</td>';
-                echo '<td>'.htmlspecialchars($b->booking_date ?? 'N/A').'</td>';
-                echo '<td dir="ltr">'.htmlspecialchars($b->start_time ?? 'N/A').'</td>';
-                echo '<td dir="ltr">'.htmlspecialchars($b->end_time ?? 'N/A').'</td>';
-                echo '<td>'.htmlspecialchars($duration).'</td>';
-                echo '<td>'.htmlspecialchars($b->visit_type ?? 'single_visit').'</td>';
-                echo '<td>'.($b->visit_number ?? 1).'</td>';
-                echo '<td><b>'.$visitsCount.'</b></td>';
-                echo '<td>'.htmlspecialchars($visitsScheduleDetails).'</td>';
-                echo '<td>'.number_format($b->price_subtotal ?? 0, 2).'</td>';
-                echo '<td>'.number_format($b->discount_amount ?? 0, 2).'</td>';
-                echo '<td>'.number_format($b->tax_amount ?? 0, 2).'</td>';
-                echo '<td><b>'.number_format($b->total_amount ?? 0, 2).' EGP</b></td>';
-                echo '<td>'.($b->paid_points ?? 0).'</td>';
-                echo '<td>'.htmlspecialchars($b->payment_method ?? 'N/A').'</td>';
-                echo '<td>'.htmlspecialchars($b->payment_status ?? 'N/A').'</td>';
-                echo '<td><b>'.htmlspecialchars($b->status ?? 'N/A').'</b></td>';
-                echo '<td>'.htmlspecialchars($b->customer_notes ?? '—').'</td>';
-                echo '<td>'.($b->created_at ? $b->created_at->format('Y-m-d H:i') : 'N/A').'</td>';
+                echo '<tr class="' . $rowClass . '">';
+                echo '<td>' . $b->id . '</td>';
+                echo '<td><b>' . htmlspecialchars($b->booking_ref ?? 'N/A') . '</b></td>';
+                echo '<td>' . htmlspecialchars($customerName) . '</td>';
+                echo '<td dir="ltr">' . htmlspecialchars($customerPhone) . '</td>';
+                echo '<td>' . htmlspecialchars($customerEmail) . '</td>';
+                echo '<td><b>' . htmlspecialchars($serviceName) . '</b></td>';
+                echo '<td>' . htmlspecialchars($b->service?->service_code ?? 'N/A') . '</td>';
+                echo '<td>' . htmlspecialchars($workersNames) . '</td>';
+                echo '<td>' . htmlspecialchars($b->worker_gender ?? 'N/A') . '</td>';
+                echo '<td>' . ($b->number_of_workers ?? 1) . '</td>';
+                echo '<td>' . ($b->number_of_persons ?? '—') . '</td>';
+                echo '<td>' . ($b->number_of_children ?? '—') . '</td>';
+                echo '<td>' . htmlspecialchars($city) . '</td>';
+                echo '<td>' . htmlspecialchars($area) . '</td>';
+                echo '<td>' . htmlspecialchars($detailedAddress) . '</td>';
+                echo '<td>' . htmlspecialchars($b->booking_date ?? 'N/A') . '</td>';
+                echo '<td dir="ltr">' . htmlspecialchars($b->start_time ?? 'N/A') . '</td>';
+                echo '<td dir="ltr">' . htmlspecialchars($b->end_time ?? 'N/A') . '</td>';
+                echo '<td>' . htmlspecialchars($duration) . '</td>';
+                echo '<td>' . htmlspecialchars($b->visit_type ?? 'single_visit') . '</td>';
+                echo '<td>' . ($b->visit_number ?? 1) . '</td>';
+                echo '<td><b>' . $visitsCount . '</b></td>';
+                echo '<td>' . htmlspecialchars($visitsScheduleDetails) . '</td>';
+                echo '<td>' . number_format($b->price_subtotal ?? 0, 2) . '</td>';
+                echo '<td>' . number_format($b->discount_amount ?? 0, 2) . '</td>';
+                echo '<td>' . number_format($b->tax_amount ?? 0, 2) . '</td>';
+                echo '<td><b>' . number_format($b->total_amount ?? 0, 2) . ' EGP</b></td>';
+                echo '<td>' . ($b->paid_points ?? 0) . '</td>';
+                echo '<td>' . htmlspecialchars($b->payment_method ?? 'N/A') . '</td>';
+                echo '<td>' . htmlspecialchars($b->payment_status ?? 'N/A') . '</td>';
+                echo '<td><b>' . htmlspecialchars($b->status ?? 'N/A') . '</b></td>';
+                echo '<td>' . htmlspecialchars($b->customer_notes ?? '—') . '</td>';
+                echo '<td>' . ($b->created_at ? $b->created_at->format('Y-m-d H:i') : 'N/A') . '</td>';
                 echo '</tr>';
             }
 
@@ -301,8 +326,21 @@ class BookingController extends Controller
             return $this->errorResponse(__('validation.booking_conflict.worker_ineligible', ['name' => 'Service']), 404);
         }
 
+        // Determine required gender for this booking (from booking->worker_gender or service allowed genders)
+        $requiredGender = $booking->worker_gender;
+        if (empty($requiredGender)) {
+            $allowed = $service->getAllowedGenders();
+            if (count($allowed) === 1) {
+                $requiredGender = $allowed[0];
+            }
+        }
+
         $conflictService = app(BookingScheduleConflictService::class);
-        $candidateWorkerIds = $service->workers()->where('workers.status', 'active')->pluck('workers.id')->toArray();
+        $candidateWorkerQuery = $service->workers()->where('workers.status', 'active');
+        if (!empty($requiredGender)) {
+            $candidateWorkerQuery->whereRaw('LOWER(workers.gender) = ?', [strtolower($requiredGender)]);
+        }
+        $candidateWorkerIds = $candidateWorkerQuery->pluck('workers.id')->toArray();
 
         $busyWorkerIds = $conflictService->getBusyWorkerIdsForSlot(
             $candidateWorkerIds,
@@ -313,18 +351,26 @@ class BookingController extends Controller
             true // Enforce 60-minute transition gap
         );
 
-        $eligibleWorkers = $service->workers()
+        $eligibleWorkersQuery = $service->workers()
             ->where('workers.status', 'active')
-            ->whereNotIn('workers.id', $busyWorkerIds)
+            ->whereNotIn('workers.id', $busyWorkerIds);
+
+        if (!empty($requiredGender)) {
+            $eligibleWorkersQuery->whereRaw('LOWER(workers.gender) = ?', [strtolower($requiredGender)]);
+        }
+
+        $eligibleWorkers = $eligibleWorkersQuery
             ->get()
+            ->filter(fn($w) => $service->acceptsGender($w->gender))
+            ->values()
             ->map(fn($w) => [
-                'id'          => $w->id,
-                'name'        => $w->name,
+                'id' => $w->id,
+                'name' => $w->name,
                 'nationality' => $w->nationality,
-                'avg_rating'  => $w->avg_rating,
-                'gender'      => $w->gender,
-                'team_id'     => $w->team_id,
-                'status'      => $w->status,
+                'avg_rating' => $w->avg_rating,
+                'gender' => $w->gender,
+                'team_id' => $w->team_id,
+                'status' => $w->status,
             ]);
 
         return $this->successResponse($eligibleWorkers, __('messages.workers_fetched_success') ?? 'تم جلب العمال المتاحين بنجاح.');
@@ -336,10 +382,10 @@ class BookingController extends Controller
     public function assignWorkers(Request $request, Booking $booking)
     {
         $request->validate([
-            'worker_ids'   => ['required', 'array', 'min:1'],
+            'worker_ids' => ['required', 'array', 'min:1'],
             'worker_ids.*' => ['required', 'integer', 'exists:workers,id'],
-            'note'         => ['nullable', 'string'],
-            'override_time'=> ['nullable', 'boolean'],
+            'note' => ['nullable', 'string'],
+            'override_time' => ['nullable', 'boolean'],
         ]);
 
         // Rule BR-22: Cannot assign workers if payment status is failed
@@ -369,6 +415,33 @@ class BookingController extends Controller
             if (!in_array($id, $eligibleWorkerIds)) {
                 $w = $workers->firstWhere('id', $id);
                 return $this->errorResponse(__('validation.replace_worker.worker_not_eligible', ['name' => $w->name ?? $id]), 422);
+            }
+        }
+
+        // Validate worker gender compatibility with booking and service
+        $requiredGender = $booking->worker_gender;
+        if (empty($requiredGender)) {
+            $allowed = $service->getAllowedGenders();
+            if (count($allowed) === 1) {
+                $requiredGender = $allowed[0];
+            }
+        }
+
+        foreach ($workers as $w) {
+            if ($requiredGender && strtolower($w->gender ?? '') !== strtolower($requiredGender)) {
+                $reqAr = strtolower($requiredGender) === 'female' ? 'أنثى' : 'ذكر';
+                $reqEn = ucfirst(strtolower($requiredGender));
+                $wAr = strtolower($w->gender ?? '') === 'female' ? 'أنثى' : 'ذكر';
+                $wEn = ucfirst(strtolower($w->gender ?? ''));
+                $isAr = app()->getLocale() === 'ar';
+                $msg = $isAr
+                    ? "العامل «{$w->name}» ({$wAr}) لا يتطابق مع الجنس المطلوب لهذا الحجز ({$reqAr})."
+                    : "Worker \"{$w->name}\" ({$wEn}) does not match the required gender for this booking ({$reqEn}).";
+                return $this->errorResponse($msg, 422);
+            }
+            if (!$service->acceptsGender($w->gender)) {
+                $isAr = app()->getLocale() === 'ar';
+                return $this->errorResponse($isAr ? "جنس العامل «{$w->name}» غير مسموح به في هذه الخدمة." : "Worker \"{$w->name}\" gender is not allowed for this service.", 422);
             }
         }
 
@@ -428,9 +501,9 @@ class BookingController extends Controller
             // Create new active assignments
             foreach ($workerIds as $workerId) {
                 BookingAssignment::create([
-                    'booking_id'  => $booking->id,
-                    'worker_id'   => $workerId,
-                    'status'      => 'active',
+                    'booking_id' => $booking->id,
+                    'worker_id' => $workerId,
+                    'status' => 'active',
                     'assigned_at' => now(),
                 ]);
             }
@@ -445,7 +518,7 @@ class BookingController extends Controller
                 'booking_id' => $booking->id,
                 'old_status' => $oldStatus,
                 'new_status' => $newStatus,
-                'note'       => $historyNote,
+                'note' => $historyNote,
                 'created_by' => auth()->id(),
             ]);
         });
@@ -526,6 +599,35 @@ class BookingController extends Controller
             return $this->errorResponse(__('validation.replace_worker.worker_not_male_team', ['name' => $newWorker->name]), 422);
         }
 
+        // Validate worker gender compatibility with booking and service
+        $requiredGender = $booking->worker_gender;
+        if (empty($requiredGender)) {
+            $allowed = $service->getAllowedGenders();
+            if (count($allowed) === 1) {
+                $requiredGender = $allowed[0];
+            }
+        }
+        if ($requiredGender && strtolower($newWorker->gender ?? '') !== strtolower($requiredGender)) {
+            $reqAr = strtolower($requiredGender) === 'female' ? 'أنثى' : 'ذكر';
+            $reqEn = ucfirst(strtolower($requiredGender));
+            $wAr = strtolower($newWorker->gender ?? '') === 'female' ? 'أنثى' : 'ذكر';
+            $wEn = ucfirst(strtolower($newWorker->gender ?? ''));
+            $isAr = app()->getLocale() === 'ar';
+            return $this->errorResponse(
+                $isAr
+                ? "العامل البديل «{$newWorker->name}» ({$wAr}) لا يتطابق مع الجنس المطلوب لهذا الحجز ({$reqAr})."
+                : "Replacement worker \"{$newWorker->name}\" ({$wEn}) does not match the required gender for this booking ({$reqEn}).",
+                422
+            );
+        }
+        if (!$service->acceptsGender($newWorker->gender)) {
+            $isAr = app()->getLocale() === 'ar';
+            return $this->errorResponse(
+                $isAr ? "جنس العامل البديل «{$newWorker->name}» غير مسموح به في هذه الخدمة." : "Replacement worker gender is not allowed for this service.",
+                422
+            );
+        }
+
         // Validate schedule conflict & 60-min transition buffer
         $conflictService = app(BookingScheduleConflictService::class);
         $enforceBuffer = !$request->boolean('override_buffer');
@@ -554,9 +656,9 @@ class BookingController extends Controller
             // Update assignments
             $oldAssignment->update(['status' => 'replaced']);
             BookingAssignment::create([
-                'booking_id'  => $booking->id,
-                'worker_id'   => $newWorker->id,
-                'status'      => 'active',
+                'booking_id' => $booking->id,
+                'worker_id' => $newWorker->id,
+                'status' => 'active',
                 'assigned_at' => now(),
             ]);
 
@@ -565,7 +667,7 @@ class BookingController extends Controller
                 'booking_id' => $booking->id,
                 'old_status' => $booking->status,
                 'new_status' => $booking->status,
-                'note'       => $historyNote,
+                'note' => $historyNote,
                 'created_by' => auth()->id(),
             ]);
         });
@@ -584,7 +686,7 @@ class BookingController extends Controller
                     $body,
                     $booking->id,
                     [
-                        'booking_ref'    => $booking->booking_ref,
+                        'booking_ref' => $booking->booking_ref,
                         'current_status' => $booking->status,
                     ]
                 ));
@@ -661,6 +763,7 @@ class BookingController extends Controller
             return $this->errorResponse(__('validation.replace_worker.booking_not_upcoming'), 422);
         }
 
+        $service = $booking->service;
         $isTeamService = $service && $service->isTeamBased();
         if (!$isTeamService && !$booking->team_id) {
             return $this->errorResponse(__('validation.assign_team.not_team_service'), 422);
@@ -723,19 +826,19 @@ class BookingController extends Controller
                     $firstWorkerId = $worker->id;
                 }
                 BookingAssignment::create([
-                    'booking_id'  => $booking->id,
-                    'worker_id'   => $worker->id,
-                    'status'      => 'active',
+                    'booking_id' => $booking->id,
+                    'worker_id' => $worker->id,
+                    'status' => 'active',
                     'assigned_at' => now(),
                 ]);
             }
 
             // Update booking team_id, worker_id, number_of_workers, and status
             $booking->update([
-                'team_id'           => $newTeam->id,
-                'worker_id'         => $firstWorkerId,
+                'team_id' => $newTeam->id,
+                'worker_id' => $firstWorkerId,
                 'number_of_workers' => $newTeam->workers->count(),
-                'status'            => $newStatus,
+                'status' => $newStatus,
             ]);
 
             // Save log to booking histories
@@ -743,7 +846,7 @@ class BookingController extends Controller
                 'booking_id' => $booking->id,
                 'old_status' => $oldStatus,
                 'new_status' => $newStatus,
-                'note'       => $historyNote,
+                'note' => $historyNote,
                 'created_by' => auth()->id(),
             ]);
         });
@@ -762,9 +865,9 @@ class BookingController extends Controller
                     $body,
                     $booking->id,
                     [
-                        'booking_ref'    => $booking->booking_ref,
+                        'booking_ref' => $booking->booking_ref,
                         'current_status' => $booking->status,
-                        'team_id'        => $newTeam->id,
+                        'team_id' => $newTeam->id,
                     ]
                 ));
             }
@@ -792,7 +895,7 @@ class BookingController extends Controller
                     $newStart = \Carbon\Carbon::parse($request->start_time);
                     $firstDate = collect($request->dates)->sort()->first();
                     $lang = $updatedBooking->customer->preferred_language === 'en' ? 'en' : 'ar';
-                    
+
                     $title = $lang === 'en' ? 'Booking Rescheduled' : 'إعادة جدولة الحجز';
                     $body = $lang === 'en'
                         ? "Your booking {$updatedBooking->booking_ref} has been rescheduled to {$firstDate} at " . $newStart->format('h:i A') . "."

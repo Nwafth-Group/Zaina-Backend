@@ -8,6 +8,8 @@ use App\Models\Booking;
 use App\Models\CompanyInfo;
 use App\Models\CustomerAddress;
 use App\Models\Service;
+use App\Models\ServiceOption;
+use App\Models\Team;
 use App\Models\Worker;
 use App\Service\Customer\CustomerBookingService;
 use Carbon\Carbon;
@@ -31,22 +33,72 @@ class BookingContractController extends Controller
         $company = CompanyInfo::first();
 
         $dates = $request->dates ?? [];
-        $times = $this->bookingService->calculateBookingTimes($service, $dates[0], $request->start_time, $request->duration);
+        $optionsInput = $request->input('options', $request->input('selected_options', [])) ?? [];
+        $numberOfPersons = (int) ($request->number_of_persons ?? 1);
+        $workerIds = $request->worker_ids ?? [];
+        $workersCount = !empty($workerIds) ? count($workerIds) : ($service->min_workers ?? 1);
+
+        $duration = (float) ($request->duration ?? $service->default_duration ?? 4);
+        if ($service->service_code === 'PEDICURE_MANICURE') {
+            $duration = (float) $this->bookingService->calculatePedicureDuration($service, $numberOfPersons, $workersCount);
+        }
+
+        $times = $this->bookingService->calculateBookingTimes($service, $dates[0], $request->start_time, (int) $duration);
 
         $pricingResult = $this->bookingService->calculatePricing(
             $service,
             $address,
-            count($request->worker_ids),
+            $workersCount,
             count($dates),
             $request->visit_type ?? 'single_visit',
             $request->coupon_code,
             $user,
             $times['start_str'],
-            $times['end_str']
+            $times['end_str'],
+            $numberOfPersons,
+            $optionsInput
         );
 
-        $duration = (float) ($request->duration ?? $service->default_duration ?? 4);
-        $workers = Worker::whereIn('id', $request->worker_ids ?? [])->get();
+        $workers = Worker::whereIn('id', $workerIds)->get();
+
+        $team = null;
+        if ($request->team_id) {
+            $team = Team::with('workers')->find($request->team_id);
+            if ($workers->isEmpty() && $team && $team->workers->isNotEmpty()) {
+                $workers = $team->workers;
+            }
+        } elseif ($service->isTeamBased() && $workers->isNotEmpty()) {
+            $firstWorker = $workers->first();
+            if ($firstWorker && $firstWorker->team_id) {
+                $team = Team::with('workers')->find($firstWorker->team_id);
+            } else {
+                $team = Team::whereHas('workers', function ($wq) use ($workerIds) {
+                    $wq->whereIn('workers.id', $workerIds);
+                })->with('workers')->first();
+            }
+        }
+
+        $selectedOptionsSnapshot = [];
+        if (!empty($optionsInput) && is_array($optionsInput)) {
+            foreach ($optionsInput as $optItem) {
+                $optId = $optItem['id'] ?? null;
+                $qty = (int) ($optItem['quantity'] ?? 1);
+                if ($optId && $qty > 0) {
+                    $optModel = ServiceOption::where('service_id', $service->id)->find($optId);
+                    if ($optModel) {
+                        $uPrice = (float) $optModel->unit_price;
+                        $selectedOptionsSnapshot[] = [
+                            'id' => $optModel->id,
+                            'name_ar' => $optModel->name_ar,
+                            'name_en' => $optModel->name_en,
+                            'unit_price' => $uPrice,
+                            'quantity' => $qty,
+                            'total_price' => round($uPrice * $qty, 2),
+                        ];
+                    }
+                }
+            }
+        }
 
         $pricing = [
             'subtotal' => (float) $pricingResult['pricing']['subtotal'],
@@ -74,7 +126,9 @@ class BookingContractController extends Controller
             $request->visit_type ?? 'single_visit',
             (int) $request->number_of_children,
             $request->child_age_groups ?? [],
-            (int) ($request->number_of_persons ?? 1)
+            $numberOfPersons,
+            $selectedOptionsSnapshot,
+            $team
         );
     }
 
@@ -87,7 +141,7 @@ class BookingContractController extends Controller
         abort_if((int) $booking->customer_id !== (int) $user->id, 403, 'Unauthorized access to contract.');
 
         $lang = request()->header('Accept-Language') === 'ar' || app()->getLocale() === 'ar' ? 'ar' : 'en';
-        $booking->load(['service.category', 'service.rules', 'address', 'customer', 'workers', 'visits']);
+        $booking->load(['service.category', 'service.rules', 'address', 'customer', 'workers', 'visits', 'team.workers']);
 
         $service = $booking->service;
         $address = $booking->address;
@@ -98,7 +152,7 @@ class BookingContractController extends Controller
             $dates = [$booking->booking_date];
         }
 
-        $durationHours = $booking->duration_minutes ? ($booking->duration_minutes / 60) : 4;
+        $durationHours = $booking->duration_minutes ? ($booking->duration_minutes / 60) : ($service->default_duration ?? 4);
 
         $pricing = [
             'subtotal' => (float) $booking->price_subtotal,
@@ -109,6 +163,15 @@ class BookingContractController extends Controller
 
         $contractRef = 'CON-'.$booking->created_at->format('Y').'-'.str_pad($booking->id, 6, '0', STR_PAD_LEFT);
 
+        $selectedOptions = is_array($booking->selected_options)
+            ? $booking->selected_options
+            : json_decode($booking->selected_options ?? '[]', true);
+
+        $workers = $booking->workers;
+        if ($workers->isEmpty() && $booking->team && $booking->team->workers->isNotEmpty()) {
+            $workers = $booking->team->workers;
+        }
+
         return $this->renderContractPdf(
             $lang,
             $booking->customer,
@@ -118,7 +181,7 @@ class BookingContractController extends Controller
             $dates,
             $booking->start_time,
             (float) $durationHours,
-            $booking->workers,
+            $workers,
             $pricing,
             $booking->payment_method ?? 'wallet',
             $booking->booking_ref,
@@ -128,7 +191,9 @@ class BookingContractController extends Controller
             $booking->visit_type ?? 'single_visit',
             (int) $booking->number_of_children,
             $booking->child_age_groups ?? [],
-            (int) ($booking->number_of_persons ?? 1)
+            (int) ($booking->number_of_persons ?? 1),
+            $selectedOptions ?? [],
+            $booking->team
         );
     }
 
@@ -140,7 +205,7 @@ class BookingContractController extends Controller
         abort_unless($request->hasValidSignature(), 401, 'Invalid or expired signature.');
 
         $lang = $request->input('lang') === 'ar' || app()->getLocale() === 'ar' ? 'ar' : 'en';
-        $booking->load(['service.category', 'service.rules', 'address', 'customer', 'workers', 'visits']);
+        $booking->load(['service.category', 'service.rules', 'address', 'customer', 'workers', 'visits', 'team.workers']);
 
         $service = $booking->service;
         $address = $booking->address;
@@ -151,7 +216,7 @@ class BookingContractController extends Controller
             $dates = [$booking->booking_date];
         }
 
-        $durationHours = $booking->duration_minutes ? ($booking->duration_minutes / 60) : 4;
+        $durationHours = $booking->duration_minutes ? ($booking->duration_minutes / 60) : ($service->default_duration ?? 4);
 
         $pricing = [
             'subtotal' => (float) $booking->price_subtotal,
@@ -162,6 +227,15 @@ class BookingContractController extends Controller
 
         $contractRef = 'CON-'.$booking->created_at->format('Y').'-'.str_pad($booking->id, 6, '0', STR_PAD_LEFT);
 
+        $selectedOptions = is_array($booking->selected_options)
+            ? $booking->selected_options
+            : json_decode($booking->selected_options ?? '[]', true);
+
+        $workers = $booking->workers;
+        if ($workers->isEmpty() && $booking->team && $booking->team->workers->isNotEmpty()) {
+            $workers = $booking->team->workers;
+        }
+
         return $this->renderContractPdf(
             $lang,
             $booking->customer,
@@ -171,7 +245,7 @@ class BookingContractController extends Controller
             $dates,
             $booking->start_time,
             (float) $durationHours,
-            $booking->workers,
+            $workers,
             $pricing,
             $booking->payment_method ?? 'wallet',
             $booking->booking_ref,
@@ -181,7 +255,9 @@ class BookingContractController extends Controller
             $booking->visit_type ?? 'single_visit',
             (int) $booking->number_of_children,
             $booking->child_age_groups ?? [],
-            (int) ($booking->number_of_persons ?? 1)
+            (int) ($booking->number_of_persons ?? 1),
+            $selectedOptions ?? [],
+            $booking->team
         );
     }
 
@@ -191,7 +267,7 @@ class BookingContractController extends Controller
     public function downloadContractForAdmin(Booking $booking)
     {
         $lang = request()->header('Accept-Language') === 'ar' || app()->getLocale() === 'ar' ? 'ar' : 'en';
-        $booking->load(['service.category', 'service.rules', 'address', 'customer', 'workers', 'visits']);
+        $booking->load(['service.category', 'service.rules', 'address', 'customer', 'workers', 'visits', 'team.workers']);
 
         $service = $booking->service;
         $address = $booking->address;
@@ -202,7 +278,7 @@ class BookingContractController extends Controller
             $dates = [$booking->booking_date];
         }
 
-        $durationHours = $booking->duration_minutes ? ($booking->duration_minutes / 60) : 4;
+        $durationHours = $booking->duration_minutes ? ($booking->duration_minutes / 60) : ($service->default_duration ?? 4);
 
         $pricing = [
             'subtotal' => (float) $booking->price_subtotal,
@@ -213,6 +289,15 @@ class BookingContractController extends Controller
 
         $contractRef = 'CON-'.$booking->created_at->format('Y').'-'.str_pad($booking->id, 6, '0', STR_PAD_LEFT);
 
+        $selectedOptions = is_array($booking->selected_options)
+            ? $booking->selected_options
+            : json_decode($booking->selected_options ?? '[]', true);
+
+        $workers = $booking->workers;
+        if ($workers->isEmpty() && $booking->team && $booking->team->workers->isNotEmpty()) {
+            $workers = $booking->team->workers;
+        }
+
         return $this->renderContractPdf(
             $lang,
             $booking->customer,
@@ -222,7 +307,7 @@ class BookingContractController extends Controller
             $dates,
             $booking->start_time,
             (float) $durationHours,
-            $booking->workers,
+            $workers,
             $pricing,
             $booking->payment_method ?? 'wallet',
             $booking->booking_ref,
@@ -232,7 +317,9 @@ class BookingContractController extends Controller
             $booking->visit_type ?? 'single_visit',
             (int) $booking->number_of_children,
             $booking->child_age_groups ?? [],
-            (int) ($booking->number_of_persons ?? 1)
+            (int) ($booking->number_of_persons ?? 1),
+            $selectedOptions ?? [],
+            $booking->team
         );
     }
 
@@ -258,7 +345,9 @@ class BookingContractController extends Controller
         string $visitType,
         int $numberOfChildren,
         array $childAgeGroups,
-        int $numberOfPersons = 1
+        int $numberOfPersons = 1,
+        array $selectedOptions = [],
+        ?Team $team = null
     ) {
         // Customer Address formatting
         $addressParts = [];
@@ -419,6 +508,12 @@ class BookingContractController extends Controller
             'visitTypeFormatted' => $visitTypeFormatted,
             'isBabysitter' => $isBabysitter,
             'isPedicureManicure' => ($service->service_code === 'PEDICURE_MANICURE'),
+            'isSpecialized' => in_array(strtoupper($service->service_code ?? ''), array_map('strtoupper', Service::getTeamBasedCodes()), true) || ((int)$service->id >= 6 && (int)$service->id <= 11) || !empty($selectedOptions),
+            'selectedOptions' => $selectedOptions,
+            'team' => $team ? [
+                'name' => $lang === 'ar' ? ($team->name_ar ?: $team->name_en) : ($team->name_en ?: $team->name_ar),
+                'code' => $team->code,
+            ] : null,
             'numberOfChildren' => $numberOfChildren,
             'numberOfPersons' => $numberOfPersons,
             'childAgeGroupsList' => $childAgeGroupsList,

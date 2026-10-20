@@ -25,6 +25,7 @@ class CouponSeeder extends Seeder
         $globalCoupon = Coupon::firstOrCreate(
             ['code' => 'WELCOME50'],
             [
+                'name' => 'كوبون الترحيب 50',
                 'type' => 'fixed',
                 'value' => 50.00,
                 'usage_limit' => 1000,
@@ -41,6 +42,7 @@ class CouponSeeder extends Seeder
          $globalCoupon2 = Coupon::firstOrCreate(
             ['code' => 'GLOBALCOUPON2'],
             [
+                'name' => 'كوبون الخصم العام 2',
                 'type' => 'percentage',
                 'value' => 50.00,
                 'usage_limit' => 1000, // متاح لأول 1000 مستخدم في التطبيق
@@ -61,6 +63,7 @@ class CouponSeeder extends Seeder
         $vipCoupon = Coupon::firstOrCreate(
             ['code' => 'AHMADVIP'],
             [
+                'name' => 'كوبون كبار العملاء VIP',
                 'type' => 'fixed',
                 'value' => 150.00,
                 'usage_limit' => 50,
@@ -85,6 +88,7 @@ class CouponSeeder extends Seeder
             $cleanCoupon = Coupon::firstOrCreate(
                 ['code' => 'CLEAN20'],
                 [
+                    'name' => 'خصم خدمات التنظيف 20%',
                     'type' => 'percentage',
                     'value' => 20.00,
                     'usage_limit' => 500,
@@ -108,6 +112,7 @@ class CouponSeeder extends Seeder
         Coupon::firstOrCreate(
             ['code' => 'EXPIRED10'],
             [
+                'name' => 'كوبون منتهي الصلاحية 10%',
                 'type' => 'percentage',
                 'value' => 10.00,
                 'usage_limit' => 100,
@@ -130,6 +135,7 @@ class CouponSeeder extends Seeder
             $exclusiveCoupon = Coupon::firstOrCreate(
                 ['code' => 'SPECIALCLEAN'],
                 [
+                    'name' => 'كوبون تنظيف خاص',
                     'type' => 'fixed',
                     'value' => 70.00,
                     'usage_limit' => 20,

@@ -72,6 +72,64 @@ class UpdateWorkerRequest extends CustomFormRequest
                             __('validation.store_worker.services_single_allowed')
                         );
                     }
+
+                    // Check worker gender matches service allowed genders
+                    $workerGender = $this->input('gender', $worker?->gender ?? '');
+                    if (!empty($workerGender)) {
+                        $isAr = app()->getLocale() === 'ar';
+                        foreach ($services as $srv) {
+                            if (! $srv->acceptsGender($workerGender)) {
+                                $allowedAr = implode(' أو ', array_map(fn($g) => $g === 'Female' ? 'إناث' : 'ذكور', $srv->getAllowedGenders()));
+                                $allowedEn = implode(' or ', $srv->getAllowedGenders());
+                                $workerGenderAr = strtolower($workerGender) === 'female' ? 'أنثى' : 'ذكر';
+
+                                $msg = $isAr
+                                    ? "الخدمة ({$srv->name_ar}) مخصصة للعمالة ({$allowedAr}) فقط، ولا يمكن إسناد عامل من جنس ({$workerGenderAr}) إليها."
+                                    : "The service ({$srv->name_en}) only accepts ({$allowedEn}) workers, and cannot be assigned to a ({$workerGender}) worker.";
+
+                                $validator->errors()->add('services', $msg);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Check status change to inactive/suspended when assigned to services
+            if ($this->has('status') && in_array($this->input('status'), ['inactive', 'suspended'])) {
+                $isAr = app()->getLocale() === 'ar';
+
+                // 1. Direct services
+                $assignedDirectServices = collect();
+                if ($this->has('services')) {
+                    $serviceIds = $this->input('services', []);
+                    if (is_array($serviceIds) && !empty($serviceIds)) {
+                        $assignedDirectServices = \App\Models\Service::whereIn('id', $serviceIds)->get();
+                    }
+                } elseif ($worker) {
+                    $assignedDirectServices = $worker->services()->get();
+                }
+
+                // 2. Team services
+                $assignedTeamServices = collect();
+                if ($this->has('team_id')) {
+                    $teamId = $this->input('team_id');
+                    if ($teamId) {
+                        $team = \App\Models\Team::find($teamId);
+                        $assignedTeamServices = $team ? $team->services()->get() : collect();
+                    }
+                } elseif ($worker && $worker->team_id && $worker->team) {
+                    $assignedTeamServices = $worker->team->services()->get();
+                }
+
+                $allAssignedServices = $assignedDirectServices->concat($assignedTeamServices)->unique('id');
+
+                if ($allAssignedServices->isNotEmpty()) {
+                    $serviceNames = $allAssignedServices->map(fn($s) => $isAr ? ($s->name_ar ?: $s->name_en) : ($s->name_en ?: $s->name_ar))->join('، ');
+                    $msg = $isAr
+                        ? "لا يمكن تغيير حالة العامل إلى غير نشط لأنه مسند إلى خدمة: ({$serviceNames}). يرجى إلغاء إسناد العامل من الخدمة أولاً."
+                        : "Cannot deactivate this worker because they are assigned to service: ({$serviceNames}). Please unassign the worker from the service first.";
+
+                    $validator->errors()->add('status', $msg);
                 }
             }
         });

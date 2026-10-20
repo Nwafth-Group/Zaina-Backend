@@ -170,8 +170,9 @@ class PointsController extends Controller
                 return [
                     'id' => $tx->id,
                     'type' => $tx->type,
+                    'type_translate' => __("messages.{$tx->type}"),
                     'title' => app()->getLocale() == 'ar' ? $tx->title_ar : $tx->title_en,
-                    'amount' => ($tx->type == 'earn' ? '+' : '-').$tx->amount.' Pts',
+                    'amount' => $tx->formatted_amount,
                     'date' => $tx->created_at->format('d M. Y'),
                 ];
             });
@@ -260,16 +261,19 @@ class PointsController extends Controller
         $user = auth()->user();
         $task = RewardTasks::findOrFail($request->task_id);
 
-        // حماية تجريبية: نمنع التكرار إذا كانت المهمة من النوع الذي ينجر لمرة واحدة فقط
-        if ($task->action_type === 'url') {
-            $alreadyCompleted = DB::table('user_reward_tasks')
-                ->where('user_id', $user->id)
-                ->where('task_id', $task->id)
-                ->exists();
+        // منع تكرار المهمة إذا كانت مكتملة مسبقاً
+        $alreadyCompleted = DB::table('user_reward_tasks')
+            ->where('user_id', $user->id)
+            ->where('task_id', $task->id)
+            ->exists();
 
-            if ($alreadyCompleted) {
-                return $this->errorResponse(__('messages.points.task_already_completed'), 422);
-            }
+        if ($alreadyCompleted) {
+            return $this->errorResponse(
+                app()->getLocale() === 'ar'
+                    ? 'تم استلام مكافأة هذه المهمة مسبقاً وغير متاحة للتكرار.'
+                    : 'This reward has already been claimed and is no longer available.',
+                422
+            );
         }
 
         DB::beginTransaction();

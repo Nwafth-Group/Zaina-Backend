@@ -250,7 +250,27 @@ class WorkerController extends Controller
 
     public function changeStatus(Worker $worker)
     {
-        $worker->status = $worker->status === 'active' ? 'inactive' : 'active';
+        $newStatus = $worker->status === 'active' ? 'inactive' : 'active';
+
+        if ($newStatus === 'inactive') {
+            $directServices = $worker->services()->get();
+            $teamServices = ($worker->team_id && $worker->team) ? $worker->team->services()->get() : collect();
+            $assignedServices = $directServices->concat($teamServices)->unique('id');
+
+            if ($assignedServices->isNotEmpty()) {
+                $isAr = app()->getLocale() === 'ar';
+                $serviceNames = $assignedServices->map(fn($s) => $isAr ? ($s->name_ar ?: $s->name_en) : ($s->name_en ?: $s->name_ar))->join('، ');
+
+                return $this->errorResponse(
+                    $isAr
+                        ? "لا يمكن تغيير حالة العامل إلى غير نشط لأنه مسند إلى خدمة: ({$serviceNames}). يرجى إلغاء إسناد العامل من الخدمة أولاً."
+                        : "Cannot deactivate this worker because they are assigned to service: ({$serviceNames}). Please unassign the worker from the service first.",
+                    422
+                );
+            }
+        }
+
+        $worker->status = $newStatus;
         $worker->save();
 
         return $this->successResponse(new WorkerResource($worker), __('messages.worker_toggle_success', ['status' => $worker->status]));

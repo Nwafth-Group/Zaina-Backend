@@ -131,8 +131,8 @@ class Service extends Model implements Auditable
 
     public function isTeamBased(): bool
     {
-        if ((bool) $this->is_team_based) {
-            return true;
+        if ($this->is_team_based !== null) {
+            return (bool) $this->is_team_based;
         }
 
         $code = strtoupper($this->service_code ?? '');
@@ -185,6 +185,41 @@ class Service extends Model implements Auditable
     public function hasDiscreteShifts(): bool
     {
         return ! self::isServiceWithoutShifts($this->service_code, $this->category_id);
+    }
+
+    public function getAllowedGenders(): array
+    {
+        $code = strtoupper($this->service_code ?? '');
+
+        // 1. Core female-only services (1, 3, 4)
+        if (in_array($code, ['DOMESTIC_HELPER_HOURLY', 'BABYSITTER_HOURLY', 'PEDICURE_MANICURE'], true) || in_array((int)$this->id, [1, 3, 4], true)) {
+            return ['Female'];
+        }
+
+        // 2. Deep cleaning & specialized services (5 to 11): male only
+        if ($code === 'DEEP_CLEANING' || (int)$this->id === 5 || $this->isTeamBased() || in_array($code, array_map('strtoupper', self::getTeamBasedCodes()), true) || ((int)$this->id >= 6 && (int)$this->id <= 11)) {
+            return ['Male'];
+        }
+
+        // 3. Hospitality or others: check configured worker_gender_options
+        if (!empty($this->worker_gender_options) && is_array($this->worker_gender_options)) {
+            return array_values(array_map('ucfirst', $this->worker_gender_options));
+        }
+
+        if ($code === 'HOSPITALITY_WORKER_HOURLY' || (int)$this->id === 2) {
+            return ['Female', 'Male'];
+        }
+
+        return ['Male', 'Female'];
+    }
+
+    public function acceptsGender(?string $gender): bool
+    {
+        if (empty($gender)) {
+            return false;
+        }
+        $allowed = array_map('strtolower', $this->getAllowedGenders());
+        return in_array(strtolower($gender), $allowed, true);
     }
 }
 

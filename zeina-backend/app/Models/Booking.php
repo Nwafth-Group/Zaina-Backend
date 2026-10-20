@@ -86,6 +86,13 @@ class Booking extends Model
         return $this->belongsTo(Team::class);
     }
 
+    public function transportGroups()
+    {
+        return $this->belongsToMany(TransportGroup::class, 'transport_group_bookings', 'booking_id', 'transport_group_id')
+                    ->withPivot('dropoff_sequence')
+                    ->withTimestamps();
+    }
+
     public function starter()
     {
         return $this->belongsTo(User::class, 'started_by');

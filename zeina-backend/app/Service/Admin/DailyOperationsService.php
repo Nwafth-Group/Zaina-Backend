@@ -81,18 +81,20 @@ class DailyOperationsService
         };
 
         // Calculate KPI Metrics based on the specific visit status for this date
+        $nonCancelledBookings = $allDayBookings->filter(fn($b) => !in_array($effectiveStatus($b), ['cancelled', 'Cancelled']));
+
         $metrics = [
             'total_bookings' => $allDayBookings->count(),
             'upcoming' => $allDayBookings->filter(fn($b) => $effectiveStatus($b) === 'Upcoming')->count(),
             'in_service' => $allDayBookings->filter(fn($b) => $effectiveStatus($b) === 'inService')->count(),
             'completed' => $allDayBookings->filter(fn($b) => $effectiveStatus($b) === 'completed')->count(),
-            'cancelled' => $allDayBookings->filter(fn($b) => $effectiveStatus($b) === 'cancelled')->count(),
-            'at_risk' => $allDayBookings->where('is_at_risk', true)->count(),
-            'unassigned' => $allDayBookings->filter(function ($b) use ($effectiveStatus) {
+            'cancelled' => $allDayBookings->filter(fn($b) => in_array($effectiveStatus($b), ['cancelled', 'Cancelled']))->count(),
+            'at_risk' => $nonCancelledBookings->where('is_at_risk', true)->count(),
+            'unassigned' => $nonCancelledBookings->filter(function ($b) use ($effectiveStatus) {
                 return in_array($effectiveStatus($b), ['Upcoming']) && empty($b->worker_id) && empty($b->team_id);
             })->count(),
-            'active_teams' => $allDayBookings->whereNotNull('team_id')->pluck('team_id')->unique()->count(),
-            'active_workers' => $allDayBookings->whereNotNull('worker_id')->pluck('worker_id')->unique()->count(),
+            'active_teams' => $nonCancelledBookings->whereNotNull('team_id')->pluck('team_id')->unique()->count(),
+            'active_workers' => $nonCancelledBookings->whereNotNull('worker_id')->pluck('worker_id')->unique()->count(),
         ];
 
         // Fetch Transport Groups and Group Workers for this date
@@ -531,7 +533,8 @@ class DailyOperationsService
      */
     public function getAlternativeCandidates(Booking $booking): array
     {
-        $isTeam = !empty($booking->team_id) || ($booking->service && $booking->service->isTeamBased());
+        $hasIndividualWorkers = empty($booking->team_id) && (!empty($booking->worker_id) || $booking->workers()->exists());
+        $isTeam = !empty($booking->team_id) || (!$hasIndividualWorkers && $booking->service && $booking->service->isTeamBased());
         $date = $booking->booking_date;
         $start = $booking->start_time;
         $end = $booking->end_time;

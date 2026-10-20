@@ -42,6 +42,13 @@ class UpdateServiceRequest extends CustomFormRequest
                 $this->merge(['service_zone_ids' => []]);
             }
         }
+
+        if ($this->has('child_age_groups') || array_key_exists('child_age_groups', $this->all())) {
+            $groups = $this->input('child_age_groups');
+            if (empty($groups) || $groups === '' || $groups === 'null' || $groups === '[]') {
+                $this->merge(['child_age_groups' => []]);
+            }
+        }
     }
 
     /**
@@ -307,6 +314,9 @@ class UpdateServiceRequest extends CustomFormRequest
                 if ($service && ($service->id == 2 || $service->service_code === 'HOSPITALITY_WORKER_HOURLY')) {
                     $isSecondService = true;
                 }
+                if ($service && ($service->id == 3 || $service->service_code === 'BABYSITTER_HOURLY')) {
+                    $isThirdService = true;
+                }
 
                 if ($isSecondService) {
                     $genders = $this->input('worker_gender_options');
@@ -345,7 +355,11 @@ class UpdateServiceRequest extends CustomFormRequest
 
                 // Check if any selected worker is already assigned to another service
                 $workersInput = $this->input('workers');
-                if (is_array($workersInput) && !empty($workersInput) && $service && !$service->isTeamBased()) {
+                $isTargetTeamBased = $this->has('is_team_based')
+                    ? $this->boolean('is_team_based')
+                    : ($service instanceof Service ? $service->isTeamBased() : false);
+
+                if (is_array($workersInput) && !empty($workersInput) && !$isTargetTeamBased) {
                     $isSpecialized = in_array(strtoupper($serviceCode ?? ''), array_map('strtoupper', Service::getTeamBasedCodes()), true);
 
                     if ($isSpecialized) {
@@ -410,6 +424,30 @@ class UpdateServiceRequest extends CustomFormRequest
                     }
                 }
 
+                // Check workers gender compatibility with the service
+                if (is_array($workersInput) && !empty($workersInput) && $service) {
+                    $selectedWorkers = \App\Models\Worker::whereIn('id', $workersInput)->get();
+                    $invalidWorkers = $selectedWorkers->filter(fn($w) => ! $service->acceptsGender($w->gender));
+
+                    if ($invalidWorkers->isNotEmpty()) {
+                        $allowedGenders = $service->getAllowedGenders();
+                        $allowedAr = implode(' أو ', array_map(fn($g) => $g === 'Female' ? 'إناث' : 'ذكور', $allowedGenders));
+                        $allowedEn = implode(' or ', $allowedGenders);
+
+                        $invalidNames = $invalidWorkers->map(function($w) use ($isAr) {
+                            $gAr = strtolower($w->gender ?? '') === 'female' ? 'أنثى' : 'ذكر';
+                            return "«{$w->name}» ({$gAr})";
+                        })->implode('، ');
+
+                        $validator->errors()->add(
+                            'workers',
+                            $isAr
+                                ? "هذه الخدمة مخصصة لعمالة ({$allowedAr}) فقط. العمال التالية لا تتطابق مع جنس الخدمة: {$invalidNames}."
+                                : "This service only accepts ({$allowedEn}) workers. The following workers do not match: {$invalidNames}."
+                        );
+                    }
+                }
+
                     $minDuration = $this->input('min_duration') ?? ($service ? $service->min_duration : null);
                     $maxDuration = $this->input('max_duration') ?? ($service ? $service->max_duration : null);
                     if ($minDuration !== null && $minDuration < 4) {
@@ -453,25 +491,79 @@ class UpdateServiceRequest extends CustomFormRequest
                         $validator->errors()->add('max_children', $isAr ? 'الحد الأقصى لعدد الأطفال يجب أن يكون أكبر من أو يساوي الحد الأدنى.' : 'Maximum number of children must be greater than or equal to minimum.');
                     }
 
-                    if ($this->has('child_age_groups')) {
+                    $hasAgeGroupsInRequest = $this->has('child_age_groups') || array_key_exists('child_age_groups', $this->all());
+
+                    if ($hasAgeGroupsInRequest) {
                         $ageGroups = $this->input('child_age_groups', []);
-                        $activeGroups = array_filter($ageGroups, fn ($g) => ($g['status'] ?? '') === 'active');
+                        if (!is_array($ageGroups)) {
+                            $ageGroups = [];
+                        }
+
+                        $activeGroups = [];
+                        foreach ($ageGroups as $origIdx => $group) {
+                            if (($group['status'] ?? 'active') === 'active') {
+                                $activeGroups[] = [
+                                    'orig_index' => $origIdx,
+                                    'name_ar' => $group['name_ar'] ?? '',
+                                    'name_en' => $group['name_en'] ?? '',
+                                    'from' => isset($group['age_from']) ? (int) $group['age_from'] : null,
+                                    'to' => isset($group['age_to']) ? (int) $group['age_to'] : null,
+                                ];
+                            }
+                        }
 
                         if (empty($activeGroups)) {
-                            $validator->errors()->add('child_age_groups', $isAr ? 'يجب تهيئة وتفعيل فئة عمرية واحدة للأطفال على الأقل قبل النشر.' : 'At least one active child age group must be configured before publishing.');
+                            $validator->errors()->add('child_age_groups', $isAr ? 'يجب تهيئة وتفعيل فئة عمرية واحدة للأطفال على الأقل لخدمة جليسة الأطفال.' : 'At least one active child age group must be configured for the Babysitter service.');
                         } else {
-                            // Check for overlaps: sort active groups by age_from
-                            usort($activeGroups, fn ($a, $b) => ($a['age_from'] ?? 0) <=> ($b['age_from'] ?? 0));
-
-                            for ($i = 0; $i < count($activeGroups); $i++) {
-                                $current = $activeGroups[$i];
-                                $from = (int) ($current['age_from'] ?? 0);
-                                $to = (int) ($current['age_to'] ?? 0);
-
-                                if ($from > $to) {
-                                    $validator->errors()->add("child_age_groups.{$i}.age_from", $isAr ? 'العمر من يجب أن يكون أقل من أو يساوي العمر إلى.' : 'Age From must be less than or equal to Age To.');
+                            // 1. Validate that age_from <= age_to for each group
+                            foreach ($activeGroups as $g) {
+                                if ($g['from'] !== null && $g['to'] !== null && $g['from'] > $g['to']) {
+                                    $validator->errors()->add(
+                                        "child_age_groups.{$g['orig_index']}.age_from",
+                                        $isAr ? 'العمر (من) يجب أن يكون أقل من أو يساوي العمر (إلى).' : 'Age From must be less than or equal to Age To.'
+                                    );
                                 }
                             }
+
+                            // 2. Validate that no two active groups overlap
+                            $hasOverlap = false;
+                            $count = count($activeGroups);
+                            for ($i = 0; $i < $count; $i++) {
+                                for ($j = $i + 1; $j < $count; $j++) {
+                                    $gA = $activeGroups[$i];
+                                    $gB = $activeGroups[$j];
+
+                                    if ($gA['from'] !== null && $gA['to'] !== null && $gB['from'] !== null && $gB['to'] !== null) {
+                                        if ($gA['from'] <= $gA['to'] && $gB['from'] <= $gB['to']) {
+                                            // Overlap occurs if max(fromA, fromB) <= min(toA, toB)
+                                            if ($gA['from'] <= $gB['to'] && $gB['from'] <= $gA['to']) {
+                                                $hasOverlap = true;
+                                                $msgB = $isAr
+                                                    ? "تداخل في الفئات العمرية: النطاق ({$gB['from']} إلى {$gB['to']} شهر) يتعارض مع النطاق ({$gA['from']} إلى {$gA['to']} شهر)."
+                                                    : "Age group overlap: range ({$gB['from']} to {$gB['to']} months) conflicts with range ({$gA['from']} to {$gA['to']} months).";
+
+                                                $validator->errors()->add("child_age_groups.{$gB['orig_index']}.age_from", $msgB);
+                                                $validator->errors()->add("child_age_groups.{$gB['orig_index']}.age_to", $msgB);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            if ($hasOverlap) {
+                                $validator->errors()->add(
+                                    'child_age_groups',
+                                    $isAr
+                                        ? 'توجد فئات عمرية متداخلة في النطاق العمري بالأشهر. يجب ألا تتداخل الفئات العمرية مع بعضها البعض.'
+                                        : 'There are overlapping age ranges in months. Child age groups must not overlap with each other.'
+                                );
+                            }
+                        }
+                    } else {
+                        // If child_age_groups was not submitted, ensure the existing service has at least one active child age group
+                        $existingActiveCount = $service ? $service->childAgeGroups()->where('status', 'active')->count() : 0;
+                        if ($existingActiveCount === 0) {
+                            $validator->errors()->add('child_age_groups', $isAr ? 'يجب تهيئة وتفعيل فئة عمرية واحدة للأطفال على الأقل لخدمة جليسة الأطفال.' : 'At least one active child age group must be configured for the Babysitter service.');
                         }
                     }
                 }
@@ -486,8 +578,32 @@ class UpdateServiceRequest extends CustomFormRequest
                             $validator->errors()->add('worker_gender_options', $isAr ? 'خيار الجنس لهذه الخدمة يجب تحديده.' : 'Worker gender option must be selected.');
                         }
                     }
+                    if ($this->filled('default_duration')) {
+                        $personDuration = (int) $this->input('default_duration');
+                        $allowedHours = (int) ($this->input('max_duration') ?: ($service->max_duration ?? 8));
+                        if ($personDuration > $allowedHours) {
+                            $validator->errors()->add('default_duration', $isAr ? 'مدة خدمة الشخص لا يمكن أن تتجاوز ساعات دوام العاملة المسموحة.' : 'Person service duration cannot exceed allowed worker hours.');
+                        }
+                    }
                 } elseif ($this->filled('pricing_type') && ! $isSecondService && ! $isThirdService && $this->input('type') !== 'other' && ! $isPedicureManicure) {
                     $validator->errors()->add('pricing_type', $isAr ? 'تهيئة نوع التسعير متاحة فقط لخدمات الضيافة، وجليسة الأطفال، والخدمات الأخرى.' : 'Pricing type configuration is only allowed for the Hospitality, Babysitting, and Other services.');
+                }
+
+                // Services 1 to 5: base_price cannot be 0 or less
+                $isServiceOneToFive = ($service && $service->id >= 1 && $service->id <= 5) || in_array($serviceCode, [
+                    'DOMESTIC_HELPER_HOURLY', 'HOSPITALITY_WORKER_HOURLY', 'BABYSITTER_HOURLY', 'PEDICURE_MANICURE', 'DEEP_CLEANING'
+                ], true) || ($this->input('type') === 'hourly');
+
+                if ($isServiceOneToFive) {
+                    if ($this->has('base_price')) {
+                        $basePrice = $this->input('base_price');
+                        if ($basePrice === null || $basePrice === '' || (float) $basePrice <= 0) {
+                            $validator->errors()->add(
+                                'base_price',
+                                $isAr ? 'السعر الأساسي يجب أن يكون أكبر من 0 للخدمات من 1 إلى 5 ولا يمكن أن يكون 0.' : 'The base price must be greater than 0 for services 1 to 5 and cannot be 0.'
+                            );
+                        }
+                    }
                 }
             },
         ];

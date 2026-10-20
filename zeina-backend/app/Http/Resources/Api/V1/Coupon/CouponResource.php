@@ -31,10 +31,24 @@ class CouponResource extends JsonResource
             'is_available' => $this->is_available ?? false,
             'user_usage_count' => $this->user_usage_count ?? 0,
 
+            // Audience & Geographic Constraints
+            'is_for_all_users' => (bool) $this->is_for_all_users,
+            'is_for_all_cities' => (bool) $this->is_for_all_cities,
+            'users' => $this->when($this->relationLoaded('users'), function () {
+                return $this->users->map(function ($u) {
+                    return [
+                        'id' => $u->id,
+                        'name' => $u->name,
+                        'phone_number' => $u->phone_number ?? $u->phone,
+                    ];
+                });
+            }),
+
             // Count summaries for admin table
             'users_count' => $this->users_count ?? ($this->relationLoaded('users') ? $this->users->count() : 0),
             'cities_count' => $this->service_zones_count ?? ($this->relationLoaded('serviceZones') ? $this->serviceZones->count() : 0),
             'service_zones_count' => $this->service_zones_count ?? ($this->relationLoaded('serviceZones') ? $this->serviceZones->count() : 0),
+            'services_count' => $this->services_count ?? ($this->relationLoaded('services') ? $this->services->count() : ($this->services()->count())),
             'service_zones' => $this->when($this->relationLoaded('serviceZones'), function () {
                 return $this->serviceZones->map(function ($z) {
                     return [
@@ -58,6 +72,7 @@ class CouponResource extends JsonResource
                     return [
                         'id' => $service->id,
                         'name' => app()->getLocale() === 'ar' ? $service->name_ar : $service->name_en,
+                        'code' => $service->service_code ?? $service->code,
                         'pivot' => [
                             'allowed_visit_types' => isset($service->pivot->allowed_visit_types)
                                 ? (is_string($service->pivot->allowed_visit_types)

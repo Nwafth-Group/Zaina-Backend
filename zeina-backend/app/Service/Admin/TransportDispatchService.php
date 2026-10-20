@@ -1183,7 +1183,7 @@ class TransportDispatchService
         foreach ($group->groupWorkers as $gw) {
             $w = $gw->worker;
             $b = $gw->booking;
-            if (!$w || !$b) continue;
+            if (!$w || !$b || in_array($b->status, ['cancelled', 'Cancelled', 'refunded', 'Refunded'])) continue;
 
             $cName = $b->customer?->full_name
                 ?? (trim(($b->customer?->first_name ?? '') . ' ' . ($b->customer?->last_name ?? '')) ?: null)

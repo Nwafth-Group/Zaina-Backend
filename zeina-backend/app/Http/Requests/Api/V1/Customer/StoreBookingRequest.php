@@ -61,12 +61,21 @@ class StoreBookingRequest extends CustomFormRequest
                 $mergeData['duration'] = (int) ($service->default_duration ?? 6);
                 $mergeData['visit_type'] = 'single_visit';
                 $mergeData['worker_gender'] = in_array('Male', $genderOptions) ? 'Male' : (count($genderOptions) > 0 ? $genderOptions[0] : 'Male');
+            } elseif ($service->service_code === 'PEDICURE_MANICURE') {
+                $mergeData['worker_gender'] = 'Female';
+                $bookingService = app(CustomerBookingService::class);
+                $persons = (int) ($this->input('number_of_persons') ?? 1);
+                $workerIds = $this->input('worker_ids') ?? [];
+                $workersCount = count($workerIds);
+                if ($workersCount > 0) {
+                    $mergeData['duration'] = $bookingService->calculatePedicureDuration($service, $persons, $workersCount);
+                }
             } else {
                 if (! $this->filled('duration')) {
                     $mergeData['duration'] = (int) ($service->min_duration ?: ($service->default_duration ?? 4));
                 }
 
-                if ($service->service_code === 'DOMESTIC_HELPER_HOURLY' || $service->service_code === 'BABYSITTER_HOURLY' || $service->service_code === 'PEDICURE_MANICURE' || (count($genderOptions) === 1 && $genderOptions[0] === 'Female')) {
+                if ($service->service_code === 'DOMESTIC_HELPER_HOURLY' || $service->service_code === 'BABYSITTER_HOURLY' || (count($genderOptions) === 1 && $genderOptions[0] === 'Female')) {
                     $mergeData['worker_gender'] = 'Female';
                 } elseif (! $this->filled('worker_gender')) {
                     $mergeData['worker_gender'] = count($genderOptions) > 0 ? $genderOptions[0] : 'Female';
@@ -284,6 +293,30 @@ class StoreBookingRequest extends CustomFormRequest
                     }
                     if ($workersCount > $maxWorkers) {
                         $validator->errors()->add('worker_ids', __('validation.create_booking.babysitters_count_max', ['max' => $maxWorkers]));
+                    }
+                }
+
+                if ($service->service_code === 'PEDICURE_MANICURE') {
+                    $numberOfPersons = (int) ($this->input('number_of_persons') ?? 1);
+                    $bookingService = app(CustomerBookingService::class);
+                    $calculatedMinWorkers = $bookingService->calculateMinimumPedicureWorkers($service, $numberOfPersons);
+                    $workerIds = $this->input('worker_ids') ?? [];
+                    $workersCount = count($workerIds);
+                    $maxAllowedWorkers = min($numberOfPersons, $service->max_workers ?? 10);
+
+                    if ($workersCount < $calculatedMinWorkers) {
+                        $isArabic = app()->getLocale() === 'ar';
+                        $msg = $isArabic
+                            ? "الحد الأدنى للعمالة المطلوبة لعدد {$numberOfPersons} أشخاص هو {$calculatedMinWorkers} عاملة."
+                            : "Minimum required workers for {$numberOfPersons} person(s) is {$calculatedMinWorkers}.";
+                        $validator->errors()->add('worker_ids', $msg);
+                    }
+                    if ($workersCount > $maxAllowedWorkers) {
+                        $isArabic = app()->getLocale() === 'ar';
+                        $msg = $isArabic
+                            ? "الحد الأقصى للعمالة المسموح به لهذا الحجز هو {$maxAllowedWorkers} عاملة."
+                            : "Maximum allowed workers for this booking is {$maxAllowedWorkers}.";
+                        $validator->errors()->add('worker_ids', $msg);
                     }
                 }
 

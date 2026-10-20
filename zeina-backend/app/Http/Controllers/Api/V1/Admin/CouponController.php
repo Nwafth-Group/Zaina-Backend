@@ -273,23 +273,38 @@ class CouponController extends Controller
 
         DB::beginTransaction();
         try {
+            $isForAllUsers = $request->boolean('is_for_all_users');
+            $isForAllCities = $request->boolean('is_for_all_cities');
+            $isForAllServices = $request->boolean('is_for_all_services');
+
             // 1. Update Coupon
-            $coupon->update($request->only([
-                'name', 'code', 'type', 'value',
-                'usage_limit', 'user_usage_limit', 'start_date', 'end_date',
-                'is_for_all_users', 'is_for_all_services', 'is_for_all_cities',
-                'completed_bookings_count', 'allowed_visit_types', 'min_workers', 'status',
-            ]));
+            $coupon->update([
+                'name' => $request->input('name'),
+                'code' => $request->input('code'),
+                'type' => $request->input('type'),
+                'value' => $request->input('value'),
+                'usage_limit' => $request->input('usage_limit'),
+                'user_usage_limit' => $request->input('user_usage_limit'),
+                'start_date' => $request->input('start_date'),
+                'end_date' => $request->input('end_date'),
+                'is_for_all_users' => $isForAllUsers,
+                'is_for_all_cities' => $isForAllCities,
+                'is_for_all_services' => $isForAllServices,
+                'completed_bookings_count' => $request->input('completed_bookings_count', 0),
+                'allowed_visit_types' => $request->input('allowed_visit_types'),
+                'min_workers' => $request->input('min_workers'),
+                'status' => $request->input('status'),
+            ]);
 
             // 2. Sync Users (Audience)
-            if ($request->is_for_all_users) {
+            if ($isForAllUsers) {
                 $coupon->users()->detach();
             } elseif ($request->has('users')) {
                 $coupon->users()->sync($request->users);
             }
 
             // 3. Sync Service Zones
-            if ($request->is_for_all_cities) {
+            if ($isForAllCities) {
                 $coupon->serviceZones()->detach();
             } else {
                 if ($request->has('service_zone_ids')) {
@@ -298,7 +313,7 @@ class CouponController extends Controller
             }
 
             // 4. Sync Services
-            if ($request->is_for_all_services) {
+            if ($isForAllServices) {
                 $coupon->services()->detach();
             } elseif ($request->has('services')) {
                 $syncData = [];

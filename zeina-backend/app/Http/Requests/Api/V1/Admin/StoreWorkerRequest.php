@@ -62,6 +62,52 @@ class StoreWorkerRequest extends CustomFormRequest
                         __('validation.store_worker.services_single_allowed')
                     );
                 }
+
+                // Check worker gender matches service allowed genders
+                $workerGender = $this->input('gender', '');
+                if (!empty($workerGender)) {
+                    $isAr = app()->getLocale() === 'ar';
+                    foreach ($services as $srv) {
+                        if (! $srv->acceptsGender($workerGender)) {
+                            $allowedAr = implode(' أو ', array_map(fn($g) => $g === 'Female' ? 'إناث' : 'ذكور', $srv->getAllowedGenders()));
+                            $allowedEn = implode(' or ', $srv->getAllowedGenders());
+                            $workerGenderAr = strtolower($workerGender) === 'female' ? 'أنثى' : 'ذكر';
+
+                            $msg = $isAr
+                                ? "الخدمة ({$srv->name_ar}) مخصصة للعمالة ({$allowedAr}) فقط، ولا يمكن إسناد عامل من جنس ({$workerGenderAr}) إليها."
+                                : "The service ({$srv->name_en}) only accepts ({$allowedEn}) workers, and cannot be assigned to a ({$workerGender}) worker.";
+
+                            $validator->errors()->add('services', $msg);
+                        }
+                    }
+                }
+            }
+
+            // Check status inactive/suspended when assigned to services
+            if ($this->has('status') && in_array($this->input('status'), ['inactive', 'suspended'])) {
+                $isAr = app()->getLocale() === 'ar';
+                $assignedDirectServices = collect();
+                $serviceIds = $this->input('services', []);
+                if (is_array($serviceIds) && !empty($serviceIds)) {
+                    $assignedDirectServices = \App\Models\Service::whereIn('id', $serviceIds)->get();
+                }
+
+                $assignedTeamServices = collect();
+                if ($this->filled('team_id')) {
+                    $team = \App\Models\Team::find($this->input('team_id'));
+                    $assignedTeamServices = $team ? $team->services()->get() : collect();
+                }
+
+                $allAssignedServices = $assignedDirectServices->concat($assignedTeamServices)->unique('id');
+
+                if ($allAssignedServices->isNotEmpty()) {
+                    $serviceNames = $allAssignedServices->map(fn($s) => $isAr ? ($s->name_ar ?: $s->name_en) : ($s->name_en ?: $s->name_ar))->join('، ');
+                    $msg = $isAr
+                        ? "لا يمكن تعيين حالة العامل إلى غير نشط لأنه مسند إلى خدمة: ({$serviceNames}). يرجى إلغاء إسناد العامل من الخدمة أولاً."
+                        : "Cannot set worker status to inactive because they are assigned to service: ({$serviceNames}). Please unassign the worker from the service first.";
+
+                    $validator->errors()->add('status', $msg);
+                }
             }
         });
     }

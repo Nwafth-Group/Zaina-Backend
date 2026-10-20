@@ -13,6 +13,8 @@ use App\Models\Review;
 use App\Models\Service;
 use App\Models\ServicePrice;
 use App\Models\ServiceSchedule;
+use App\Models\TransportGroup;
+use App\Models\TransportGroupWorker;
 use App\Models\User;
 use App\Models\Worker;
 use App\Notifications\ReportNotification;
@@ -503,6 +505,7 @@ class BookingService
                 'refund_points' => $refundPoints,
                 'refund_destination' => $refundDestination,
                 'refund_status' => ($refundDestination ? 'completed' : null),
+                'is_at_risk' => false,
             ]);
 
             // Update booking visits status to cancelled
@@ -510,9 +513,33 @@ class BookingService
                 foreach ($booking->visits as $visit) {
                     $visit->update(['status' => 'cancelled']);
                 }
+            } else {
+                $booking->visits()->update(['status' => 'cancelled']);
             }
 
-            // We keep the assignments active so the client knows what workers were selected,
+            // Cleanup Transportation & Dispatch assignments
+            $affectedGroupIds = TransportGroupWorker::where('booking_id', $booking->id)
+                ->pluck('transport_group_id')
+                ->merge(
+                    DB::table('transport_group_bookings')
+                        ->where('booking_id', $booking->id)
+                        ->pluck('transport_group_id')
+                )
+                ->unique()
+                ->filter()
+                ->values();
+
+            TransportGroupWorker::where('booking_id', $booking->id)->delete();
+            DB::table('transport_group_bookings')->where('booking_id', $booking->id)->delete();
+
+            foreach ($affectedGroupIds as $gId) {
+                $remainingWorkers = TransportGroupWorker::where('transport_group_id', $gId)->count();
+                if ($remainingWorkers === 0) {
+                    TransportGroup::where('id', $gId)->update(['status' => 'not_prepared']);
+                }
+            }
+
+            // We keep the worker assignments record for historical display,
             // but since the booking status is 'cancelled', these workers are free to be assigned elsewhere.
 
             // Adjust Coupon

@@ -59,6 +59,14 @@ class GetAvailableDatesRequest extends CustomFormRequest
                 if (!$this->filled('worker_gender')) {
                     $mergeData['worker_gender'] = 'Male';
                 }
+            } elseif ($service->service_code === 'PEDICURE_MANICURE') {
+                $mergeData['worker_gender'] = 'Female';
+                $bookingService = app(\App\Service\Customer\CustomerBookingService::class);
+                $persons = (int) ($this->input('number_of_persons') ?? 1);
+                $minWorkers = $bookingService->calculateMinimumPedicureWorkers($service, $persons);
+                $workersCount = $this->filled('workers_count') ? (int) $this->input('workers_count') : $minWorkers;
+                $mergeData['workers_count'] = $workersCount;
+                $mergeData['duration'] = $bookingService->calculatePedicureDuration($service, $persons, $workersCount);
             } else {
                 if (!$this->filled('duration')) {
                     $mergeData['duration'] = (int) ($service->default_duration ?? 2);
@@ -83,15 +91,17 @@ class GetAvailableDatesRequest extends CustomFormRequest
         $serviceId = $this->input('service_id');
         $service = $serviceId ? Service::find($serviceId) : null;
         $isBabysitter = $service && $service->service_code === 'BABYSITTER_HOURLY';
+        $isPedicureManicure = $service && $service->service_code === 'PEDICURE_MANICURE';
         $isTeamService = $service && $service->isTeamBased();
 
         return [
             'service_id' => 'required|exists:services,id',
             'address_id' => 'required|exists:customer_addresses,id',
             'start_time' => ($isTeamService ? 'nullable' : 'required') . '|date_format:H:i',
-            'duration' => ($isTeamService ? 'nullable' : 'required') . '|integer',
-            'worker_gender' => ($isBabysitter || $isTeamService ? 'nullable' : 'required') . '|string|in:Male,Female',
-            'workers_count' => ($isBabysitter || $isTeamService ? 'nullable' : 'required') . '|integer|min:1',
+            'duration' => ($isTeamService || $isPedicureManicure ? 'nullable' : 'required') . '|integer',
+            'worker_gender' => ($isBabysitter || $isTeamService || $isPedicureManicure ? 'nullable' : 'required') . '|string|in:Male,Female',
+            'workers_count' => ($isBabysitter || $isTeamService || $isPedicureManicure ? 'nullable' : 'required') . '|integer|min:1',
+            'number_of_persons' => ($isPedicureManicure ? 'required' : 'nullable') . '|integer|min:1',
             'number_of_children' => ($isBabysitter ? 'required' : 'nullable') . '|integer|min:1',
             'child_age_groups' => $isBabysitter ? 'required|array|min:1' : 'nullable|array',
             'child_age_groups.*' => 'integer|exists:service_child_age_groups,id',
@@ -206,11 +216,21 @@ class GetAvailableDatesRequest extends CustomFormRequest
                     $workersCount = $this->input('workers_count');
                     if ($workersCount !== null && $workersCount !== '') {
                         $workersCount = (int) $workersCount;
+                        $maxWorkers = $service->max_workers ?? 10;
+                        $maxAllowedWorkers = min($numberOfPersons, $maxWorkers);
+
                         if ($workersCount < $calculatedMinWorkers) {
                             $isArabic = app()->getLocale() === 'ar';
                             $msg = $isArabic
                                 ? "الحد الأدنى للعمالة المطلوبة لعدد {$numberOfPersons} أشخاص هو {$calculatedMinWorkers} عاملة."
                                 : "Minimum required workers for {$numberOfPersons} person(s) is {$calculatedMinWorkers}.";
+                            $validator->errors()->add('workers_count', $msg);
+                        }
+                        if ($workersCount > $maxAllowedWorkers) {
+                            $isArabic = app()->getLocale() === 'ar';
+                            $msg = $isArabic
+                                ? "الحد الأقصى للعمالة المسموح به لهذا الحجز هو {$maxAllowedWorkers} عاملة."
+                                : "Maximum allowed workers for this booking is {$maxAllowedWorkers}.";
                             $validator->errors()->add('workers_count', $msg);
                         }
                     }

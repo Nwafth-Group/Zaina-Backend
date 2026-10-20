@@ -449,6 +449,6 @@ class AdminPointsController extends Controller
         return $this->successResponse([
             'transaction' => $transaction,
             'new_balance' => $newBalance,
-        ], 'Manual points adjustment recorded successfully.');
+        ], app()->getLocale() === 'ar' ? 'تمت معالجة تسوية النقاط اليدوية بنجاح.' : 'Manual points adjustment processed successfully.');
     }
 }

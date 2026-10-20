@@ -131,6 +131,31 @@
             line-height: 1.6;
         }
 
+        /* Items Table styling */
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 5px;
+        }
+
+        .items-table th {
+            background-color: #FDF0F3;
+            color: #1F2937;
+            font-weight: bold;
+            font-size: 10.5pt;
+            padding: 8px 10px;
+            border: 1px solid #F8D7E3;
+            text-align: {{ $lang === 'ar' ? 'right' : 'left' }};
+        }
+
+        .items-table td {
+            padding: 8px 10px;
+            font-size: 10pt;
+            border: 1px solid #FCE4EC;
+            color: #333333;
+            vertical-align: middle;
+        }
+
         /* Text alignment helpers */
         .text-right {
             text-align: right;
@@ -324,6 +349,41 @@
             </div>
         </div>
 
+        @if(!empty($selectedOptions))
+        <!-- Selected Items Card for Specialized Services (6 to 11) -->
+        <div class="card">
+            <div class="card-header">{{ $lang === 'ar' ? 'تفاصيل البنود والكميات المطلوبة' : 'Selected Items & Options' }}</div>
+            <div class="card-body">
+                <table class="items-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 45%;">{{ $lang === 'ar' ? 'البند' : 'Item' }}</th>
+                            <th style="width: 20%; text-align: center;">{{ $lang === 'ar' ? 'سعر الوحدة' : 'Unit Price' }}</th>
+                            <th style="width: 15%; text-align: center;">{{ $lang === 'ar' ? 'الكمية' : 'Qty' }}</th>
+                            <th style="width: 20%; text-align: {{ $lang === 'ar' ? 'left' : 'right' }};">{{ $lang === 'ar' ? 'الإجمالي' : 'Total' }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($selectedOptions as $opt)
+                            @php
+                                $optName = $lang === 'ar' ? ($opt['name_ar'] ?? $opt['name_en'] ?? '—') : ($opt['name_en'] ?? $opt['name_ar'] ?? '—');
+                                $unitPrice = (float) ($opt['unit_price'] ?? 0);
+                                $qty = (int) ($opt['quantity'] ?? 1);
+                                $itemTotal = (float) ($opt['total_price'] ?? ($unitPrice * $qty));
+                            @endphp
+                            <tr>
+                                <td><strong>{{ $optName }}</strong></td>
+                                <td style="text-align: center;">{{ number_format($unitPrice, 2) }} {{ $currency }}</td>
+                                <td style="text-align: center;">{{ $qty }}</td>
+                                <td style="text-align: {{ $lang === 'ar' ? 'left' : 'right' }}; font-weight: bold; color: #F45B8C;">{{ number_format($itemTotal, 2) }} {{ $currency }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        @endif
+
         <!-- 4. Booking details Card -->
         <div class="card">
             <div class="card-header">{{ $lang === 'ar' ? 'تفاصيل الحجز والزيارات' : 'Booking Details' }}</div>
@@ -349,8 +409,13 @@
                             <div class="value">{{ $durationHours }} {{ $lang === 'ar' ? 'ساعات' : 'Hours' }}</div>
                         </td>
                         <td>
-                            <div class="label">{{ $lang === 'ar' ? 'عدد العمالة المطلوبة' : 'Number of Workers' }}</div>
-                            <div class="value">{{ $workersCount }}</div>
+                            @if(!empty($team))
+                                <div class="label">{{ $lang === 'ar' ? 'فريق العمل المسند' : 'Assigned Team' }}</div>
+                                <div class="value">{{ $team['name'] }} ({{ $team['code'] }})</div>
+                            @else
+                                <div class="label">{{ $lang === 'ar' ? 'عدد العمالة المطلوبة' : 'Number of Workers' }}</div>
+                                <div class="value">{{ $workersCount }}</div>
+                            @endif
                         </td>
                     </tr>
                     <tr>

@@ -191,8 +191,7 @@ class BookingController extends Controller
 
         if ($service->service_code === 'BABYSITTER_HOURLY') {
             $childAgeGroups = $data['child_age_groups'] ?? [];
-            $bookingService = app(CustomerBookingService::class);
-            $calculatedMinWorkers = $bookingService->calculateMinimumBabysitters($service, $childAgeGroups);
+            $calculatedMinWorkers = $this->customerBookingService->calculateMinimumBabysitters($service, $childAgeGroups);
 
             $maxWorkers = $service->max_workers ?? 5;
             if ($calculatedMinWorkers > $maxWorkers) {
@@ -204,7 +203,7 @@ class BookingController extends Controller
             } else {
                 $data['workers_count'] = (int) $data['workers_count'];
                 if ($data['workers_count'] < $calculatedMinWorkers) {
-                    $breakdown = $bookingService->getBabysitterBreakdown($service, $childAgeGroups);
+                    $breakdown = $this->customerBookingService->getBabysitterBreakdown($service, $childAgeGroups);
                     $msg = __('validation.create_booking.babysitters_count_min', ['min' => $calculatedMinWorkers]);
                     if (! empty($breakdown)) {
                         $msg .= ' ('.$breakdown.')';
@@ -222,6 +221,35 @@ class BookingController extends Controller
             }
         } elseif ($service->service_code === 'DEEP_CLEANING') {
             $data['workers_count'] = $service->min_workers ?? 6;
+        } elseif ($service->service_code === 'PEDICURE_MANICURE') {
+            $numberOfPersons = (int) ($data['number_of_persons'] ?? 1);
+            $calculatedMinWorkers = $this->customerBookingService->calculateMinimumPedicureWorkers($service, $numberOfPersons);
+            $maxWorkers = $service->max_workers ?? 10;
+            $maxAllowedWorkers = min($numberOfPersons, $maxWorkers);
+
+            if (empty($data['workers_count'])) {
+                $data['workers_count'] = $calculatedMinWorkers;
+            } else {
+                $data['workers_count'] = (int) $data['workers_count'];
+                if ($data['workers_count'] < $calculatedMinWorkers) {
+                    $isArabic = app()->getLocale() === 'ar';
+                    $msg = $isArabic
+                        ? "الحد الأدنى للعمالة المطلوبة لعدد {$numberOfPersons} أشخاص هو {$calculatedMinWorkers} عاملة."
+                        : "Minimum required workers for {$numberOfPersons} person(s) is {$calculatedMinWorkers}.";
+                    return $this->errorResponse($msg, 422);
+                }
+                if ($data['workers_count'] > $maxAllowedWorkers) {
+                    $isArabic = app()->getLocale() === 'ar';
+                    $msg = $isArabic
+                        ? "الحد الأقصى للعمالة المسموح به لهذا الحجز هو {$maxAllowedWorkers} عاملة."
+                        : "Maximum allowed workers for this booking is {$maxAllowedWorkers}.";
+                    return $this->errorResponse($msg, 422);
+                }
+            }
+
+            $durationHours = $this->customerBookingService->calculatePedicureDuration($service, $numberOfPersons, $data['workers_count']);
+            $data['duration'] = $durationHours;
+            $data['worker_gender'] = 'Female';
         } else {
             $data['workers_count'] = (int) ($data['workers_count'] ?? 1);
             $minWorkers = $service->min_workers ?? 1;
@@ -231,17 +259,19 @@ class BookingController extends Controller
             }
         }
 
-        $durationHours = (int) ($data['duration'] ?? 4);
-        if ($service->has_duration_range) {
-            $minDuration = (int) ($service->min_duration ?? 4);
-            $maxDuration = (int) ($service->max_duration ?? 6);
-            if ($durationHours < $minDuration || $durationHours > $maxDuration) {
-                return $this->errorResponse("Duration must be between {$minDuration} and {$maxDuration} hours.", 422);
+        if ($service->service_code !== 'PEDICURE_MANICURE') {
+            $durationHours = (int) ($data['duration'] ?? 4);
+            if ($service->has_duration_range) {
+                $minDuration = (int) ($service->min_duration ?? 4);
+                $maxDuration = (int) ($service->max_duration ?? 6);
+                if ($durationHours < $minDuration || $durationHours > $maxDuration) {
+                    return $this->errorResponse("Duration must be between {$minDuration} and {$maxDuration} hours.", 422);
+                }
+            } else {
+                $durationHours = (int) ($service->default_duration ?? 6);
             }
-        } else {
-            $durationHours = (int) ($service->default_duration ?? 6);
+            $data['duration'] = $durationHours;
         }
-        $data['duration'] = $durationHours;
 
         $genderOptions = $service->worker_gender_options ?? [];
         if (! in_array($data['worker_gender'], $genderOptions)) {

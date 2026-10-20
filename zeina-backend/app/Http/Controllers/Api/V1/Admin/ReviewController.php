@@ -112,6 +112,14 @@ class ReviewController extends Controller
 
         $review->load(['booking', 'customer', 'reviewable', 'actionBy']);
 
+        if ($review->customer) {
+            try {
+                $review->customer->notify(new \App\Notifications\ReviewStatusNotification($review, 'approved'));
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to notify customer on review approval: ' . $e->getMessage());
+            }
+        }
+
         return $this->successResponse(
             new ReviewResource($review),
             __('messages.review_approved_successfully') ?? 'Review approved successfully.'
@@ -121,7 +129,7 @@ class ReviewController extends Controller
     /**
      * Reject a pending or approved review.
      */
-    public function reject(Review $review)
+    public function reject(Request $request, Review $review)
     {
         $review->update([
             'status' => 'rejected',
@@ -132,6 +140,15 @@ class ReviewController extends Controller
         \App\Service\BookingService::updateAverageRating($review->reviewable_type, $review->reviewable_id);
 
         $review->load(['booking', 'customer', 'reviewable', 'actionBy']);
+
+        $reason = $request->input('reason');
+        if ($review->customer) {
+            try {
+                $review->customer->notify(new \App\Notifications\ReviewStatusNotification($review, 'rejected', $reason));
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to notify customer on review rejection: ' . $e->getMessage());
+            }
+        }
 
         return $this->successResponse(
             new ReviewResource($review),

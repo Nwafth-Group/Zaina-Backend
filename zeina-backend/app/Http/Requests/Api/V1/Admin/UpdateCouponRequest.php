@@ -25,7 +25,7 @@ class UpdateCouponRequest extends CustomFormRequest
 
         return [
             'name' => ['required', 'string', 'max:255', Rule::unique('coupons', 'name')->ignore($couponId)],
-            'code' => ['required', 'string', 'max:10', 'alpha_dash', Rule::unique('coupons', 'code')->ignore($couponId)],
+            'code' => ['required', 'string', 'min:2', 'max:30', 'alpha_dash', Rule::unique('coupons', 'code')->ignore($couponId)],
             'type' => ['required', 'in:fixed,percentage'],
             'value' => [
                 'required',
@@ -77,6 +77,39 @@ class UpdateCouponRequest extends CustomFormRequest
             'services.*.min_workers' => ['nullable', 'integer', 'min:0'],
 
             'status' => ['required', 'in:active,inactive'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'name.required' => __('validation.coupon.name_required'),
+            'name.string' => __('validation.coupon.name_string'),
+            'name.max' => __('validation.coupon.name_max'),
+            'name.unique' => __('validation.coupon.name_unique'),
+            'code.required' => __('validation.coupon.code_required'),
+            'code.string' => __('validation.coupon.code_string'),
+            'code.min' => __('validation.coupon.code_min'),
+            'code.max' => __('validation.coupon.code_max'),
+            'code.alpha_dash' => __('validation.coupon.code_alpha_dash'),
+            'code.unique' => __('validation.coupon.code_unique'),
+            'type.required' => __('validation.coupon.type_required'),
+            'type.in' => __('validation.coupon.type_in'),
+            'value.required' => __('validation.coupon.value_required'),
+            'value.numeric' => __('validation.coupon.value_numeric'),
+            'value.min' => __('validation.coupon.value_min'),
+            'start_date.required' => __('validation.coupon.start_date_required'),
+            'start_date.date' => __('validation.coupon.start_date_date'),
+            'end_date.required' => __('validation.coupon.end_date_required'),
+            'end_date.date' => __('validation.coupon.end_date_date'),
+            'end_date.after_or_equal' => __('validation.coupon.end_date_after_or_equal'),
+            'usage_limit.integer' => __('validation.coupon.usage_limit_integer'),
+            'usage_limit.min' => __('validation.coupon.usage_limit_min'),
+            'user_usage_limit.required' => __('validation.coupon.user_usage_limit_required'),
+            'user_usage_limit.integer' => __('validation.coupon.user_usage_limit_integer'),
+            'user_usage_limit.min' => __('validation.coupon.user_usage_limit_min'),
+            'status.required' => __('validation.coupon.status_required'),
+            'status.in' => __('validation.coupon.status_in'),
         ];
     }
 }

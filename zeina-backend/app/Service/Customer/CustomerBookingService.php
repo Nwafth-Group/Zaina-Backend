@@ -78,12 +78,21 @@ class CustomerBookingService
                 }
             }
             $data['workers_count'] = $workersCount;
-        } elseif ($service->service_code === 'PEDICURE_MANICURE') {
+        }
+
+        $dates = $data['dates'] ?? [];
+        $startTime = $data['start_time'] ?? '08:00';
+
+        if ($service->service_code === 'PEDICURE_MANICURE') {
             $numberOfPersons = (int) ($data['number_of_persons'] ?? 1);
             $calculatedMinWorkers = $this->calculateMinimumPedicureWorkers($service, $numberOfPersons);
             $maxWorkers = $service->max_workers ?? 10;
+            $maxAllowedWorkers = min($numberOfPersons, $maxWorkers);
+
             if ($workersCount === null) {
-                $workersCount = $calculatedMinWorkers;
+                $tested = $this->determinePedicureActualMinWorkers($service, $dates, $startTime, $numberOfPersons, $calculatedMinWorkers, $maxAllowedWorkers);
+                $workersCount = $tested['workers_count'];
+                $duration = $tested['duration'];
             } else {
                 $workersCount = (int) $workersCount;
                 if ($workersCount < $calculatedMinWorkers) {
@@ -93,17 +102,24 @@ class CustomerBookingService
                         : "Minimum required workers for {$numberOfPersons} person(s) is {$calculatedMinWorkers}.";
                     throw new \Exception($msg, 422);
                 }
+                if ($workersCount > $maxAllowedWorkers) {
+                    $isArabic = app()->getLocale() === 'ar';
+                    $msg = $isArabic
+                        ? "الحد الأقصى للعمالة المسموح به لهذا الحجز هو {$maxAllowedWorkers} عاملة."
+                        : "Maximum allowed workers for this booking is {$maxAllowedWorkers}.";
+                    throw new \Exception($msg, 422);
+                }
+                $duration = $this->calculatePedicureDuration($service, $numberOfPersons, $workersCount);
             }
             $data['workers_count'] = $workersCount;
+            $data['duration'] = $duration;
+            $data['worker_gender'] = 'Female';
         }
 
         // 2. Perform wallet checks (user cannot have negative balance penalties)
         if ($user->wallet_balance < 0) {
             throw new \Exception(__('messages.unpaid_penalties', ['amount' => abs($user->wallet_balance)]), 402);
         }
-
-        $dates = $data['dates'] ?? [];
-        $startTime = $data['start_time'];
 
         // 3. Compute duration and start/end datetimes
         $times = $this->calculateBookingTimes($service, $dates[0], $startTime, $data['duration'] ?? null);
@@ -123,10 +139,13 @@ class CustomerBookingService
         // 5. Query busy workers across ALL dates (combines database overlaps & temporary cache locks)
         $busyWorkerIds = $this->getBusyWorkerIdsForDates($service, $dates, $times['start_str'], $times['end_str']);
 
-        // 6. Get active, non-busy workers (For service 1 and 3, enforce female workers only)
+        // 6. Get active, non-busy workers (Enforce gender matching service rules & booking request)
         $gender = $data['worker_gender'] ?? null;
-        if (empty($gender) && ($service->service_code === 'DOMESTIC_HELPER_HOURLY' || $service->service_code === 'BABYSITTER_HOURLY' || (is_array($service->worker_gender_options) && count($service->worker_gender_options) === 1 && in_array('Female', $service->worker_gender_options)))) {
-            $gender = 'Female';
+        if (empty($gender)) {
+            $allowed = $service->getAllowedGenders();
+            if (count($allowed) === 1) {
+                $gender = $allowed[0];
+            }
         }
 
         $availableWorkersQuery = $service->workers()
@@ -191,6 +210,12 @@ class CustomerBookingService
             $res['team_id'] = ($selectedTeam && $selectedTeam->id) ? $selectedTeam->id : null;
         }
 
+        if ($service->service_code === 'PEDICURE_MANICURE') {
+            $res['duration'] = (int) $data['duration'];
+            $res['number_of_persons'] = (int) ($data['number_of_persons'] ?? 1);
+            $res['persons_distribution'] = $this->calculatePedicurePersonsDistribution((int) ($data['number_of_persons'] ?? 1), $allocatedWorkers->count());
+        }
+
         return $res;
     }
 
@@ -248,6 +273,15 @@ class CustomerBookingService
                     : "Minimum required workers for {$numberOfPersons} person(s) is {$calculatedMinWorkers}.";
                 throw new \Exception($msg, 422);
             }
+            $maxAllowedWorkers = min($numberOfPersons, $service->max_workers ?? 10);
+            if ($workerIdsCount > $maxAllowedWorkers) {
+                $isArabic = app()->getLocale() === 'ar';
+                $msg = $isArabic
+                    ? "الحد الأقصى للعمالة المسموح به لهذا الحجز هو {$maxAllowedWorkers} عاملة."
+                    : "Maximum allowed workers for this booking is {$maxAllowedWorkers}.";
+                throw new \Exception($msg, 422);
+            }
+            $data['duration'] = $this->calculatePedicureDuration($service, $numberOfPersons, $workerIdsCount);
             if (empty($data['worker_gender'])) {
                 $data['worker_gender'] = 'Female';
             }
@@ -300,8 +334,11 @@ class CustomerBookingService
                     ->where('workers.status', 'active');
 
                 $gender = $data['worker_gender'] ?? null;
-                if (empty($gender) && ($service->service_code === 'DOMESTIC_HELPER_HOURLY' || $service->service_code === 'BABYSITTER_HOURLY' || (is_array($service->worker_gender_options) && count($service->worker_gender_options) === 1 && in_array('Female', $service->worker_gender_options)))) {
-                    $gender = 'Female';
+                if (empty($gender)) {
+                    $allowed = $service->getAllowedGenders();
+                    if (count($allowed) === 1) {
+                        $gender = $allowed[0];
+                    }
                 }
 
                 if ($gender) {
@@ -372,6 +409,20 @@ class CustomerBookingService
                     $firstWorker = Worker::find($workerIds[0]);
                     if ($firstWorker && $firstWorker->team_id) {
                         $teamId = $firstWorker->team_id;
+                    } else {
+                        $matchedTeam = Team::whereHas('workers', function ($wq) use ($workerIds) {
+                            $wq->whereIn('workers.id', $workerIds);
+                        })->first();
+                        if ($matchedTeam) {
+                            $teamId = $matchedTeam->id;
+                        }
+                    }
+                }
+
+                if ($teamId && empty($workerIds)) {
+                    $teamModel = Team::with('workers')->find($teamId);
+                    if ($teamModel && $teamModel->workers->isNotEmpty()) {
+                        $workerIds = $teamModel->workers->pluck('id')->toArray();
                     }
                 }
             } else {
@@ -400,6 +451,18 @@ class CustomerBookingService
                         }
                     }
                 }
+            }
+
+            if ($service->service_code === 'PEDICURE_MANICURE' && empty($selectedOptions)) {
+                $numberOfPersons = (int) ($data['number_of_persons'] ?? 1);
+                $selectedOptions = [
+                    'service_type' => 'PEDICURE_MANICURE',
+                    'person_price' => (float) $service->base_price,
+                    'person_duration' => $this->getPedicurePersonDuration($service),
+                    'worker_allowed_hours' => $this->getPedicureWorkerAllowedHours($service),
+                    'number_of_persons' => $numberOfPersons,
+                    'persons_distribution' => $this->calculatePedicurePersonsDistribution($numberOfPersons, count($workerIds)),
+                ];
             }
 
             // Create Booking (using first date as parent reference)
@@ -673,7 +736,7 @@ class CustomerBookingService
             $subtotal = $optionsSubtotal * $visitsCount;
             $pricePerPeriod = $optionsSubtotal;
         } elseif ($isPedicureManicure) {
-            $subtotal = $pricePerPeriod * $workersCount * max(1, $numberOfPersons);
+            $subtotal = $pricePerPeriod * max(1, $numberOfPersons);
         } elseif ($isDeepCleaning || $isTeamService || ($isSpecialized && $service->pricing_type === 'per_service')) {
             $subtotal = $pricePerPeriod * $visitsCount;
         } elseif ($service->pricing_type === 'per_hour' && ! $isFirstService && $startTime && $endTime) {
@@ -710,10 +773,11 @@ class CustomerBookingService
         $coupon = null;
 
         if (! empty($couponCode)) {
-            $coupon = Coupon::where('code', $couponCode)->first();
+            $trimmedCode = trim($couponCode);
+            $coupon = Coupon::whereRaw('LOWER(code) = ?', [strtolower($trimmedCode)])->first();
 
             if (! $coupon) {
-                throw new \Exception(__('messages.coupon_not_found_or_expired'), 422);
+                throw new \Exception(__('messages.coupon_not_found'), 422);
             }
 
             $errCode = $coupon->checkEligibility($user, $service, $visitType, $startTime ?? '00:00', $endTime ?? '00:00', $address, (int) ($workersCount ?? 1));
@@ -943,13 +1007,84 @@ class CustomerBookingService
         return implode($isArabic ? ' ، ' : ', ', $breakdownParts);
     }
 
-    public function calculateMinimumPedicureWorkers(Service $service, int $numberOfPersons = 1): int
+    public function getPedicureWorkerAllowedHours(Service $service): int
+    {
+        $allowed = (int) ($service->max_worker_hours ?? $service->max_duration ?? 8);
+        return $allowed > 0 ? $allowed : 8;
+    }
+
+    public function getPedicurePersonDuration(Service $service): int
     {
         $duration = (int) ($service->default_duration ?? 2);
-        if ($duration <= 0) {
-            $duration = 2;
+        return $duration > 0 ? $duration : 2;
+    }
+
+    public function calculatePedicureWorkerCapacity(Service $service): int
+    {
+        $allowedHours = $this->getPedicureWorkerAllowedHours($service);
+        $personDuration = $this->getPedicurePersonDuration($service);
+        return (int) max(1, floor($allowedHours / $personDuration));
+    }
+
+    public function calculateMinimumPedicureWorkers(Service $service, int $numberOfPersons = 1): int
+    {
+        $capacity = $this->calculatePedicureWorkerCapacity($service);
+        $persons = max(1, $numberOfPersons);
+        return (int) max(1, ceil($persons / $capacity));
+    }
+
+    public function calculatePedicureDuration(Service $service, int $numberOfPersons, int $workersCount): int
+    {
+        $personDuration = $this->getPedicurePersonDuration($service);
+        $workers = max(1, $workersCount);
+        $persons = max(1, $numberOfPersons);
+        return (int) ($personDuration * ceil($persons / $workers));
+    }
+
+    public function calculatePedicurePersonsDistribution(int $numberOfPersons, int $workersCount): array
+    {
+        $workers = max(1, $workersCount);
+        $persons = max(1, $numberOfPersons);
+        $base = intdiv($persons, $workers);
+        $remainder = $persons % $workers;
+
+        $distribution = [];
+        for ($i = 0; $i < $workers; $i++) {
+            $distribution[] = $base + ($i < $remainder ? 1 : 0);
         }
-        $totalHours = max(1, $numberOfPersons) * $duration;
-        return (int) max(1, ceil($totalHours / 8));
+        return $distribution;
+    }
+
+    public function determinePedicureActualMinWorkers(
+        Service $service,
+        array $dates,
+        string $startTime,
+        int $numberOfPersons,
+        int $theoreticalMin,
+        int $maxWorkers
+    ): array {
+        $maxCandidate = min($numberOfPersons, $maxWorkers);
+        for ($w = $theoreticalMin; $w <= $maxCandidate; $w++) {
+            $duration = $this->calculatePedicureDuration($service, $numberOfPersons, $w);
+            $times = $this->calculateBookingTimes($service, $dates[0], $startTime, $duration);
+            $busyIds = $this->getBusyWorkerIdsForDates($service, $dates, $times['start_str'], $times['end_str']);
+            $availableWorkersCount = $service->workers()
+                ->where('workers.status', 'active')
+                ->where('workers.gender', 'female')
+                ->whereNotIn('workers.id', $busyIds)
+                ->count();
+
+            if ($availableWorkersCount >= $w) {
+                return [
+                    'workers_count' => $w,
+                    'duration' => $duration,
+                ];
+            }
+        }
+
+        return [
+            'workers_count' => $theoreticalMin,
+            'duration' => $this->calculatePedicureDuration($service, $numberOfPersons, $theoreticalMin),
+        ];
     }
 }
