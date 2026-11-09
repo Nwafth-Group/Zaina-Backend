@@ -45,6 +45,7 @@ class CustomerUserResource extends JsonResource
             'status'                 => $this->status, // active, inactive
             'referral_code'          => $this->activeReferralCode(),
             'referred_by_id'         => $this->referred_by_id,
+            'unread_notifications_count' => $this->unreadNotifications()->count(),
             'image'                  => $profileImage ? (new MediaResource($profileImage))->getFileUrl() : null,
             'created_at'             => $this->created_at?->toDateTimeString(),
             'updated_at'             => $this->updated_at?->toDateTimeString(),

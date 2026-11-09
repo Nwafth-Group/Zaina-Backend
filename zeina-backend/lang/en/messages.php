@@ -239,6 +239,7 @@ return [
     'my_reports_retrieved_successfully' => 'Your reports have been retrieved successfully.',
     'report_details_retrieved_successfully' => 'Report details retrieved successfully.',
     'notification_fetch_success' => 'Notification fetched successfully.',
+    'unread_count_fetch_success' => 'Unread notifications count fetched successfully.',
     'announcement_create_success' => 'Announcement created successfully.',
     'annouun_not_exist' => 'Annnouncement not found.',
     'announ_fetch_success' => 'Annnouncement fetch suucess',

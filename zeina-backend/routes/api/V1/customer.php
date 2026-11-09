@@ -118,6 +118,7 @@ Route::prefix('customer')->group(function () {
         Route::apiResource('coupons', CouponController::class)->only(['index', 'show']);
 
         Route::prefix('notifications')->group(function () {
+            Route::get('unread-count', [NotificationandAnnouncementController::class, 'unreadCount']);  // عدد الإشعارات غير المقروءة
             Route::get('/', [NotificationandAnnouncementController::class, 'index']);            // جلب القائمة حسب الـ Tab
             Route::post('/{id}/read', [NotificationandAnnouncementController::class, 'markAsRead']); // قراءة عنصر (إشعار أو إعلان)
             Route::post('/read-all', [NotificationandAnnouncementController::class, 'markAllAsRead']); // قراءة الكل

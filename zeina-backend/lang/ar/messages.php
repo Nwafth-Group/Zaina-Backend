@@ -225,6 +225,7 @@ return [
     'my_reports_retrieved_successfully' => 'تم جلب تقاريرك بنجاح.',
     'report_details_retrieved_successfully' => 'تم جلب تفاصيل التقرير بنجاح.',
     'notification_fetch_success' => 'تم جلب الإشعارات بنجاح.',
+    'unread_count_fetch_success' => 'تم جلب عدد الإشعارات غير المقروءة بنجاح.',
     'announcement_create_success' => 'تم إنشاء الإعلان بنجاح.',
     'annouun_not_exist' => 'الإعلان غير موجود.',
     'announ_fetch_success' => 'تم جلب الإعلان بنجاح.',

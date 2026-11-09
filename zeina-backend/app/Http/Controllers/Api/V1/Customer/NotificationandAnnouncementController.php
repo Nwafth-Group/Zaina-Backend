@@ -18,6 +18,22 @@ class NotificationandAnnouncementController extends Controller
         $type = $request->get('type', 'notification'); // القيمة الافتراضية للـ Tab الأول
         $perPage = $request->get('per_page', 15);
 
+        // حساب عدد غير المقروء للإشعارات والإعلانات
+        $unreadNotifications = $user->unreadNotifications()->count();
+        $readAnnouncementIds = $user->readAnnouncements()
+            ->wherePivotNotNull('read_at')
+            ->pluck('announcements.id')
+            ->toArray();
+        $unreadAnnouncements = Announcement::whereNotIn('id', $readAnnouncementIds)->count();
+        $totalUnread = $unreadNotifications + $unreadAnnouncements;
+
+        $params = [
+            'unread_count' => $totalUnread,
+            'notifications_unread_count' => $unreadNotifications,
+            'announcements_unread_count' => $unreadAnnouncements,
+            'has_unread' => $totalUnread > 0,
+        ];
+
         if ($type === 'notification') {
             $notifications = $user->notifications()->paginate($perPage);
 
@@ -33,7 +49,7 @@ class NotificationandAnnouncementController extends Controller
                 ];
             });
 
-            return $this->successResponse($formatted, __('messages.notification_fetch_success'));
+            return $this->successResponse($formatted, __('messages.notification_fetch_success'), 200, $params);
         }
         // 🔴 القسم الثاني: الإعلانات العامة للآدمن (Announcement Tab)
         if ($type === 'announcement') {
@@ -41,9 +57,34 @@ class NotificationandAnnouncementController extends Controller
             $announcements = Announcement::orderBy('created_at', 'desc')->paginate($perPage);
             // جلب الـ IDs للإعلانات التي قرأها هذا المستخدم سابقاً لتوفير الاستعلامات بداخل الـ Loop
 
-            return $this->successResponse(AnnouncementCustomerResource::collection($announcements->items()), __('messages.announ_fetch_success'));
+            return $this->successResponse(AnnouncementCustomerResource::collection($announcements->items()), __('messages.announ_fetch_success'), 200, $params);
 
         }
+    }
+
+    /**
+     * جلب عدد الإشعارات والإعلانات غير المقروءة للعميل (Dedicated Unread Count Endpoint)
+     */
+    public function unreadCount(Request $request)
+    {
+        $user = auth()->user();
+
+        $unreadNotifications = $user->unreadNotifications()->count();
+
+        $readAnnouncementIds = $user->readAnnouncements()
+            ->wherePivotNotNull('read_at')
+            ->pluck('announcements.id')
+            ->toArray();
+        $unreadAnnouncements = Announcement::whereNotIn('id', $readAnnouncementIds)->count();
+
+        $totalUnread = $unreadNotifications + $unreadAnnouncements;
+
+        return $this->successResponse([
+            'unread_count' => $totalUnread,
+            'notifications_unread_count' => $unreadNotifications,
+            'announcements_unread_count' => $unreadAnnouncements,
+            'has_unread' => $totalUnread > 0,
+        ], __('messages.unread_count_fetch_success'));
     }
 
     /**
@@ -99,22 +140,20 @@ class NotificationandAnnouncementController extends Controller
             // 1. جلب الـ IDs الحقيقية للإعلانات الموجودة في الجدول حالياً
             $allAnnouncementIds = Announcement::pluck('id')->toArray();
 
-            // 2. بناء مصفوفة المزامنة بشكل يدوي صارم لمنع أي شقلبة من لارافيل
+            // 2. بناء مصفوفة المزامنة
             $syncData = [];
             foreach ($allAnnouncementIds as $announcementId) {
-                // تأكيد مطلق: الـ Key هو الـ id تبع الإعلان، والـ value هي حقل الـ read_at
                 $syncData[(int) $announcementId] = [
                     'read_at' => now(),
                 ];
-
-                // 3. التنفيذ
-                $user->readAnnouncements()->syncWithoutDetaching($syncData);
-
-                return response()->json([
-                    'success' => true,
-                    'message' => 'All announcements marked as read successfully.',
-                ], 200);
             }
+
+            // 3. التنفيذ
+            if (! empty($syncData)) {
+                $user->readAnnouncements()->syncWithoutDetaching($syncData);
+            }
+
+            return $this->successResponse(null, __('messages.all_announcemnt_mark_read') ?? 'All announcements marked as read successfully.');
         }
     }
 
