@@ -95,7 +95,7 @@ class AuthController extends Controller
                 'type' => 'customer',
                 'status' => 'active',
                 'verification_status' => 'unverified',
-                'preferred_language' => 'en',
+                'preferred_language' => app()->getLocale() ?: 'ar',
             ]);
             $isNewUser = true;
         }

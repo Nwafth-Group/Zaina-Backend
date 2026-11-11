@@ -302,7 +302,7 @@ class CustomerBookingService
         }
 
         $dates = $data['dates'] ?? [];
-        $startTime = $data['start_time'];
+        $startTime = $data['start_time'] ?? '08:00';
 
         // 3. Compute times
         $times = $this->calculateBookingTimes($service, $dates[0], $startTime, $data['duration'] ?? null);

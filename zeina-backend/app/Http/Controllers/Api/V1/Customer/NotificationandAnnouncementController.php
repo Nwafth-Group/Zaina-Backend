@@ -37,11 +37,15 @@ class NotificationandAnnouncementController extends Controller
         if ($type === 'notification') {
             $notifications = $user->notifications()->paginate($perPage);
 
-            $formatted = collect($notifications->items())->map(function ($n) {
+            $locale = app()->getLocale();
+
+            $formatted = collect($notifications->items())->map(function ($n) use ($locale) {
+                $localized = $this->localizeNotification($n->data ?? [], $locale);
+
                 return [
                     'id' => $n->id,
-                    'title' => $n->data['title'] ?? '',
-                    'body' => $n->data['body'] ?? '',
+                    'title' => $localized['title'],
+                    'body' => $localized['body'],
                     'booking_id' => $n->data['booking_id'] ?? null,
                     'is_read' => ! is_null($n->read_at),
                     'read_at' => $n->read_at ? $n->read_at->toIso8601String() : null,
@@ -168,5 +172,116 @@ class NotificationandAnnouncementController extends Controller
             'total' => $paginator->total(),
             'has_unread' => $hasUnread, // 🔴 النقطة الحمراء بالـ UI بتضوي بناءً على هذا الـ Boolean
         ];
+    }
+
+    /**
+     * Localize notification title and body according to current locale (ar/en).
+     */
+    private function localizeNotification(array $data, string $locale): array
+    {
+        $title = $data['title'] ?? '';
+        $body = $data['body'] ?? '';
+
+        if ($locale === 'ar') {
+            if (! empty($data['title_ar'])) {
+                $title = $data['title_ar'];
+            }
+            if (! empty($data['body_ar'])) {
+                $body = $data['body_ar'];
+            }
+
+            // Translate English titles to Arabic
+            if (preg_match('/new points earned/i', $title)) {
+                $title = 'حصلت على نقاط جديدة! 🎉';
+            } elseif (preg_match('/booking cancelled/i', $title)) {
+                $title = 'تم إلغاء الحجز';
+            } elseif (preg_match('/booking confirmed/i', $title)) {
+                $title = 'تم تأكيد الحجز! 🎉';
+            } elseif (preg_match('/booking rescheduled/i', $title)) {
+                $title = 'تمت إعادة جدولة الحجز! 🔄';
+            } elseif (preg_match('/reminder.*(?:1 hour|one hour)/i', $title)) {
+                $title = 'تذكير: موعد خدمتك بعد ساعة واحدة ⏰';
+            } elseif (preg_match('/service provider is on the way/i', $title)) {
+                $title = 'مقدم الخدمة في الطريق! 🚗';
+            } elseif (preg_match('/service started/i', $title)) {
+                $title = 'بدأت الخدمة';
+            } elseif (preg_match('/service completed/i', $title)) {
+                $title = 'اكتملت الخدمة';
+            } elseif (preg_match('/workers assignment updated/i', $title)) {
+                $title = 'تحديث تعيين العاملات';
+            } elseif (preg_match('/review approved/i', $title)) {
+                $title = 'تم اعتماد تقييمك';
+            } elseif (preg_match('/review rejected/i', $title)) {
+                $title = 'تم رفض تقييمك';
+            } elseif (preg_match('/kyc approved|account verified/i', $title)) {
+                $title = 'تم توثيق الحساب بنجاح';
+            } elseif (preg_match('/kyc rejected/i', $title)) {
+                $title = 'تم رفض توثيق الحساب';
+            }
+
+            // Translate English bodies to Arabic
+            if (preg_match('/(\d+)\s+points have been added to your balance for completing your service/i', $body, $m)) {
+                $body = "تمت إضافة {$m[1]} نقطة إلى رصيدك لإتمامك الخدمة بنجاح.";
+            } elseif (preg_match('/thank you for your rating.*extra\s+(\d+)\s+points/i', $body, $m)) {
+                $body = "شكرًا لتقييمك! تمت إضافة {$m[1]} نقطة إضافية إلى محفظتك.";
+            } elseif (preg_match('/your booking\s+([A-Za-z0-9-]+)\s+has been cancelled by admin/i', $body, $m)) {
+                $body = "تم إلغاء حجزك رقم {$m[1]} بواسطة الإدارة.";
+            } elseif (preg_match('/your booking with reference number\s+([A-Za-z0-9-]+)\s+is now officially confirmed/i', $body, $m)) {
+                $body = "حجزك برقم {$m[1]} تم تأكيده رسميًا ومجدول الآن بنجاح.";
+            } elseif (preg_match('/your booking\s+([A-Za-z0-9-]+)\s+has been rescheduled to\s+(.*?)\s+at\s+(.*?)(?:\.|$)/i', $body, $m)) {
+                $body = "حجزك برقم {$m[1]} تم إعادة جدولته إلى {$m[2]} الساعة {$m[3]}.";
+            } elseif (preg_match('/your service for booking ref:\s*([A-Za-z0-9-]+)\s*is now in service/i', $body, $m)) {
+                $body = "حجزك رقم {$m[1]} هو الآن قيد التنفيذ.";
+            } elseif (preg_match('/your service for booking ref:\s*([A-Za-z0-9-]+)\s*has been completed/i', $body, $m)) {
+                $body = "تم إتمام خدمتك للحجز رقم {$m[1]} بنجاح. شكراً لك!";
+            } elseif (preg_match('/assigned workers for your booking\s+([A-Za-z0-9-]+)\s+have been updated/i', $body, $m)) {
+                $body = "تم تحديث تعيين العاملات لحجزك رقم {$m[1]}.";
+            }
+        } elseif ($locale === 'en') {
+            if (! empty($data['title_en'])) {
+                $title = $data['title_en'];
+            }
+            if (! empty($data['body_en'])) {
+                $body = $data['body_en'];
+            }
+
+            // Translate Arabic titles to English
+            if (str_contains($title, 'نقاط جديدة')) {
+                $title = 'New Points Earned! 🎉';
+            } elseif (str_contains($title, 'إلغاء الحجز')) {
+                $title = 'Booking Cancelled';
+            } elseif (str_contains($title, 'تأكيد الحجز')) {
+                $title = 'Booking Confirmed! 🎉';
+            } elseif (str_contains($title, 'إعادة جدولة')) {
+                $title = 'Booking Rescheduled! 🔄';
+            } elseif (str_contains($title, 'استرداد المبلغ') || str_contains($title, 'استرجاع')) {
+                $title = 'Amount Refunded to Wallet 💰';
+            } elseif (str_contains($title, 'بدأت الخدمة')) {
+                $title = 'Service Started';
+            } elseif (str_contains($title, 'اكتملت الخدمة')) {
+                $title = 'Service Completed';
+            } elseif (str_contains($title, 'تعيين العاملات')) {
+                $title = 'Workers Assignment Updated';
+            }
+
+            // Translate Arabic bodies to English
+            if (preg_match('/تمت إضافة\s+(\d+)\s+نقطة إلى رصيدك/u', $body, $m)) {
+                $body = "{$m[1]} points have been added to your balance for completing your service.";
+            } elseif (preg_match('/تم إلغاء حجزك رقم\s+([A-Za-z0-9-]+)\s+بواسطة الإدارة/u', $body, $m)) {
+                $body = "Your booking {$m[1]} has been cancelled by Admin.";
+            } elseif (preg_match('/حجزك برقم\s+([A-Za-z0-9-]+)\s+تم تأكيده رسميًا/u', $body, $m)) {
+                $body = "Your booking with reference number {$m[1]} is now officially confirmed and scheduled successfully.";
+            } elseif (preg_match('/تم استرداد مبلغ\s+([\d\.]+)\s*(?:ج\.م|ر\.س)?\s*للحجز رقم\s+([A-Za-z0-9-]+)\s*إلى محفظتك/u', $body, $m)) {
+                $body = "An amount of {$m[1]} EGP for booking {$m[2]} has been refunded to your wallet.";
+            } elseif (preg_match('/حجزك رقم\s+([A-Za-z0-9-]+)\s+هو الآن قيد التنفيذ/u', $body, $m)) {
+                $body = "Your service for booking ref: {$m[1]} is now in service.";
+            } elseif (preg_match('/تم إتمام خدمتك للحجز رقم\s+([A-Za-z0-9-]+)\s+بنجاح/u', $body, $m)) {
+                $body = "Your service for booking ref: {$m[1]} has been completed. Thank you!";
+            } elseif (preg_match('/تم تحديث تعيين العاملات لحجزك رقم\s+([A-Za-z0-9-]+)/u', $body, $m)) {
+                $body = "The assigned workers for your booking {$m[1]} have been updated.";
+            }
+        }
+
+        return ['title' => $title, 'body' => $body];
     }
 }

@@ -31,6 +31,7 @@ class CompleteProfileRequest extends CustomFormRequest
             // 'code'           => ['required', 'string', 'max:10'],
             'email'           => ['required', 'email', 'max:255', 'unique:users,email,' . $userId],
             'gender'          => ['required', 'in:Male,Female'],
+            'preferred_language' => ['nullable', 'string', 'in:ar,en'],
             'image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:4096'],
             'referral_code'   => ['nullable', 'string', 'exists:users,referral_code'],
         ];

@@ -53,10 +53,14 @@ class StoreBookingRequest extends CustomFormRequest
 
         if ($service) {
             $genderOptions = $service->worker_gender_options ?? [];
-            if ($service->isTeamBased()) {
+            $isTeamService = $service->isTeamBased() || ((int) $service->id >= 6 && (int) $service->id <= 11);
+            if ($isTeamService) {
                 $mergeData['duration'] = (int) ($service->default_duration ?? 2);
                 $mergeData['visit_type'] = 'single_visit';
                 $mergeData['worker_gender'] = 'Male';
+                if (! $this->filled('start_time')) {
+                    $mergeData['start_time'] = '08:00';
+                }
             } elseif ($service->service_code === 'DEEP_CLEANING') {
                 $mergeData['duration'] = (int) ($service->default_duration ?? 6);
                 $mergeData['visit_type'] = 'single_visit';
@@ -98,7 +102,7 @@ class StoreBookingRequest extends CustomFormRequest
         $isBabysitter = $service && $service->service_code === 'BABYSITTER_HOURLY';
         $isPedicureManicure = $service && $service->service_code === 'PEDICURE_MANICURE';
 
-        $isTeamService = $service && $service->isTeamBased();
+        $isTeamService = $service && ($service->isTeamBased() || ((int) $service->id >= 6 && (int) $service->id <= 11));
 
         return [
             'service_id' => ['required', 'exists:services,id'],
@@ -106,7 +110,7 @@ class StoreBookingRequest extends CustomFormRequest
             'visit_type' => ['nullable', 'string', 'in:single_visit,three_visits_per_week'],
             'dates' => ['required', 'array'],
             'dates.*' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
-            'start_time' => ['required', 'date_format:H:i'],
+            'start_time' => [$isTeamService ? 'nullable' : 'required', 'date_format:H:i'],
             'team_id' => ['nullable', 'exists:teams,id'],
             'worker_ids' => $isTeamService ? ['nullable', 'array'] : ['required', 'array', 'min:1'],
             'worker_ids.*' => ['required', 'exists:workers,id'],

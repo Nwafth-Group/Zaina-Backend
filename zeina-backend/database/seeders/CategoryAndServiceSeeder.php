@@ -198,6 +198,7 @@ class CategoryAndServiceSeeder extends Seeder
                 'description_en' => 'Detailed description for ' . $data['en'],
                 'features' => $features,
                 'status' => 'active',
+                'is_team_based' => $isOtherNewService,
 
                 'available_visit_types' => ($isSecondService || $isThirdService || $isPedicureManicure || $isDeepCleaning || $isOtherNewService)
                     ? [['type' => 'single_visit', 'discount' => 0]]

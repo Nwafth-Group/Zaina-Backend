@@ -47,6 +47,10 @@ class ProfileController extends Controller
             'gender'       => $request->gender, 
         ];
 
+        if ($request->filled('preferred_language')) {
+            $updateData['preferred_language'] = $request->preferred_language;
+        }
+
         // 1. تحديث البيانات النصية في الداتابيز
         $user->update($updateData);
 

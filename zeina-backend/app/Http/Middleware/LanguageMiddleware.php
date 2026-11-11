@@ -26,7 +26,10 @@ class LanguageMiddleware
         if ($locale === '') {
             $locale = strtolower($queryLang);
         }
-        App::setLocale(in_array($locale, ['en', 'ar'], true) ? $locale : 'en');
+        if ($locale === '' && $request->user() && $request->user()->preferred_language) {
+            $locale = strtolower($request->user()->preferred_language);
+        }
+        App::setLocale(in_array($locale, ['en', 'ar'], true) ? $locale : 'ar');
         return $next($request);
     }
 }
