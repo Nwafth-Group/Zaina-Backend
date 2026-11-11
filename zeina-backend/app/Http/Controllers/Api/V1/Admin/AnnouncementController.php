@@ -45,7 +45,7 @@ class AnnouncementController extends Controller
      */
     public function store(StoreAnnouncementRequest $request)
     {
-        $announcement = Announcement::create($request->safe()->only(['title', 'body']));
+        $announcement = Announcement::create($request->safe()->only(['title', 'title_ar', 'title_en', 'body', 'body_ar', 'body_en']));
 
         $this->syncRecipients($announcement, $request);
 
@@ -79,7 +79,7 @@ class AnnouncementController extends Controller
             return $this->errorResponse(__('messages.annouun_not_exist'), 404);
         }
 
-        $announcement->update($request->safe()->only(['title', 'body']));
+        $announcement->update($request->safe()->only(['title', 'title_ar', 'title_en', 'body', 'body_ar', 'body_en']));
 
         $this->syncRecipients($announcement, $request);
 

@@ -21,6 +21,10 @@ class AnnouncementResource extends JsonResource
             'id' => $this->id,
             'title' => $this->title,
             'body' => $this->body,
+            'title_ar' => $this->attributes['title_ar'] ?? $this->attributes['title'] ?? '',
+            'title_en' => $this->attributes['title_en'] ?? $this->attributes['title'] ?? '',
+            'body_ar' => $this->attributes['body_ar'] ?? $this->attributes['body'] ?? '',
+            'body_en' => $this->attributes['body_en'] ?? $this->attributes['body'] ?? '',
             'image' => $media ? (new MediaResource($media))->getFileUrl() : null,
             'readers_count' => $this->readers_count
                 ?? ($this->relationLoaded('readers') ? $this->readers->count() : 0),

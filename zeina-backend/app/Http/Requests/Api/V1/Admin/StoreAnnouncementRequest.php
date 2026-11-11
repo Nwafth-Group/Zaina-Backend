@@ -17,6 +17,42 @@ class StoreAnnouncementRequest extends CustomFormRequest
     }
 
     /**
+     * Prepare input data before validation.
+     */
+    protected function prepareForValidation(): void
+    {
+        $mergeData = [];
+
+        if ($this->filled('title_ar') && ! $this->filled('title')) {
+            $mergeData['title'] = $this->input('title_ar');
+        } elseif ($this->filled('title') && ! $this->filled('title_ar')) {
+            $mergeData['title_ar'] = $this->input('title');
+        }
+
+        if ($this->filled('title_en') && ! $this->filled('title')) {
+            $mergeData['title'] = $this->input('title_en');
+        } elseif ($this->filled('title') && ! $this->filled('title_en')) {
+            $mergeData['title_en'] = $this->input('title');
+        }
+
+        if ($this->filled('body_ar') && ! $this->filled('body')) {
+            $mergeData['body'] = $this->input('body_ar');
+        } elseif ($this->filled('body') && ! $this->filled('body_ar')) {
+            $mergeData['body_ar'] = $this->input('body');
+        }
+
+        if ($this->filled('body_en') && ! $this->filled('body')) {
+            $mergeData['body'] = $this->input('body_en');
+        } elseif ($this->filled('body') && ! $this->filled('body_en')) {
+            $mergeData['body_en'] = $this->input('body');
+        }
+
+        if (! empty($mergeData)) {
+            $this->merge($mergeData);
+        }
+    }
+
+    /**
      * Get the validation rules that apply to the request.
      *
      * @return array<string, ValidationRule|array<mixed>|string>
@@ -24,8 +60,12 @@ class StoreAnnouncementRequest extends CustomFormRequest
     public function rules(): array
     {
         return [
-            'title' => 'required|string|max:255',
-            'body' => 'required|string',
+            'title_ar' => 'required|string|max:255',
+            'title_en' => 'required|string|max:255',
+            'body_ar' => 'required|string',
+            'body_en' => 'required|string',
+            'title' => 'nullable|string|max:255',
+            'body' => 'nullable|string',
             // Recipients: either target every customer (send_to_all) or a list of customer IDs.
             'send_to_all' => 'nullable|boolean',
             'customer_ids' => 'nullable|array',
