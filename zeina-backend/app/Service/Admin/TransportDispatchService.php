@@ -632,9 +632,10 @@ class TransportDispatchService
             }
         }
 
-        // Fetch existing transport groups and assigned workers for this date
+        // Fetch existing transport groups and assigned workers for this date (only active groups with workers)
         $transportGroups = TransportGroup::with(['driver', 'departurePoint', 'groupWorkers'])
             ->where('service_date', $date)
+            ->has('groupWorkers')
             ->get();
 
         $shiftsResult = [];
@@ -654,7 +655,7 @@ class TransportDispatchService
             $assignedWorkerIds = [];
             $driverIds = [];
             foreach ($shiftGroups as $sg) {
-                if ($sg->driver_id) {
+                if ($sg->driver_id && $sg->groupWorkers->isNotEmpty()) {
                     $driverIds[$sg->driver_id] = true;
                 }
                 foreach ($sg->groupWorkers as $gw) {
@@ -745,7 +746,17 @@ class TransportDispatchService
 
         $bookings = $query->orderBy('start_time')->get();
 
-        // Fetch TransportGroups for this shift
+        // Clean up any dangling empty transport groups for this shift (no workers assigned)
+        $emptyGroups = TransportGroup::where('service_date', $date)
+            ->where('start_time', 'like', $startTimePrefix . '%')
+            ->doesntHave('groupWorkers')
+            ->get();
+        foreach ($emptyGroups as $eg) {
+            $eg->bookings()->detach();
+            $eg->delete();
+        }
+
+        // Fetch TransportGroups for this shift that have assigned workers
         $groups = TransportGroup::with([
             'driver',
             'departurePoint',
@@ -756,6 +767,7 @@ class TransportDispatchService
         ])
         ->where('service_date', $date)
         ->where('start_time', 'like', $startTimePrefix . '%')
+        ->has('groupWorkers')
         ->get();
 
         // Build worker assignment map: [booking_id . '_' . worker_id => ['group' => ..., 'gw' => ...]]
@@ -917,6 +929,10 @@ class TransportDispatchService
             $cap = (int) ($g->vehicle_capacity ?? $g->driver->vehicle_capacity ?? 5);
             $pCount = count($passengers);
 
+            if ($pCount === 0) {
+                continue;
+            }
+
             $driverManifests[] = [
                 'transport_group_id' => $g->id,
                 'driver_id' => $g->driver->id,
@@ -1068,6 +1084,16 @@ class TransportDispatchService
                 ->where('worker_id', $workerId)
                 ->delete();
 
+            // Clean up any other groups for this shift that became empty after removing this worker
+            $emptyOtherGroups = TransportGroup::whereIn('id', $existingGroupsForShift)
+                ->where('id', '!=', $group->id)
+                ->doesntHave('groupWorkers')
+                ->get();
+            foreach ($emptyOtherGroups as $eGroup) {
+                $eGroup->bookings()->detach();
+                $eGroup->delete();
+            }
+
             // Link worker to this TransportGroup
             TransportGroupWorker::create([
                 'transport_group_id' => $group->id,
@@ -1144,7 +1170,19 @@ class TransportDispatchService
             if ($remaining === 0) {
                 $g = TransportGroup::find($groupId);
                 if ($g) {
-                    $g->update(['status' => 'not_prepared']);
+                    $g->bookings()->detach();
+                    $g->delete();
+                }
+            } else {
+                // If the booking has no more workers in this group, detach booking from group
+                $bookingWorkersRemaining = TransportGroupWorker::where('transport_group_id', $groupId)
+                    ->where('booking_id', $bookingId)
+                    ->count();
+                if ($bookingWorkersRemaining === 0) {
+                    $g = TransportGroup::find($groupId);
+                    if ($g) {
+                        $g->bookings()->detach($bookingId);
+                    }
                 }
             }
         }
@@ -1299,6 +1337,7 @@ class TransportDispatchService
         ])
         ->where('service_date', $date)
         ->where('start_time', 'like', $startTimePrefix . '%')
+        ->has('groupWorkers')
         ->get();
 
         $company = CompanyInfo::first();
