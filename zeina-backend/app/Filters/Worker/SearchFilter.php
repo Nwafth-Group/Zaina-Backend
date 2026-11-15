@@ -14,6 +14,16 @@ class SearchFilter extends Filter
 
     protected function apply(Builder $query, mixed $value): void
     {
-        $query->where('name', 'like', '%'.$value.'%');
+        $term = trim((string) $value);
+        if ($term === '') {
+            return;
+        }
+
+        $query->where(function ($q) use ($term) {
+            $q->where('name', 'like', '%'.$term.'%')
+              ->orWhere('nationality', 'like', '%'.$term.'%')
+              ->orWhere('phone_number', 'like', '%'.$term.'%')
+              ->orWhere('id_number', 'like', '%'.$term.'%');
+        });
     }
 }
