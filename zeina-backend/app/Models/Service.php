@@ -131,8 +131,8 @@ class Service extends Model implements Auditable
 
     public function isTeamBased(): bool
     {
-        if ((bool) $this->is_team_based) {
-            return true;
+        if ($this->is_team_based !== null) {
+            return (bool) $this->is_team_based;
         }
 
         $code = strtoupper($this->service_code ?? '');

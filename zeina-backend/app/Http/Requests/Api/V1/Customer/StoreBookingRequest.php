@@ -53,7 +53,7 @@ class StoreBookingRequest extends CustomFormRequest
 
         if ($service) {
             $genderOptions = $service->worker_gender_options ?? [];
-            $isTeamService = $service->isTeamBased() || ((int) $service->id >= 6 && (int) $service->id <= 11);
+            $isTeamService = $service->isTeamBased();
             if ($isTeamService) {
                 $mergeData['duration'] = (int) ($service->default_duration ?? 2);
                 $mergeData['visit_type'] = 'single_visit';
@@ -102,7 +102,7 @@ class StoreBookingRequest extends CustomFormRequest
         $isBabysitter = $service && $service->service_code === 'BABYSITTER_HOURLY';
         $isPedicureManicure = $service && $service->service_code === 'PEDICURE_MANICURE';
 
-        $isTeamService = $service && ($service->isTeamBased() || ((int) $service->id >= 6 && (int) $service->id <= 11));
+        $isTeamService = $service && $service->isTeamBased();
 
         return [
             'service_id' => ['required', 'exists:services,id'],

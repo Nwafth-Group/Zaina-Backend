@@ -48,7 +48,7 @@ class GetAvailableDatesRequest extends CustomFormRequest
         }
 
         if ($service) {
-            $isTeamService = $service->isTeamBased() || ((int) $service->id >= 6 && (int) $service->id <= 11);
+            $isTeamService = $service->isTeamBased();
             if ($isTeamService) {
                 if (!$this->filled('duration')) {
                     $mergeData['duration'] = (int) ($service->default_duration ?? 2);
@@ -92,7 +92,7 @@ class GetAvailableDatesRequest extends CustomFormRequest
         $service = $serviceId ? Service::find($serviceId) : null;
         $isBabysitter = $service && $service->service_code === 'BABYSITTER_HOURLY';
         $isPedicureManicure = $service && $service->service_code === 'PEDICURE_MANICURE';
-        $isTeamService = $service && ($service->isTeamBased() || ((int) $service->id >= 6 && (int) $service->id <= 11));
+        $isTeamService = $service && $service->isTeamBased();
 
         return [
             'service_id' => 'required|exists:services,id',

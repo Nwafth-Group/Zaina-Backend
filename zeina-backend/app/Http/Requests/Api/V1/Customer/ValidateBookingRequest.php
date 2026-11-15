@@ -56,7 +56,7 @@ class ValidateBookingRequest extends CustomFormRequest
 
         if ($service) {
             $genderOptions = $service->worker_gender_options ?? [];
-            $isTeamService = $service->isTeamBased() || ((int) $service->id >= 6 && (int) $service->id <= 11);
+            $isTeamService = $service->isTeamBased();
             if ($isTeamService) {
                 $mergeData['duration'] = (int) ($service->default_duration ?? 2);
                 $mergeData['workers_count'] = (int) ($service->min_workers ?? 3);
@@ -108,7 +108,7 @@ class ValidateBookingRequest extends CustomFormRequest
         $service = $serviceId ? Service::find($serviceId) : null;
         $isBabysitter = $service && $service->service_code === 'BABYSITTER_HOURLY';
         $isPedicureManicure = $service && $service->service_code === 'PEDICURE_MANICURE';
-        $isTeamService = $service && ($service->isTeamBased() || ((int) $service->id >= 6 && (int) $service->id <= 11));
+        $isTeamService = $service && $service->isTeamBased();
 
         return [
             'service_id' => ['required', 'exists:services,id'],
