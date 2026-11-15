@@ -987,7 +987,12 @@ class TransportDispatchService
         $notes = $data['notes'] ?? null;
 
         $driver = Driver::findOrFail($driverId);
-        $booking = Booking::findOrFail($bookingId);
+        $booking = Booking::with('address.serviceZone')->findOrFail($bookingId);
+
+        $zone = $booking->address?->serviceZone;
+        $serviceZoneId = $zone?->id ?? $booking->address?->service_zone_id;
+        $govName = $zone?->governorate ?? $booking->address?->governorate ?? 'القاهرة';
+        $areaName = $zone?->name ?? $booking->address?->city ?? '—';
 
         // Guard: If worker already has an assigned driver and service has started, cannot change or reassign
         $visit = $booking->visits()->whereDate('visit_date', $date)->first();
@@ -1038,30 +1043,99 @@ class TransportDispatchService
             ]);
         }
 
-        return DB::transaction(function () use ($date, $startTime, $departureTime, $driver, $driverId, $workerId, $bookingId, $booking, $depPointId, $notes) {
-            // Find or create TransportGroup for this driver and shift
-            $group = TransportGroup::firstOrCreate([
-                'service_date' => $date,
-                'start_time' => $startTime,
-                'driver_id' => $driverId,
-            ], [
-                'departure_point_id' => $depPointId,
-                'departure_time' => $departureTime,
-                'vehicle_type' => $driver->vehicle_type ?? 'حافلة نقل زينة',
-                'vehicle_plate' => $driver->vehicle_plate ?? '—',
-                'vehicle_capacity' => (int) ($driver->vehicle_capacity ?? 5),
-                'notes' => $notes,
-                'status' => 'not_prepared',
-            ]);
+        return DB::transaction(function () use ($date, $startTime, $departureTime, $driver, $driverId, $workerId, $bookingId, $booking, $depPointId, $notes, $serviceZoneId, $govName, $areaName) {
+            // Find existing TransportGroup for this driver and shift matching zone and departure schedule
+            $groupQuery = TransportGroup::query()
+                ->where('service_date', $date)
+                ->where('start_time', $startTime)
+                ->where('driver_id', $driverId);
 
-            // Update departure details if provided
-            $group->update([
-                'departure_point_id' => $depPointId ?: $group->departure_point_id,
-                'departure_time' => $departureTime ?: $group->departure_time,
-                'vehicle_type' => $group->vehicle_type ?: ($driver->vehicle_type ?? 'حافلة نقل زينة'),
-                'vehicle_plate' => $group->vehicle_plate ?: ($driver->vehicle_plate ?? '—'),
-                'vehicle_capacity' => $group->vehicle_capacity ?: ((int) ($driver->vehicle_capacity ?? 5)),
-            ]);
+            if ($serviceZoneId) {
+                $groupQuery->where(function ($zq) use ($serviceZoneId, $areaName) {
+                    $zq->where('service_zone_id', $serviceZoneId)
+                       ->orWhere(function ($sq) use ($areaName) {
+                           $sq->whereNull('service_zone_id')
+                              ->where(function ($aq) use ($areaName) {
+                                  if ($areaName && $areaName !== '—') {
+                                      $aq->where('area_name', $areaName)->orWhereNull('area_name');
+                                  } else {
+                                      $aq->whereNull('area_name');
+                                  }
+                              });
+                       });
+                });
+            } elseif ($areaName && $areaName !== '—') {
+                $groupQuery->where(function ($aq) use ($areaName) {
+                    $aq->where('area_name', $areaName)->orWhereNull('area_name');
+                });
+            }
+
+            $existingGroups = $groupQuery->get();
+
+            // 1. Try to find a group matching the exact departure time
+            $group = $existingGroups->first(function ($g) use ($departureTime) {
+                return substr($g->departure_time ?? '', 0, 5) === substr($departureTime, 0, 5);
+            });
+
+            // 2. If no exact match on departure time, check if there is an existing group within 15 minutes
+            if (!$group && $existingGroups->isNotEmpty()) {
+                $deptMins = (int) substr($departureTime, 0, 2) * 60 + (int) substr($departureTime, 3, 2);
+                $group = $existingGroups->first(function ($g) use ($deptMins) {
+                    if (!$g->departure_time) return true;
+                    $gMins = (int) substr($g->departure_time, 0, 2) * 60 + (int) substr($g->departure_time, 3, 2);
+                    return abs($deptMins - $gMins) <= 15;
+                });
+            }
+
+            if (!$group) {
+                // Create a dedicated TransportGroup for this driver, zone, and departure time
+                $group = TransportGroup::create([
+                    'service_date' => $date,
+                    'start_time' => $startTime,
+                    'driver_id' => $driverId,
+                    'service_zone_id' => $serviceZoneId,
+                    'governorate' => $govName,
+                    'area_name' => $areaName,
+                    'departure_point_id' => $depPointId,
+                    'departure_time' => $departureTime,
+                    'vehicle_type' => $driver->vehicle_type ?? 'حافلة نقل زينة',
+                    'vehicle_plate' => $driver->vehicle_plate ?? '—',
+                    'vehicle_capacity' => (int) ($driver->vehicle_capacity ?? 5),
+                    'notes' => $notes,
+                    'status' => 'not_prepared',
+                ]);
+            } else {
+                // Check if group already has OTHER assigned workers
+                $otherPassengersCount = TransportGroupWorker::where('transport_group_id', $group->id)
+                    ->where('worker_id', '!=', $workerId)
+                    ->count();
+
+                // If group is empty (no other workers), safe to update departure details
+                if ($otherPassengersCount === 0) {
+                    $group->update([
+                        'departure_point_id' => $depPointId ?: $group->departure_point_id,
+                        'departure_time' => $departureTime ?: $group->departure_time,
+                        'service_zone_id' => $serviceZoneId ?: $group->service_zone_id,
+                        'governorate' => $govName ?: $group->governorate,
+                        'area_name' => $areaName ?: $group->area_name,
+                        'vehicle_type' => $group->vehicle_type ?: ($driver->vehicle_type ?? 'حافلة نقل زينة'),
+                        'vehicle_plate' => $group->vehicle_plate ?: ($driver->vehicle_plate ?? '—'),
+                        'vehicle_capacity' => $group->vehicle_capacity ?: ((int) ($driver->vehicle_capacity ?? 5)),
+                        'notes' => $notes ?: $group->notes,
+                    ]);
+                } else {
+                    // PRESERVE existing group's departure_point_id and departure_time so existing workers NEVER change!
+                    $group->update([
+                        'service_zone_id' => $group->service_zone_id ?: $serviceZoneId,
+                        'governorate' => $group->governorate ?: $govName,
+                        'area_name' => $group->area_name ?: $areaName,
+                        'vehicle_type' => $group->vehicle_type ?: ($driver->vehicle_type ?? 'حافلة نقل زينة'),
+                        'vehicle_plate' => $group->vehicle_plate ?: ($driver->vehicle_plate ?? '—'),
+                        'vehicle_capacity' => $group->vehicle_capacity ?: ((int) ($driver->vehicle_capacity ?? 5)),
+                        'notes' => $notes ? ($group->notes ? ($group->notes . ' | ' . $notes) : $notes) : $group->notes,
+                    ]);
+                }
+            }
 
             // Check vehicle capacity
             $currentPassengersCount = TransportGroupWorker::where('transport_group_id', $group->id)
