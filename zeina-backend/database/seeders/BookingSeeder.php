@@ -62,10 +62,10 @@ class BookingSeeder extends Seeder
                 ],
             ],
             [
-                'first_name' => 'إسراء',
-                'last_name' => 'عادل زكي',
-                'phone_number' => '+201060250823',
-                'email' => 'esraa.adel@demo.com',
+                'first_name' => 'منار',
+                'last_name' => 'خالد الشريف',
+                'phone_number' => '+201099887766',
+                'email' => 'manar.khaled@demo.com',
                 'gender' => 'Female',
                 'address' => [
                     'label' => 'المنزل',
@@ -236,7 +236,7 @@ class BookingSeeder extends Seeder
             ],
             [
                 'ref' => 'HC-156610',
-                'customer' => $customers[1], // إسراء عادل زكي
+                'customer' => $customers[1], // منار خالد الشريف
                 'service_code' => 'BABYSITTER_HOURLY',
                 'date' => $tomorrowStr,
                 'start' => '08:00:00',
@@ -250,7 +250,7 @@ class BookingSeeder extends Seeder
             ],
             [
                 'ref' => 'HC-478136',
-                'customer' => $customers[1], // إسراء عادل زكي
+                'customer' => $customers[1], // منار خالد الشريف
                 'service_code' => 'DOMESTIC_HELPER_HOURLY',
                 'date' => $tomorrowStr,
                 'start' => '08:00:00',
