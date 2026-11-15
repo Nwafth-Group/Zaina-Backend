@@ -1282,6 +1282,7 @@ class TransportDispatchService
             'departurePoint',
             'driver',
             'groupWorkers.worker',
+            'groupWorkers.departurePoint',
             'groupWorkers.booking.customer',
             'groupWorkers.booking.address',
             'groupWorkers.booking.service',
@@ -1313,9 +1314,13 @@ class TransportDispatchService
             $cPhone = $b->customer?->phone_number ?? $b->customer?->mobile ?? $b->customer?->phone ?? $b->address?->phone_number ?? '—';
             $sAddr = $b->address?->formatted_address ?? $b->address?->street ?? '—';
 
+            $rawPoint = $gw->departurePoint ?? $group->departurePoint;
+
             $passengers[] = [
                 'worker_name' => $w->name ?? trim(($w->first_name ?? '') . ' ' . ($w->last_name ?? '')),
                 'worker_phone' => $w->phone_number ?? $w->mobile ?? $w->phone ?? '—',
+                'pickup_point' => $rawPoint?->name ?? 'سكن العاملات',
+                'departure_time' => $gw->departure_time ? Carbon::parse($gw->departure_time)->format('h:i A') : $depTime,
                 'booking_ref' => $b->booking_ref ?? ('BKG-' . $b->id),
                 'service_name' => $b->service?->name_ar ?? $b->service?->name_en ?? '—',
                 'customer_name' => $cName,
@@ -1323,6 +1328,8 @@ class TransportDispatchService
                 'address' => $sAddr,
             ];
         }
+
+        $allPoints = collect($passengers)->pluck('pickup_point')->unique()->filter()->implode(' ، ') ?: $depPoint;
 
         $filename = 'driver_manifest_' . preg_replace('/[^A-Za-z0-9]/', '', $group->driver?->name ?? 'driver') . '_' . $group->service_date . '.xls';
 
@@ -1334,7 +1341,7 @@ class TransportDispatchService
             'Expires' => '0',
         ];
 
-        $callback = function () use ($companyName, $currentDateStr, $group, $shiftTime, $depPoint, $depTime, $driverName, $vehicleType, $vehiclePlate, $vehicleCapacity, $passengers) {
+        $callback = function () use ($companyName, $currentDateStr, $group, $shiftTime, $allPoints, $depTime, $driverName, $vehicleType, $vehiclePlate, $vehicleCapacity, $passengers) {
             echo '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
             echo '<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8">';
             echo '<style>';
@@ -1353,10 +1360,10 @@ class TransportDispatchService
             echo '<body dir="rtl">';
 
             echo '<table>';
-            echo '<tr><td colSpan="9" class="header-brand">👑 '.$companyName.' — Zeina Home Services<br><span style="font-size: 14px; font-weight: normal;">🚗 كشف رحلة السائق الميداني (Driver Passenger Manifest)</span></td></tr>';
-            echo '<tr><td colSpan="9" class="header-meta">📅 <b>تاريخ الخدمة:</b> '.$group->service_date.' &nbsp;|&nbsp; ⏰ <b>شفت الخدمة:</b> '.$shiftTime.' &nbsp;|&nbsp; 🚏 <b>نقطة الانطلاق:</b> '.$depPoint.' &nbsp;|&nbsp; 🕒 <b>وقت الإصدار:</b> '.$currentDateStr.'</td></tr>';
-            echo '<tr><td colSpan="9" class="header-meta-grid">⏱️ <b>موعد التحرك:</b> <span class="badge-departure">'.$depTime.'</span> &nbsp;&nbsp;|&nbsp;&nbsp; 👨‍✈️ <b>السائق:</b> '.$driverName.' &nbsp;&nbsp;|&nbsp;&nbsp; 🚘 <b>المركبة:</b> '.$vehicleType.' (لوحة: '.$vehiclePlate.') &nbsp;&nbsp;|&nbsp;&nbsp; 👥 <b>الحمولة:</b> '.count($passengers).' / '.$vehicleCapacity.' مقاعد</td></tr>';
-            echo '<tr><td colSpan="9" style="height: 8px; border: none;"></td></tr>';
+            echo '<tr><td colSpan="11" class="header-brand">👑 '.$companyName.' — Zeina Home Services<br><span style="font-size: 14px; font-weight: normal;">🚗 كشف رحلة السائق الميداني (Driver Passenger Manifest)</span></td></tr>';
+            echo '<tr><td colSpan="11" class="header-meta">📅 <b>تاريخ الخدمة:</b> '.$group->service_date.' &nbsp;|&nbsp; ⏰ <b>شفت الخدمة:</b> '.$shiftTime.' &nbsp;|&nbsp; 🚏 <b>نقاط الانطلاق:</b> '.$allPoints.' &nbsp;|&nbsp; 🕒 <b>وقت الإصدار:</b> '.$currentDateStr.'</td></tr>';
+            echo '<tr><td colSpan="11" class="header-meta-grid">⏱️ <b>موعد التحرك الأساسي:</b> <span class="badge-departure">'.$depTime.'</span> &nbsp;&nbsp;|&nbsp;&nbsp; 👨‍✈️ <b>السائق:</b> '.$driverName.' &nbsp;&nbsp;|&nbsp;&nbsp; 🚘 <b>المركبة:</b> '.$vehicleType.' (لوحة: '.$vehiclePlate.') &nbsp;&nbsp;|&nbsp;&nbsp; 👥 <b>الحمولة:</b> '.count($passengers).' / '.$vehicleCapacity.' مقاعد</td></tr>';
+            echo '<tr><td colSpan="11" style="height: 8px; border: none;"></td></tr>';
             echo '</table>';
 
             echo '<table>';
@@ -1365,6 +1372,8 @@ class TransportDispatchService
                 '#',
                 'اسم العاملة (Worker)',
                 'جوال العاملة (Worker Phone)',
+                'نقطة الانطلاق (Pickup Spot)',
+                'موعد التحرك (Departure Time)',
                 'رقم الحجز (Booking Ref)',
                 'الخدمة المطلوبة (Service)',
                 'اسم العميل (Customer Name)',
@@ -1384,6 +1393,8 @@ class TransportDispatchService
                 echo '<td>'.($idx + 1).'</td>';
                 echo '<td><b>'.htmlspecialchars($p['worker_name']).'</b></td>';
                 echo '<td><span dir="ltr">'.htmlspecialchars($p['worker_phone']).'</span></td>';
+                echo '<td><b>'.htmlspecialchars($p['pickup_point']).'</b></td>';
+                echo '<td><span class="badge-time">'.htmlspecialchars($p['departure_time']).'</span></td>';
                 echo '<td><b style="color: #BE185D;">'.htmlspecialchars($p['booking_ref']).'</b></td>';
                 echo '<td>'.htmlspecialchars($p['service_name']).'</td>';
                 echo '<td><b>'.htmlspecialchars($p['customer_name']).'</b></td>';
@@ -1394,7 +1405,7 @@ class TransportDispatchService
             }
 
             if (empty($passengers)) {
-                echo '<tr><td colSpan="9" style="padding: 24px; color: #94A3B8;">لا توجد عاملات مسندة لهذا السائق حتى الآن.</td></tr>';
+                echo '<tr><td colSpan="11" style="padding: 24px; color: #94A3B8;">لا توجد عاملات مسندة لهذا السائق حتى الآن.</td></tr>';
             }
 
             echo '</tbody></table></body></html>';
@@ -1414,6 +1425,7 @@ class TransportDispatchService
             'departurePoint',
             'driver',
             'groupWorkers.worker',
+            'groupWorkers.departurePoint',
             'groupWorkers.booking.customer',
             'groupWorkers.booking.address',
             'groupWorkers.booking.service',
@@ -1457,8 +1469,8 @@ class TransportDispatchService
             echo '<body dir="rtl">';
 
             echo '<table>';
-            echo '<tr><td colSpan="10" class="header-brand">👑 '.$companyName.' — Zeina Home Services<br><span style="font-size: 14px; font-weight: normal;">📋 كشف الترحيل الشامل للشفت (Comprehensive Shift Transport Manifest)</span></td></tr>';
-            echo '<tr><td colSpan="10" class="header-meta">📅 <b>تاريخ الخدمة:</b> '.$date.' &nbsp;|&nbsp; ⏰ <b>شفت الخدمة:</b> '.$shiftTime.' &nbsp;|&nbsp; 👥 <b>عدد السائقين النشطين:</b> '.$groups->count().' &nbsp;|&nbsp; 🕒 <b>وقت الإصدار:</b> '.$currentDateStr.'</td></tr>';
+            echo '<tr><td colSpan="11" class="header-brand">👑 '.$companyName.' — Zeina Home Services<br><span style="font-size: 14px; font-weight: normal;">📋 كشف الترحيل الشامل للشفت (Comprehensive Shift Transport Manifest)</span></td></tr>';
+            echo '<tr><td colSpan="11" class="header-meta">📅 <b>تاريخ الخدمة:</b> '.$date.' &nbsp;|&nbsp; ⏰ <b>شفت الخدمة:</b> '.$shiftTime.' &nbsp;|&nbsp; 👥 <b>عدد السائقين النشطين:</b> '.$groups->count().' &nbsp;|&nbsp; 🕒 <b>وقت الإصدار:</b> '.$currentDateStr.'</td></tr>';
             echo '</table>';
 
             foreach ($groups as $group) {
@@ -1482,9 +1494,12 @@ class TransportDispatchService
                     $cPhone = $b->customer?->phone_number ?? $b->customer?->mobile ?? $b->customer?->phone ?? $b->address?->phone_number ?? '—';
                     $sAddr = $b->address?->formatted_address ?? $b->address?->street ?? '—';
 
+                    $rawPoint = $gw->departurePoint ?? $group->departurePoint;
                     $passengers[] = [
                         'worker_name' => $w->name ?? trim(($w->first_name ?? '') . ' ' . ($w->last_name ?? '')),
                         'worker_phone' => $w->phone_number ?? $w->mobile ?? $w->phone ?? '—',
+                        'pickup_point' => $rawPoint?->name ?? 'سكن العاملات',
+                        'departure_time' => $gw->departure_time ? Carbon::parse($gw->departure_time)->format('h:i A') : $depTime,
                         'booking_ref' => $b->booking_ref ?? ('BKG-' . $b->id),
                         'service_name' => $b->service?->name_ar ?? $b->service?->name_en ?? '—',
                         'customer_name' => $cName,
@@ -1493,13 +1508,17 @@ class TransportDispatchService
                     ];
                 }
 
+                $allGroupPoints = collect($passengers)->pluck('pickup_point')->unique()->filter()->implode(' ، ') ?: $depPoint;
+
                 echo '<table>';
-                echo '<tr><td colSpan="9" class="th-sub">👨‍✈️ <b>السائق:</b> '.$driverName.' &nbsp;|&nbsp; 🚘 <b>المركبة:</b> '.$vehicleType.' ('.$vehiclePlate.') &nbsp;|&nbsp; 🚏 <b>نقطة الانطلاق:</b> '.$depPoint.' &nbsp;|&nbsp; ⏱️ <b>موعد التحرك:</b> '.$depTime.' &nbsp;|&nbsp; 👥 <b>الحمولة:</b> '.count($passengers).' / '.$vehicleCapacity.'</td></tr>';
+                echo '<tr><td colSpan="11" class="th-sub">👨‍✈️ <b>السائق:</b> '.$driverName.' &nbsp;|&nbsp; 🚘 <b>المركبة:</b> '.$vehicleType.' ('.$vehiclePlate.') &nbsp;|&nbsp; 🚏 <b>نقاط الانطلاق:</b> '.$allGroupPoints.' &nbsp;|&nbsp; ⏱️ <b>موعد التحرك الأساسي:</b> '.$depTime.' &nbsp;|&nbsp; 👥 <b>الحمولة:</b> '.count($passengers).' / '.$vehicleCapacity.'</td></tr>';
                 echo '<thead><tr>';
                 $cols = [
                     '#',
                     'اسم العاملة (Worker)',
                     'جوال العاملة',
+                    'نقطة الانطلاق (Pickup Spot)',
+                    'موعد التحرك (Departure Time)',
                     'رقم الحجز',
                     'الخدمة',
                     'اسم العميل',
@@ -1519,6 +1538,8 @@ class TransportDispatchService
                     echo '<td>'.($idx + 1).'</td>';
                     echo '<td><b>'.htmlspecialchars($p['worker_name']).'</b></td>';
                     echo '<td><span dir="ltr">'.htmlspecialchars($p['worker_phone']).'</span></td>';
+                    echo '<td><b>'.htmlspecialchars($p['pickup_point']).'</b></td>';
+                    echo '<td><span class="badge-time">'.htmlspecialchars($p['departure_time']).'</span></td>';
                     echo '<td><b style="color: #BE185D;">'.htmlspecialchars($p['booking_ref']).'</b></td>';
                     echo '<td>'.htmlspecialchars($p['service_name']).'</td>';
                     echo '<td><b>'.htmlspecialchars($p['customer_name']).'</b></td>';
@@ -1529,7 +1550,7 @@ class TransportDispatchService
                 }
 
                 if (empty($passengers)) {
-                    echo '<tr><td colSpan="9" style="padding: 16px; color: #94A3B8;">لا توجد عاملات معينات لهذا السائق في هذا الشفت.</td></tr>';
+                    echo '<tr><td colSpan="11" style="padding: 16px; color: #94A3B8;">لا توجد عاملات معينات لهذا السائق في هذا الشفت.</td></tr>';
                 }
 
                 echo '</tbody></table>';
