@@ -28,6 +28,14 @@ class TeamResource extends JsonResource
             'notes' => $this->notes,
             'workers_count' => $workers->count(),
             'bookings_count' => $this->bookings()->count(),
+            'has_active_bookings' => $this->hasUpcomingOrInProgressBookings(),
+            'active_bookings_count' => $this->activeBookingsCount(),
+            'can_change_status' => !$this->hasUpcomingOrInProgressBookings(),
+            'cannot_change_status_reason' => $this->hasUpcomingOrInProgressBookings()
+                ? (app()->getLocale() === 'ar'
+                    ? 'لا يمكن تغيير حالة الفريق لوجود خدمات قيد التنفيذ أو قادمة مرتبطة به'
+                    : 'Cannot change team status while it has upcoming or in-progress services')
+                : null,
             'stats' => [
                 'total_bookings' => $this->bookings()->count(),
                 'completed_bookings' => $this->bookings()->where('status', 'completed')->count(),

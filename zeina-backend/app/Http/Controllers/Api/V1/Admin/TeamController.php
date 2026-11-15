@@ -212,6 +212,16 @@ class TeamController extends Controller
      */
     public function destroy(Team $team)
     {
+        if ($team->hasUpcomingOrInProgressBookings()) {
+            $count = $team->activeBookingsCount();
+            return $this->errorResponse(
+                app()->getLocale() === 'ar'
+                    ? "لا يمكن حذف الفريق لوجود {$count} خدمة/حجز قيد التنفيذ أو قادم مرتبط به."
+                    : "Cannot delete team while it has {$count} upcoming or in-progress service(s).",
+                422
+            );
+        }
+
         return DB::transaction(function () use ($team) {
             // Unassign workers
             Worker::where('team_id', $team->id)->update(['team_id' => null]);

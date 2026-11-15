@@ -35,7 +35,24 @@ class UpdateTeamRequest extends CustomFormRequest
     {
         $validator->after(function ($validator) {
             $team = $this->route('team');
-            $teamId = $team instanceof Team ? $team->id : $team;
+            $teamModel = $team instanceof Team ? $team : Team::find($team);
+            $teamId = $teamModel?->id ?? $team;
+
+            // Validate status change: Cannot change status if team has service in progress or upcoming
+            if ($this->has('status') && $teamModel) {
+                $newStatus = $this->input('status');
+                if ($newStatus !== $teamModel->status) {
+                    if ($teamModel->hasUpcomingOrInProgressBookings()) {
+                        $count = $teamModel->activeBookingsCount();
+                        $validator->errors()->add(
+                            'status',
+                            app()->getLocale() === 'ar'
+                                ? "لا يمكن تغيير حالة الفريق لوجود {$count} خدمة/حجز قيد التنفيذ أو قادم مرتبط بهذا الفريق."
+                                : "Cannot change team status while the team has {$count} upcoming or in-progress service(s)."
+                        );
+                    }
+                }
+            }
 
             $workerIds = $this->input('worker_ids');
             if ($workerIds !== null && is_array($workerIds)) {
