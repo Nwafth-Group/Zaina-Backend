@@ -761,6 +761,7 @@ class TransportDispatchService
             'driver',
             'departurePoint',
             'groupWorkers.worker',
+            'groupWorkers.departurePoint',
             'groupWorkers.booking.customer',
             'groupWorkers.booking.address',
             'groupWorkers.booking.service',
@@ -820,11 +821,14 @@ class TransportDispatchService
                             'vehicle_capacity' => (int) ($g->vehicle_capacity ?? $g->driver->vehicle_capacity ?? 5),
                         ] : null;
 
-                        $departurePoint = $g->departurePoint ? [
-                            'id' => $g->departurePoint->id,
-                            'name' => $g->departurePoint->name,
-                            'address' => $g->departurePoint->address,
+                        $rawPoint = $gw->departurePoint ?? $g->departurePoint;
+                        $departurePoint = $rawPoint ? [
+                            'id' => $rawPoint->id,
+                            'name' => $rawPoint->name,
+                            'address' => $rawPoint->address,
                         ] : null;
+
+                        $workerDepTime = $gw->departure_time ?: $g->departure_time;
 
                         $bookingWorkers[] = [
                             'worker_id' => $w->id,
@@ -835,7 +839,7 @@ class TransportDispatchService
                             'dropoff_sequence' => $gw->dropoff_sequence,
                             'assigned_driver' => $assignedDriver,
                             'departure_point' => $departurePoint,
-                            'departure_time' => $g->departure_time,
+                            'departure_time' => $workerDepTime,
                         ];
                     } else {
                         $bookingWorkers[] = [
@@ -909,6 +913,7 @@ class TransportDispatchService
                     $pBookingStarted = in_array($pStatus, ['inService', 'completed', 'cancelled'])
                         || Carbon::now('Africa/Cairo')->gte(Carbon::parse("{$date} {$pStartTime}", 'Africa/Cairo'));
 
+                $rawPoint = $gw->departurePoint ?? $g->departurePoint;
                 $passengers[] = [
                     'group_worker_id' => $gw->id,
                     'worker_id' => $w->id,
@@ -920,6 +925,8 @@ class TransportDispatchService
                     'customer_phone' => $cPhone,
                     'destination_address' => $sAddr,
                     'service_name' => $b->service?->name_ar ?? $b->service?->name_en ?? '—',
+                    'pickup_point' => $rawPoint?->name ?? 'سكن العاملات',
+                    'departure_time' => $gw->departure_time ?: $g->departure_time,
                     'dropoff_sequence' => $gw->dropoff_sequence,
                     'is_service_started' => $pBookingStarted,
                     'is_locked' => $pBookingStarted,
@@ -1168,12 +1175,14 @@ class TransportDispatchService
                 $eGroup->delete();
             }
 
-            // Link worker to this TransportGroup
+            // Link worker to this TransportGroup with individual spot and time
             TransportGroupWorker::create([
                 'transport_group_id' => $group->id,
                 'booking_id' => $bookingId,
                 'worker_id' => $workerId,
                 'dropoff_sequence' => $currentPassengersCount + 1,
+                'departure_point_id' => $depPointId ?: $group->departure_point_id,
+                'departure_time' => $departureTime ?: $group->departure_time,
                 'status' => 'assigned',
             ]);
 

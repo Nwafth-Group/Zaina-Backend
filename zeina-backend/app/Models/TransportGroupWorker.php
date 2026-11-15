@@ -14,9 +14,16 @@ class TransportGroupWorker extends Model
         'booking_id',
         'worker_id',
         'dropoff_sequence',
+        'departure_point_id',
+        'departure_time',
         'status',
         'notes',
     ];
+
+    public function departurePoint()
+    {
+        return $this->belongsTo(DeparturePoint::class, 'departure_point_id');
+    }
 
     public function transportGroup()
     {
