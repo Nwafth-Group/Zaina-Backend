@@ -196,13 +196,18 @@ class UserController extends Controller
             $user->save();
 
             // Award points to the referrer on approval
-            \App\Service\LoyaltyPointService::awardPointsForReferralApproval($user);
+            try {
+                \App\Service\LoyaltyPointService::awardPointsForReferralApproval($user);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error("Failed to award referral points on KYC approval to {$user->id}: " . $e->getMessage());
+            }
 
             // 1. Send SMS
             try {
-                $smsMessage = __('sms.kyc_approved_sms', ['name' => $user->first_name]);
+                $displayName = $user->first_name ?? $user->name ?? '';
+                $smsMessage = __('sms.kyc_approved_sms', ['name' => $displayName]);
                 app(\App\Service\SmsService::class)->sendSms($user->phone_number, $smsMessage);
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::error("Failed to send KYC approval SMS to {$user->id}: " . $e->getMessage());
             }
 
@@ -212,14 +217,14 @@ class UserController extends Controller
                     $companyInfo = \App\Models\CompanyInfo::with('media')->first();
                     \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\KycApprovedMail($user, $companyInfo));
                 }
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::error("Failed to send KYC approval email to {$user->id}: " . $e->getMessage());
             }
 
             // 3. Send Push & Database Notification
             try {
                 $user->notify(new \App\Notifications\KycStatusNotification('approved'));
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::error("Failed to send KYC approval notification to {$user->id}: " . $e->getMessage());
             }
         } else {
@@ -229,9 +234,10 @@ class UserController extends Controller
 
             // 1. Send SMS
             try {
-                $smsMessage = __('sms.kyc_rejected_sms', ['name' => $user->first_name, 'reason' => $request->rejection_reason]);
+                $displayName = $user->first_name ?? $user->name ?? '';
+                $smsMessage = __('sms.kyc_rejected_sms', ['name' => $displayName, 'reason' => $request->rejection_reason]);
                 app(\App\Service\SmsService::class)->sendSms($user->phone_number, $smsMessage);
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::error("Failed to send KYC rejection SMS to {$user->id}: " . $e->getMessage());
             }
 
@@ -241,14 +247,14 @@ class UserController extends Controller
                     $companyInfo = \App\Models\CompanyInfo::with('media')->first();
                     \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\KycRejectedMail($user, $request->rejection_reason, $companyInfo));
                 }
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::error("Failed to send KYC rejection email to {$user->id}: " . $e->getMessage());
             }
 
             // 3. Send Push & Database Notification
             try {
                 $user->notify(new \App\Notifications\KycStatusNotification('rejected', $request->rejection_reason));
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::error("Failed to send KYC rejection notification to {$user->id}: " . $e->getMessage());
             }
         }

@@ -52,12 +52,16 @@ class SmsService
             }
 
             // تسجيل الخطأ لو السيرفر رجع كود خطأ [cite: 435]
-            Log::error('Community SMS Failed. Response Code: '.$response->body().' for numbers: '.$mobileNumber); // [cite: 435]
+            try {
+                Log::error('Community SMS Failed. Response Code: '.$response->body().' for numbers: '.$mobileNumber);
+            } catch (\Throwable $logEx) {}
 
             return false;
 
-        } catch (\Exception $e) {
-            Log::error('Community SMS Exception: '.$e->getMessage());
+        } catch (\Throwable $e) {
+            try {
+                Log::error('Community SMS Exception: '.$e->getMessage());
+            } catch (\Throwable $logEx) {}
 
             return false;
         }
