@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\V1\Reports\AdminReportDetailResource;
 use App\Http\Resources\Api\V1\Reports\ReportsResource;
+use App\Http\Resources\Api\V1\User\UserResource;
 use App\Models\Report;
 use App\Models\ReportHistory;
 use App\Models\User;
@@ -80,6 +81,24 @@ class ReportController extends Controller
         return $this->successResponse(new AdminReportDetailResource($report), 'Report details retrieved successfully');
     }
 
+    /**
+     * Get list of employees qualified and permitted to handle reports (reports.edit or reports.view).
+     */
+    public function assignableEmployees()
+    {
+        $employees = User::permission(['reports.edit', 'reports.view'])
+            ->where('status', 'active')
+            ->whereIn('type', ['super_admin', 'operation'])
+            ->with('roles')
+            ->orderBy('first_name')
+            ->get();
+
+        return $this->successResponse(
+            UserResource::collection($employees),
+            'Assignable employees retrieved successfully'
+        );
+    }
+
     public function assign(Request $request, Report $report)
     {
         $request->validate([
@@ -89,11 +108,19 @@ class ReportController extends Controller
         $adminId = $request->input('admin_id');
         $adminUser = User::findOrFail($adminId);
 
-        // Verify the user is an admin or operation employee
-        if (! in_array($adminUser->type, ['super_admin', 'operation'])) {
+        // Verify the user is an active admin or operation employee
+        if (! in_array($adminUser->type, ['super_admin', 'operation']) || $adminUser->status !== 'active') {
             return response()->json([
                 'success' => false,
-                'message' => 'The selected user is not an administrator or support officer.',
+                'message' => 'The selected user is not an active administrator or support officer.',
+            ], 422);
+        }
+
+        // Verify the employee holds the permission to handle reports
+        if (! $adminUser->hasAnyPermission(['reports.edit', 'reports.view']) && ! $adminUser->hasRole('Super Admin')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'The selected user does not have permission to handle reports.',
             ], 422);
         }
 

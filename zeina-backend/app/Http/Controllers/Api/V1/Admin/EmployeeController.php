@@ -8,6 +8,7 @@ use App\Filters\Employee\StatusFilter;
 use App\Filters\Employee\TypeFilter;
 use App\Filters\Employee\CreatedFromFilter;
 use App\Filters\Employee\CreatedToFilter;
+use App\Filters\Employee\PermissionFilter;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Admin\StoreEmployeeRequest;
 use App\Http\Requests\Api\V1\Admin\UpdateEmployeeRequest;
@@ -36,6 +37,7 @@ class EmployeeController extends Controller
                 TypeFilter::class,
                 StatusFilter::class,
                 RoleFilter::class,
+                PermissionFilter::class,
                 CreatedFromFilter::class,
                 CreatedToFilter::class,
             ])

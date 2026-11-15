@@ -288,6 +288,7 @@ Route::prefix('admin')->group(function () {
 
         Route::prefix('reports')->controller(ReportController::class)->group(function () {
             Route::get('/', 'index')->middleware('permission:reports.view');
+            Route::get('/assignable-employees', 'assignableEmployees')->middleware('permission:reports.view');
             Route::get('/{report}', 'show')->middleware('permission:reports.view');
             Route::post('/{report}/assign', 'assign')->middleware('permission:reports.edit');
             Route::patch('/{report}/status', 'updateStatus')->middleware('permission:reports.edit');
