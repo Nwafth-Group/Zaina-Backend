@@ -56,6 +56,11 @@ class Booking extends Model
                     ->withTimestamps();
     }
 
+    public function worker()
+    {
+        return $this->belongsTo(Worker::class, 'worker_id');
+    }
+
     public function assignedWorkers()
     {
         return $this->workers();
