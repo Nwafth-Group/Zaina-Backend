@@ -20,7 +20,7 @@ class RolesAndUsersSeeder extends Seeder
         $permissions = [
             'users.view', 'users.create', 'users.edit', 'users.delete',
             'users.verify', 'users.reset-password',
-            'employees.view', 'employees.create', 'employees.edit',
+            'employees.view', 'employees.create', 'employees.edit', 'employees.delete',
             'roles.view', 'roles.create', 'roles.edit', 'roles.delete',
             'bookings.view', 'bookings.edit', 'bookings.delete',
             'service_zones.view', 'service_zones.create', 'service_zones.edit', 'service_zones.delete',
