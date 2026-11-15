@@ -105,18 +105,23 @@ class DailyOperationsService
 
         $groupLookup = [];
         foreach ($transportGroups as $tg) {
+            // Only assign transport if an active driver is assigned to the group
+            if (!$tg->driver_id || !$tg->driver || $tg->driver->status !== 'active') {
+                continue;
+            }
+
             foreach ($tg->bookings as $b) {
                 $groupLookup[$b->id] = [
                     'group_id' => $tg->id,
                     'start_time' => $tg->start_time,
                     'departure_time' => $tg->departure_time,
                     'departure_point' => $tg->departurePoint?->name,
-                    'driver_id' => $tg->driver?->id,
-                    'driver_name' => $tg->driver?->name,
-                    'driver_phone' => $tg->driver?->mobile ?? $tg->driver?->phone,
-                    'vehicle_type' => $tg->vehicle_type ?? $tg->driver?->vehicle_type,
-                    'vehicle_plate' => $tg->vehicle_plate ?? $tg->driver?->vehicle_plate,
-                    'vehicle_capacity' => $tg->vehicle_capacity ?? $tg->driver?->vehicle_capacity ?? 5,
+                    'driver_id' => $tg->driver->id,
+                    'driver_name' => $tg->driver->name,
+                    'driver_phone' => $tg->driver->mobile ?? $tg->driver->phone,
+                    'vehicle_type' => $tg->vehicle_type ?? $tg->driver->vehicle_type,
+                    'vehicle_plate' => $tg->vehicle_plate ?? $tg->driver->vehicle_plate,
+                    'vehicle_capacity' => $tg->vehicle_capacity ?? $tg->driver->vehicle_capacity ?? 5,
                 ];
             }
             foreach ($tg->groupWorkers as $gw) {
@@ -126,12 +131,12 @@ class DailyOperationsService
                         'start_time' => $tg->start_time,
                         'departure_time' => $tg->departure_time,
                         'departure_point' => $tg->departurePoint?->name,
-                        'driver_id' => $tg->driver?->id,
-                        'driver_name' => $tg->driver?->name,
-                        'driver_phone' => $tg->driver?->mobile ?? $tg->driver?->phone,
-                        'vehicle_type' => $tg->vehicle_type ?? $tg->driver?->vehicle_type,
-                        'vehicle_plate' => $tg->vehicle_plate ?? $tg->driver?->vehicle_plate,
-                        'vehicle_capacity' => $tg->vehicle_capacity ?? $tg->driver?->vehicle_capacity ?? 5,
+                        'driver_id' => $tg->driver->id,
+                        'driver_name' => $tg->driver->name,
+                        'driver_phone' => $tg->driver->mobile ?? $tg->driver->phone,
+                        'vehicle_type' => $tg->vehicle_type ?? $tg->driver->vehicle_type,
+                        'vehicle_plate' => $tg->vehicle_plate ?? $tg->driver->vehicle_plate,
+                        'vehicle_capacity' => $tg->vehicle_capacity ?? $tg->driver->vehicle_capacity ?? 5,
                     ];
                 }
             }
@@ -213,6 +218,34 @@ class DailyOperationsService
                     : null;
             }
 
+            $requiredWorkers = $b->number_of_workers ?: ($b->service?->min_workers ?: ($isTeam ? 3 : 1));
+            $assignedWorkersCount = count($crew);
+            if ($assignedWorkersCount === 0 && !empty($b->worker_id)) {
+                $assignedWorkersCount = 1;
+            }
+
+            $hasTeam = $isTeam && !empty($b->team_id) && !empty($b->team);
+            $hasWorkers = !$isTeam && ($assignedWorkersCount >= $requiredWorkers && $assignedWorkersCount > 0);
+            $hasResource = $isTeam ? $hasTeam : $hasWorkers;
+            $hasDriver = !empty($groupLookup[$b->id]['driver_id']) && !empty($groupLookup[$b->id]['driver_name']);
+            $canStart = $hasDriver && $hasResource;
+
+            $missingReasons = [];
+            if (!$hasDriver) {
+                $missingReasons[] = app()->getLocale() === 'ar' ? 'سائق النقل' : 'Transport Driver';
+            }
+            if ($isTeam && !$hasTeam) {
+                $missingReasons[] = app()->getLocale() === 'ar' ? 'فريق العمل' : 'Work Team';
+            }
+            if (!$isTeam && !$hasWorkers) {
+                $missingReasons[] = app()->getLocale() === 'ar' ? "العاملات المطلوبة ({$assignedWorkersCount}/{$requiredWorkers})" : "Required Workers ({$assignedWorkersCount}/{$requiredWorkers})";
+            }
+            $cannotStartReason = empty($missingReasons) ? null : (
+                app()->getLocale() === 'ar'
+                    ? 'لا يمكن بدء الخدمة قبل تعيين: ' . implode('، ', $missingReasons)
+                    : 'Cannot start service until assigned: ' . implode(', ', $missingReasons)
+            );
+
             return [
                 'id' => $b->id,
                 'booking_ref' => $b->booking_ref,
@@ -238,7 +271,7 @@ class DailyOperationsService
                     'name_en' => $b->service?->name_en,
                     'category' => app()->getLocale() === 'ar' ? ($b->service?->category?->name_ar ?: $b->service?->category?->name_en) : ($b->service?->category?->name_en ?: $b->service?->category?->name_ar),
                     'is_team_based' => $isTeam,
-                    'required_workers' => $b->service?->required_workers ?? ($isTeam ? 3 : 1),
+                    'required_workers' => $requiredWorkers,
                 ],
                 'customer' => [
                     'id' => $b->customer?->id,
@@ -261,6 +294,12 @@ class DailyOperationsService
                 'crew' => $crew,
                 'workers' => $crew,
                 'transport' => $groupLookup[$b->id] ?? null,
+                'can_start' => $canStart,
+                'has_driver' => $hasDriver,
+                'has_team' => $hasTeam,
+                'has_workers' => $hasWorkers,
+                'has_resource' => $hasResource,
+                'cannot_start_reason' => $cannotStartReason,
             ];
         });
 
@@ -272,29 +311,102 @@ class DailyOperationsService
     }
 
     /**
-     * Check whether a booking has a driver assigned to it or its workers.
+     * Check whether a booking has an active driver assigned to it for a given date.
      */
-    public function hasDriverAssigned(Booking $booking): bool
+    public function hasDriverAssigned(Booking $booking, ?string $date = null): bool
     {
-        // 1. Check if booking is linked directly to a transport group with a driver
+        $resolvedDate = $date;
+        if (!$resolvedDate) {
+            if ($booking->visits()->exists()) {
+                $visit = $booking->visits()->whereDate('visit_date', now()->toDateString())->first()
+                    ?? $booking->visits()->where('status', 'Upcoming')->orderBy('visit_date')->first()
+                    ?? $booking->visits()->orderBy('visit_date')->first();
+                $resolvedDate = $visit ? $visit->visit_date : $booking->booking_date;
+            } else {
+                $resolvedDate = $booking->booking_date;
+            }
+        }
+
+        // 1. Check if booking is linked directly to a transport group for this date with an active driver
         $hasGroupDriver = DB::table('transport_group_bookings')
             ->join('transport_groups', 'transport_group_bookings.transport_group_id', '=', 'transport_groups.id')
+            ->join('drivers', 'transport_groups.driver_id', '=', 'drivers.id')
             ->where('transport_group_bookings.booking_id', $booking->id)
-            ->whereNotNull('transport_groups.driver_id')
+            ->when($resolvedDate, fn($q) => $q->whereDate('transport_groups.service_date', $resolvedDate))
+            ->where('drivers.status', 'active')
             ->exists();
 
         if ($hasGroupDriver) {
             return true;
         }
 
-        // 2. Check if any worker of this booking is assigned to a transport group with a driver
+        // 2. Check if any worker of this booking is assigned to a transport group for this date with an active driver
         $hasWorkerDriver = DB::table('transport_group_workers')
             ->join('transport_groups', 'transport_group_workers.transport_group_id', '=', 'transport_groups.id')
+            ->join('drivers', 'transport_groups.driver_id', '=', 'drivers.id')
             ->where('transport_group_workers.booking_id', $booking->id)
-            ->whereNotNull('transport_groups.driver_id')
+            ->when($resolvedDate, fn($q) => $q->whereDate('transport_groups.service_date', $resolvedDate))
+            ->where('drivers.status', 'active')
             ->exists();
 
         return $hasWorkerDriver;
+    }
+
+    /**
+     * Validate operational readiness: driver on date, team (for team-based), and workers (for worker-based).
+     */
+    public function validateOperationalReadiness(Booking $booking, ?string $date = null): void
+    {
+        $resolvedDate = $date;
+        if (!$resolvedDate) {
+            if ($booking->visits()->exists()) {
+                $visit = $booking->visits()->whereDate('visit_date', now()->toDateString())->first()
+                    ?? $booking->visits()->where('status', 'Upcoming')->orderBy('visit_date')->first()
+                    ?? $booking->visits()->orderBy('visit_date')->first();
+                $resolvedDate = $visit ? $visit->visit_date : $booking->booking_date;
+            } else {
+                $resolvedDate = $booking->booking_date;
+            }
+        }
+
+        // 1. Driver assignment check for this date
+        if (!$this->hasDriverAssigned($booking, $resolvedDate)) {
+            throw ValidationException::withMessages([
+                'driver' => [app()->getLocale() === 'ar'
+                    ? 'لا يمكن بدء الخدمة أو إتمامها قبل تعيين سائق لنقل العاملات في قسم النقل والتوزيع لهذا اليوم.'
+                    : 'Cannot start or complete service execution until an active driver has been assigned for transport on this date.'
+                ],
+            ]);
+        }
+
+        // 2. Resource check: Team vs Workers
+        $isTeam = !empty($booking->team_id) || ($booking->service && $booking->service->isTeamBased());
+
+        if ($isTeam) {
+            if (empty($booking->team_id) || !$booking->team) {
+                throw ValidationException::withMessages([
+                    'team' => [app()->getLocale() === 'ar'
+                        ? 'لا يمكن بدء الخدمة أو إتمامها قبل تعيين فريق عمل مؤهل للخدمة.'
+                        : 'Cannot start or complete service execution until a qualified team is assigned.'
+                    ],
+                ]);
+            }
+        } else {
+            $assignedWorkersCount = $booking->workers()->wherePivot('status', 'active')->count();
+            if ($assignedWorkersCount === 0 && !empty($booking->worker_id)) {
+                $assignedWorkersCount = 1;
+            }
+            $requiredWorkers = $booking->number_of_workers ?: ($booking->service?->min_workers ?: 1);
+
+            if ($assignedWorkersCount < $requiredWorkers || $assignedWorkersCount === 0) {
+                throw ValidationException::withMessages([
+                    'workers' => [app()->getLocale() === 'ar'
+                        ? "لا يمكن بدء الخدمة أو إتمامها قبل تعيين العاملات المطلوبة (المطلوب: {$requiredWorkers} عاملة، المعين: {$assignedWorkersCount})."
+                        : "Cannot start or complete service execution until required workers are assigned ({$assignedWorkersCount}/{$requiredWorkers})."
+                    ],
+                ]);
+            }
+        }
     }
 
     /**
@@ -302,15 +414,8 @@ class DailyOperationsService
      */
     public function startService(Booking $booking, User $user, ?string $actualStart = null, ?string $date = null): Booking
     {
-        // Enforce: driver must be assigned before starting service
-        if (!$this->hasDriverAssigned($booking)) {
-            throw ValidationException::withMessages([
-                'driver' => [app()->getLocale() === 'ar'
-                    ? 'لا يمكن بدء الخدمة قبل تعيين سائق لنقل العاملات في قسم النقل والتوزيع.'
-                    : 'Cannot start service execution until a driver has been assigned for transport.'
-                ],
-            ]);
-        }
+        // Enforce operational readiness: driver on date, team, and workers
+        $this->validateOperationalReadiness($booking, $date);
         // Resolve matching visit if visits exist
         $visit = null;
         if ($booking->visits()->exists()) {
@@ -388,15 +493,8 @@ class DailyOperationsService
      */
     public function completeService(Booking $booking, User $user, ?string $actualEnd = null, ?string $date = null): Booking
     {
-        // Enforce: driver must be assigned before completing service
-        if (!$this->hasDriverAssigned($booking)) {
-            throw ValidationException::withMessages([
-                'driver' => [app()->getLocale() === 'ar'
-                    ? 'لا يمكن إنهاء الخدمة قبل تعيين سائق لنقل العاملات في قسم النقل والتوزيع.'
-                    : 'Cannot complete service execution until a driver has been assigned for transport.'
-                ],
-            ]);
-        }
+        // Enforce operational readiness: driver on date, team, and workers
+        $this->validateOperationalReadiness($booking, $date);
 
         // Resolve matching visit if visits exist
         $visit = null;
@@ -510,14 +608,8 @@ class DailyOperationsService
      */
     public function updateExecutionTimes(Booking $booking, User $user, string $actualStart, string $actualEnd, ?string $date = null): Booking
     {
-        if (!$this->hasDriverAssigned($booking)) {
-            throw ValidationException::withMessages([
-                'driver' => [app()->getLocale() === 'ar'
-                    ? 'لا يمكن تعديل أوقات الخدمة أو تسجيلها قبل تعيين سائق لنقل العاملات في قسم النقل والتوزيع.'
-                    : 'Cannot update service times until a driver has been assigned for transport.'
-                ],
-            ]);
-        }
+        // Enforce operational readiness: driver on date, team, and workers
+        $this->validateOperationalReadiness($booking, $date);
 
         if (empty($actualStart) || empty($actualEnd)) {
             throw ValidationException::withMessages([

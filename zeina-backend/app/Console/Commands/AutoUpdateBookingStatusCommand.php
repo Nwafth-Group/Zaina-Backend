@@ -56,6 +56,20 @@ class AutoUpdateBookingStatusCommand extends Command
                     continue;
                 }
 
+                // Enforce operational readiness: driver for visit date, team (if team service), workers (if worker service)
+                $opsService = app(\App\Service\Admin\DailyOperationsService::class);
+                try {
+                    $opsService->validateOperationalReadiness($booking, $visit->visit_date);
+                } catch (\Illuminate\Validation\ValidationException $ve) {
+                    $reason = collect($ve->errors())->flatten()->first();
+                    $booking->update([
+                        'is_at_risk' => true,
+                        'at_risk_reason' => $reason,
+                    ]);
+                    $this->warn("Skipping auto-start for Visit ID {$visit->id} (Booking ID {$booking->id}): {$reason}");
+                    continue;
+                }
+
                 DB::transaction(function () use ($visit, $booking, $now) {
                     $visit->update([
                         'status' => 'inService',
@@ -108,6 +122,20 @@ class AutoUpdateBookingStatusCommand extends Command
 
         foreach ($upcomingDirectBookings as $booking) {
             try {
+                // Enforce operational readiness: driver for booking date, team (if team service), workers (if worker service)
+                $opsService = app(\App\Service\Admin\DailyOperationsService::class);
+                try {
+                    $opsService->validateOperationalReadiness($booking, $booking->booking_date);
+                } catch (\Illuminate\Validation\ValidationException $ve) {
+                    $reason = collect($ve->errors())->flatten()->first();
+                    $booking->update([
+                        'is_at_risk' => true,
+                        'at_risk_reason' => $reason,
+                    ]);
+                    $this->warn("Skipping auto-start for Booking ID {$booking->id}: {$reason}");
+                    continue;
+                }
+
                 DB::transaction(function () use ($booking) {
                     $booking->update(['status' => 'inService']);
                     BookingHistory::create([

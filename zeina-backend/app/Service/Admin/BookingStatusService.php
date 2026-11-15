@@ -53,6 +53,15 @@ class BookingStatusService
             if ($today !== $bookingDate) {
                 throw new \Exception('Cannot change status to In Service unless today is the scheduled booking date. / لا يمكن تغيير الحالة إلى قيد التنفيذ إلا في يوم الخدمة المجدول.', 400);
             }
+
+            // Enforce operational readiness: driver on date, team, and workers
+            $opsService = app(DailyOperationsService::class);
+            try {
+                $opsService->validateOperationalReadiness($booking, $bookingDate);
+            } catch (\Illuminate\Validation\ValidationException $ve) {
+                $msg = collect($ve->errors())->flatten()->first();
+                throw new \Exception($msg, 400);
+            }
         }
 
         if ($status === BookingStatus::Completed) {
@@ -64,6 +73,16 @@ class BookingStatusService
 
             if (Carbon::now('Africa/Cairo')->lt($end)) {
                 throw new \Exception('Cannot change status to Completed unless the booking end time has passed. / لا يمكن تغيير الحالة إلى مكتمل إلا بعد انتهاء وقت الخدمة المجدول.', 400);
+            }
+
+            // Enforce operational readiness: driver on date, team, and workers
+            $bookingDate = Carbon::parse($booking->booking_date, 'Africa/Cairo')->toDateString();
+            $opsService = app(DailyOperationsService::class);
+            try {
+                $opsService->validateOperationalReadiness($booking, $bookingDate);
+            } catch (\Illuminate\Validation\ValidationException $ve) {
+                $msg = collect($ve->errors())->flatten()->first();
+                throw new \Exception($msg, 400);
             }
         }
 
