@@ -18,15 +18,28 @@ class ReviewResource extends JsonResource
     public function toArray(Request $request): array
     {
         $targetName = '';
+        $targetNameAr = '';
+        $targetNameEn = '';
         $targetType = 'service';
 
         if ($this->reviewable_type === \App\Models\Service::class) {
             $targetType = 'service';
-            $targetName = app()->getLocale() === 'ar' ? ($this->reviewable?->name_ar ?? '') : ($this->reviewable?->name_en ?? '');
+            $targetNameAr = $this->reviewable?->name_ar ?? '';
+            $targetNameEn = $this->reviewable?->name_en ?? '';
+            $targetName = app()->getLocale() === 'ar' ? ($targetNameAr ?: $targetNameEn) : ($targetNameEn ?: $targetNameAr);
         } elseif ($this->reviewable_type === \App\Models\Worker::class) {
             $targetType = 'worker';
             $targetName = $this->reviewable?->name ?? '';
+            $targetNameAr = $targetName;
+            $targetNameEn = $targetName;
         }
+
+        $customerName = trim(($this->customer?->first_name ?? '') . ' ' . ($this->customer?->last_name ?? ''));
+        if (empty($customerName)) {
+            $customerName = $this->customer?->full_name ?: ($this->customer?->phone_number ?: 'عميل');
+        }
+
+        $phone = $this->customer?->phone_number ?? $this->customer?->phone ?? null;
 
         return [
             'id' => $this->id,
@@ -36,24 +49,27 @@ class ReviewResource extends JsonResource
             'status' => $this->status ?? 'pending',
             'customer' => $this->customer ? [
                 'id' => $this->customer->id,
-                'name' => trim(($this->customer->first_name ?? '') . ' ' . ($this->customer->last_name ?? '')),
+                'name' => $customerName,
                 'first_name' => $this->customer->first_name,
                 'last_name' => $this->customer->last_name,
                 'email' => $this->customer->email,
-                'phone' => $this->customer->phone,
+                'phone' => $phone,
+                'mobile' => $phone,
             ] : null,
-            'customer_name' => $this->customer ? trim(($this->customer->first_name ?? '') . ' ' . ($this->customer->last_name ?? '')) : null,
+            'customer_name' => $this->customer ? $customerName : null,
             'target_type' => $targetType,
             'target' => [
                 'id' => $this->reviewable_id,
                 'name' => $targetName,
+                'name_ar' => $targetNameAr,
+                'name_en' => $targetNameEn,
             ],
             'booking_id' => $this->booking_id,
             'booking_ref' => $this->booking?->booking_ref,
             'action_at' => $this->action_at ? $this->action_at->toDateTimeString() : null,
             'action_by' => $this->actionBy ? [
                 'id' => $this->actionBy->id,
-                'name' => $this->actionBy->first_name.' '.$this->actionBy->last_name,
+                'name' => trim(($this->actionBy->first_name ?? '') . ' ' . ($this->actionBy->last_name ?? '')) ?: ($this->actionBy->full_name ?? 'Admin'),
             ] : null,
             'created_at' => $this->created_at ? $this->created_at->toDateTimeString() : null,
             'created_since' => $this->created_at ? $this->created_at->format('d M, Y') : null,
