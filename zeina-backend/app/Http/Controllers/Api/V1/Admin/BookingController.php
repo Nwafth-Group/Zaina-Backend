@@ -352,6 +352,7 @@ class BookingController extends Controller
         );
 
         $eligibleWorkersQuery = $service->workers()
+            ->with('services:id,name_ar,name_en,service_code')
             ->where('workers.status', 'active')
             ->whereNotIn('workers.id', $busyWorkerIds);
 
@@ -363,15 +364,27 @@ class BookingController extends Controller
             ->get()
             ->filter(fn($w) => $service->acceptsGender($w->gender))
             ->values()
-            ->map(fn($w) => [
-                'id' => $w->id,
-                'name' => $w->name,
-                'nationality' => $w->nationality,
-                'avg_rating' => $w->avg_rating,
-                'gender' => $w->gender,
-                'team_id' => $w->team_id,
-                'status' => $w->status,
-            ]);
+            ->map(function ($w) {
+                $mappedServices = $w->services ? $w->services->map(fn($s) => [
+                    'id' => $s->id,
+                    'name_ar' => $s->name_ar,
+                    'name_en' => $s->name_en,
+                    'service_code' => $s->service_code,
+                ])->values()->all() : [];
+
+                return [
+                    'id' => $w->id,
+                    'name' => $w->name,
+                    'nationality' => $w->nationality,
+                    'avg_rating' => $w->avg_rating,
+                    'gender' => $w->gender,
+                    'team_id' => $w->team_id,
+                    'status' => $w->status,
+                    'services' => $mappedServices,
+                    'assigned_services' => $mappedServices,
+                    'assigned_service' => !empty($mappedServices) ? $mappedServices[0] : null,
+                ];
+            });
 
         return $this->successResponse($eligibleWorkers, __('messages.workers_fetched_success') ?? 'تم جلب العمال المتاحين بنجاح.');
     }
