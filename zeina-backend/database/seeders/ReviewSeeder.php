@@ -107,6 +107,7 @@ class ReviewSeeder extends Seeder
 
             // Ensure EVERY service in the database has approved reviews
             $allServices = Service::all();
+            $anyBooking = Booking::first();
             foreach ($allServices as $svc) {
                 $hasApprovedReview = Review::where('reviewable_type', Service::class)
                     ->where('reviewable_id', $svc->id)
@@ -114,12 +115,15 @@ class ReviewSeeder extends Seeder
                     ->exists();
 
                 if (! $hasApprovedReview) {
-                    $testBooking = Booking::where('service_id', $svc->id)->first();
-                    $customerId = $testBooking ? $testBooking->customer_id : (Booking::first()->customer_id ?? 1);
+                    $testBooking = Booking::where('service_id', $svc->id)->first() ?? $anyBooking;
+                    if (! $testBooking) {
+                        continue;
+                    }
 
+                    $customerId = $testBooking->customer_id ?? 1;
                     $rating = rand(4, 5);
                     Review::create([
-                        'booking_id' => $testBooking ? $testBooking->id : null,
+                        'booking_id' => $testBooking->id,
                         'reviewable_type' => Service::class,
                         'reviewable_id' => $svc->id,
                         'customer_id' => $customerId,
