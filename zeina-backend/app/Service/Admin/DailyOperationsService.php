@@ -24,6 +24,7 @@ class DailyOperationsService
         $query = Booking::with([
             'customer',
             'service.category',
+            'worker',
             'workers',
             'team.workers',
             'address.serviceZone',
@@ -146,12 +147,18 @@ class DailyOperationsService
                     'name' => $w->name,
                     'mobile' => $w->phone_number ?? $w->mobile,
                 ])->toArray();
-            } elseif ($b->workers->isNotEmpty()) {
+            } elseif ($b->workers && $b->workers->isNotEmpty()) {
                 $crew = $b->workers->map(fn($w) => [
                     'id' => $w->id,
                     'name' => $w->name,
                     'mobile' => $w->phone_number ?? $w->mobile,
                 ])->toArray();
+            } elseif ($b->worker) {
+                $crew = [[
+                    'id' => $b->worker->id,
+                    'name' => $b->worker->name,
+                    'mobile' => $b->worker->phone_number ?? $b->worker->mobile,
+                ]];
             }
 
             // Identify current visit for this date (handles 3-shift / multi-visit subscriptions)
@@ -247,11 +254,12 @@ class DailyOperationsService
                     'members_count' => count($crew),
                     'members' => $crew,
                 ] : null,
-                'worker' => $b->worker_id ? [
+                'worker' => !empty($crew) ? $crew[0] : ($b->worker_id ? [
                     'id' => $b->worker_id,
-                    'name' => $crew[0]['name'] ?? 'Worker #' . $b->worker_id,
-                ] : null,
+                    'name' => $b->worker?->name ?? ('Worker #' . $b->worker_id),
+                ] : null),
                 'crew' => $crew,
+                'workers' => $crew,
                 'transport' => $groupLookup[$b->id] ?? null,
             ];
         });
@@ -825,7 +833,12 @@ class DailyOperationsService
     {
         $worker = Worker::with('team')->findOrFail($workerId);
 
-        $bookings = Booking::with('visits')->where(function ($q) use ($workerId) {
+        $bookings = Booking::with([
+                'visits',
+                'service',
+                'customer',
+                'address.serviceZone',
+            ])->where(function ($q) use ($workerId) {
                 $q->where('worker_id', $workerId)
                   ->orWhereHas('workers', function ($wq) use ($workerId) {
                       $wq->where('workers.id', $workerId);
@@ -868,13 +881,31 @@ class DailyOperationsService
             $actStart = $visit ? $visit->actual_start_time : $b->actual_start_time;
             $actEnd = $visit ? $visit->actual_end_time : $b->actual_end_time;
 
+            $serviceName = app()->getLocale() === 'ar'
+                ? ($b->service?->name_ar ?: $b->service?->name_en)
+                : ($b->service?->name_en ?: $b->service?->name_ar);
+
+            $custName = $b->customer
+                ? trim(($b->customer->first_name ?? '') . ' ' . ($b->customer->last_name ?? ''))
+                : '—';
+
+            $addrText = $b->address?->short_address
+                ?? $b->address?->street
+                ?? ($b->address?->serviceZone?->name)
+                ?? '—';
+
             $items[] = [
                 'type' => 'service',
                 'booking_id' => $b->id,
                 'booking_ref' => $b->booking_ref,
-                'service_name' => $b->service?->name,
-                'customer_name' => $b->customer ? ($b->customer->first_name . ' ' . $b->customer->last_name) : '—',
-                'address' => $b->address?->short_address ?? '—',
+                'service_id' => $b->service_id,
+                'service_name' => $serviceName ?: ($b->service?->name_ar ?: $b->service?->name_en ?: 'خدمة'),
+                'service_name_ar' => $b->service?->name_ar,
+                'service_name_en' => $b->service?->name_en,
+                'customer_name' => $custName ?: '—',
+                'customer_mobile' => $b->customer?->phone_number ?? '—',
+                'address' => $addrText,
+                'service_zone' => $b->address?->serviceZone?->name ?? '—',
                 'planned_start' => $pStart,
                 'planned_end' => $pEnd,
                 'actual_start' => $actStart,
@@ -888,7 +919,14 @@ class DailyOperationsService
         }
 
         return [
-            'worker' => ['id' => $worker->id, 'name' => $worker->name, 'gender' => $worker->gender],
+            'worker' => [
+                'id' => $worker->id,
+                'name' => $worker->name,
+                'gender' => $worker->gender,
+                'mobile' => $worker->phone_number ?? $worker->mobile,
+                'nationality' => $worker->nationality,
+                'team_name' => $worker->team?->name,
+            ],
             'date' => $date,
             'timeline' => $items,
             'absences' => $absences,
