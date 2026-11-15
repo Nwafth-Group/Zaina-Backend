@@ -55,7 +55,7 @@ class WorkerResource extends JsonResource
             ] : null,
             'assigned_service' => $assignedService,
             'assigned_services' => $assignedServices,
-            'services' => ServiceResource::collection($this->whenLoaded('services')),
+            'services' => $assignedServices,
             'image' => $media ? (new MediaResource($media))->getFileUrl() : null,
         ];
     }

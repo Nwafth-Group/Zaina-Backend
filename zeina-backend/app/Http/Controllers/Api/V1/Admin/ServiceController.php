@@ -60,6 +60,7 @@ class ServiceController extends Controller
             'category',
             'rules',
             'workers.media',
+            'workers.services',
             'teams',
             'schedules',
             'childAgeGroups',

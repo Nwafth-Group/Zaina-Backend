@@ -26,6 +26,7 @@ class DatabaseSeeder extends Seeder
             TeamSeeder::class,
             BookingSeeder::class,
             KhaledTestUserSeeder::class,
+            ReviewSeeder::class,
             PointSystemSeeder::class,
             LegalDocumentsSeeder::class,
             AnnouncementSeeder::class,
