@@ -26,15 +26,24 @@ class BookingStatusService
     {
         $currentStatus = $booking->status;
 
-        // Prevent cancelling or moving backwards if inService, completed, or cancelled
-        if ($currentStatus === 'inService' && ($status === BookingStatus::Upcoming || $status === BookingStatus::Cancelled)) {
-            throw new \Exception('Cannot cancel or revert a booking that is currently in service. / لا يمكن إلغاء أو تعديل حالة حجز قيد التنفيذ.', 400);
-        }
+        // Prevent moving backwards if completed or cancelled
         if ($currentStatus === 'completed') {
             throw new \Exception('Cannot change status of a completed booking. / لا يمكن تغيير حالة حجز مكتمل بالفعل.', 400);
         }
         if ($currentStatus === 'cancelled') {
             throw new \Exception('Cannot change status of a cancelled booking. / لا يمكن تغيير حالة حجز ملغي بالفعل.', 400);
+        }
+
+        // Admin can cancel anytime!
+        if ($status === BookingStatus::Cancelled) {
+            $bookingService = app(BookingService::class);
+            $bookingService->cancelBooking($booking->id, $actor->id, $note, true);
+
+            return $booking->load(['customer', 'service', 'workers']);
+        }
+
+        if ($currentStatus === 'inService' && $status === BookingStatus::Upcoming) {
+            throw new \Exception('Cannot revert a booking in service to upcoming without rescheduling. / لا يمكن إرجاع حجز قيد التنفيذ إلى مؤكد إلا من خلال إعادة الجدولة.', 400);
         }
 
         // Specific status validation rules

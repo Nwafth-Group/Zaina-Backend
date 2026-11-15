@@ -238,6 +238,8 @@ class BookingService
                 'booking_date' => $sortedDates[0],
                 'start_time' => $newStartStr,
                 'end_time' => $newEndStr,
+                'status' => 'Upcoming',
+                'is_at_risk' => false,
             ]);
 
             // Update visits
@@ -296,8 +298,8 @@ class BookingService
     {
         $booking->loadMissing(['visits', 'workers', 'service.rules']);
 
-        // Must be Upcoming status
-        if ($booking->status !== 'Upcoming') {
+        // Must be Upcoming status (bypassed for admin: admin can reschedule anytime)
+        if (!$isAdmin && $booking->status !== 'Upcoming') {
             throw new \Exception(__('messages.booking_not_upcoming', ['status' => $booking->status]), 400);
         }
 
@@ -307,8 +309,8 @@ class BookingService
             throw new \Exception(__('messages.rescheduling_not_allowed'), 400);
         }
 
-        // Block reschedule if any visit is completed or inService
-        if ($booking->relationLoaded('visits') && $booking->visits && $booking->visits->isNotEmpty()) {
+        // Block reschedule if any visit is completed or inService (bypassed for admin: admin can reschedule anytime)
+        if (!$isAdmin && $booking->relationLoaded('visits') && $booking->visits && $booking->visits->isNotEmpty()) {
             $nonUpcomingCount = $booking->visits->where('status', '!=', 'Upcoming')->count();
             if ($nonUpcomingCount > 0) {
                 throw new \Exception(__('messages.booking_started_or_completed'), 400);
@@ -632,13 +634,13 @@ class BookingService
     {
         $booking->loadMissing(['visits', 'service.rules']);
 
-        // Can only cancel Upcoming bookings
-        if ($booking->status !== 'Upcoming') {
+        // Can only cancel Upcoming bookings (bypassed for admin: admin can cancel anytime)
+        if (!$isAdmin && $booking->status !== 'Upcoming') {
             throw new \Exception(__('messages.booking_not_upcoming', ['status' => $booking->status]) ?? 'Booking is not upcoming', 400);
         }
 
-        // Completed or inService visit constraint (blocks both customer and admin)
-        if ($booking->relationLoaded('visits') && $booking->visits && $booking->visits->isNotEmpty()) {
+        // Completed or inService visit constraint (bypassed for admin: admin can cancel anytime)
+        if (!$isAdmin && $booking->relationLoaded('visits') && $booking->visits && $booking->visits->isNotEmpty()) {
             $nonUpcomingCount = $booking->visits->where('status', '!=', 'Upcoming')->count();
             if ($nonUpcomingCount > 0) {
                 throw new \Exception('Cannot cancel a booking that is in service or has completed visits.', 400);

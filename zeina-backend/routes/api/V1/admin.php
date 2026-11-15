@@ -216,6 +216,7 @@ Route::prefix('admin')->group(function () {
             Route::get('/bookings/{booking}/alternatives', 'getAlternatives')->middleware('permission:bookings.view');
             Route::post('/bookings/{booking}/start', 'startService')->middleware('permission:bookings.edit');
             Route::post('/bookings/{booking}/complete', 'completeService')->middleware('permission:bookings.edit');
+            Route::post('/bookings/{booking}/update-times', 'updateExecutionTimes')->middleware('permission:bookings.edit');
             Route::post('/bookings/{booking}/resolve-risk', 'resolveRisk')->middleware('permission:bookings.edit');
         });
 

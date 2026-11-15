@@ -272,10 +272,45 @@ class DailyOperationsService
     }
 
     /**
+     * Check whether a booking has a driver assigned to it or its workers.
+     */
+    public function hasDriverAssigned(Booking $booking): bool
+    {
+        // 1. Check if booking is linked directly to a transport group with a driver
+        $hasGroupDriver = DB::table('transport_group_bookings')
+            ->join('transport_groups', 'transport_group_bookings.transport_group_id', '=', 'transport_groups.id')
+            ->where('transport_group_bookings.booking_id', $booking->id)
+            ->whereNotNull('transport_groups.driver_id')
+            ->exists();
+
+        if ($hasGroupDriver) {
+            return true;
+        }
+
+        // 2. Check if any worker of this booking is assigned to a transport group with a driver
+        $hasWorkerDriver = DB::table('transport_group_workers')
+            ->join('transport_groups', 'transport_group_workers.transport_group_id', '=', 'transport_groups.id')
+            ->where('transport_group_workers.booking_id', $booking->id)
+            ->whereNotNull('transport_groups.driver_id')
+            ->exists();
+
+        return $hasWorkerDriver;
+    }
+
+    /**
      * US-A34: Start Service Execution (Recording actual_start_time & status -> inService).
      */
     public function startService(Booking $booking, User $user, ?string $actualStart = null, ?string $date = null): Booking
     {
+        // Enforce: driver must be assigned before starting service
+        if (!$this->hasDriverAssigned($booking)) {
+            throw ValidationException::withMessages([
+                'driver' => [app()->getLocale() === 'ar'
+                    ? 'لا يمكن بدء الخدمة قبل تعيين سائق لنقل العاملات في قسم النقل والتوزيع.'
+                    : 'Cannot start service execution until a driver has been assigned for transport.'
+                ],
+            ]);
+        }
         // Resolve matching visit if visits exist
         $visit = null;
         if ($booking->visits()->exists()) {
@@ -353,6 +388,16 @@ class DailyOperationsService
      */
     public function completeService(Booking $booking, User $user, ?string $actualEnd = null, ?string $date = null): Booking
     {
+        // Enforce: driver must be assigned before completing service
+        if (!$this->hasDriverAssigned($booking)) {
+            throw ValidationException::withMessages([
+                'driver' => [app()->getLocale() === 'ar'
+                    ? 'لا يمكن إنهاء الخدمة قبل تعيين سائق لنقل العاملات في قسم النقل والتوزيع.'
+                    : 'Cannot complete service execution until a driver has been assigned for transport.'
+                ],
+            ]);
+        }
+
         // Resolve matching visit if visits exist
         $visit = null;
         $hasVisits = $booking->visits()->exists();
@@ -380,16 +425,25 @@ class DailyOperationsService
 
         $endTimeStr = $actualEnd ?: now()->format('H:i');
 
-        // Verify end time comes after start time (check visit actual start time first)
+        // Verify start time is recorded: cannot update only one time, start and end must belong to same day
         $startComp = $visit
             ? ($visit->actual_start_time ?: $visit->start_time)
             : ($booking->actual_start_time ?: $booking->start_time);
 
-        if ($startComp && $endTimeStr <= $startComp) {
+        if (!$startComp) {
+            throw ValidationException::withMessages([
+                'actual_start_time' => [app()->getLocale() === 'ar'
+                    ? 'لا يمكن إنهاء الخدمة بدون وقت البدء. يجب إدخال وقتي البدء والانتهاء معاً في نفس اليوم، لا يمكن تحديث وقت واحد فقط.'
+                    : 'Cannot complete service without a start time. Both start and end times must be defined on the same day.'
+                ],
+            ]);
+        }
+
+        if ($endTimeStr <= $startComp) {
             throw ValidationException::withMessages([
                 'actual_end_time' => [app()->getLocale() === 'ar'
-                    ? 'وقت الانتهاء الفعلي (' . $endTimeStr . ') يجب أن يكون بعد وقت البدء (' . $startComp . ').'
-                    : 'Actual end time (' . $endTimeStr . ') must be strictly after start time (' . $startComp . ').'
+                    ? 'وقت الانتهاء الفعلي (' . $endTimeStr . ') يجب أن يكون بعد وقت البدء (' . $startComp . ') وفي نفس اليوم.'
+                    : 'Actual end time (' . $endTimeStr . ') must be strictly after start time (' . $startComp . ') on the same day.'
                 ],
             ]);
         }
@@ -448,6 +502,93 @@ class DailyOperationsService
         $this->evaluateRiskForSubsequentBookings($booking);
 
         return $booking->fresh(['customer', 'service', 'team', 'workers', 'completer', 'visits']);
+    }
+
+    /**
+     * Update both actual start time and actual end time together on the same day.
+     * Enforces: drivers assigned, both times provided (cannot update one), and same day (end > start).
+     */
+    public function updateExecutionTimes(Booking $booking, User $user, string $actualStart, string $actualEnd, ?string $date = null): Booking
+    {
+        if (!$this->hasDriverAssigned($booking)) {
+            throw ValidationException::withMessages([
+                'driver' => [app()->getLocale() === 'ar'
+                    ? 'لا يمكن تعديل أوقات الخدمة أو تسجيلها قبل تعيين سائق لنقل العاملات في قسم النقل والتوزيع.'
+                    : 'Cannot update service times until a driver has been assigned for transport.'
+                ],
+            ]);
+        }
+
+        if (empty($actualStart) || empty($actualEnd)) {
+            throw ValidationException::withMessages([
+                'times' => [app()->getLocale() === 'ar'
+                    ? 'يجب تحديد وقتي البدء والانتهاء معاً في نفس اليوم، لا يمكن تحديث وقت واحد فقط.'
+                    : 'Both start time and end time must be provided together on the same day; cannot update only one.'
+                ],
+            ]);
+        }
+
+        if ($actualEnd <= $actualStart) {
+            throw ValidationException::withMessages([
+                'actual_end_time' => [app()->getLocale() === 'ar'
+                    ? 'وقت الانتهاء الفعلي (' . $actualEnd . ') يجب أن يكون بعد وقت البدء (' . $actualStart . ') وفي نفس اليوم.'
+                    : 'Actual end time (' . $actualEnd . ') must be strictly after start time (' . $actualStart . ') on the same day.'
+                ],
+            ]);
+        }
+
+        $visit = null;
+        if ($booking->visits()->exists()) {
+            if ($date) {
+                $visit = $booking->visits()->whereDate('visit_date', $date)->first();
+            }
+            if (!$visit) {
+                $visit = $booking->visits()->whereDate('visit_date', now()->toDateString())->first()
+                    ?? $booking->visits()->orderBy('visit_date')->first();
+            }
+        }
+
+        if ($visit) {
+            $visit->update([
+                'actual_start_time' => $actualStart,
+                'actual_end_time' => $actualEnd,
+                'started_by' => $visit->started_by ?: $user->id,
+                'completed_by' => $user->id,
+                'status' => 'completed',
+            ]);
+        }
+
+        $allVisitsCompleted = true;
+        if ($booking->visits()->exists()) {
+            $allVisitsCompleted = !$booking->visits()->where('status', '!=', 'completed')->exists();
+        }
+
+        $newStatus = $allVisitsCompleted ? 'completed' : 'Upcoming';
+        $oldStatus = $booking->status;
+
+        $booking->update([
+            'actual_start_time' => $actualStart,
+            'actual_end_time' => $actualEnd,
+            'started_by' => $booking->started_by ?: $user->id,
+            'completed_by' => $user->id,
+            'status' => $newStatus,
+        ]);
+
+        BookingHistory::create([
+            'booking_id' => $booking->id,
+            'old_status' => $oldStatus,
+            'new_status' => $newStatus,
+            'note' => "Execution times updated together: {$actualStart} → {$actualEnd} by {$user->first_name} {$user->last_name}",
+            'created_by' => $user->id,
+        ]);
+
+        if ($allVisitsCompleted) {
+            \App\Service\LoyaltyPointService::awardPointsForCompletedBooking($booking);
+        }
+
+        $this->evaluateRiskForSubsequentBookings($booking);
+
+        return $booking->fresh(['customer', 'service', 'team', 'workers', 'starter', 'completer', 'visits']);
     }
 
     /**

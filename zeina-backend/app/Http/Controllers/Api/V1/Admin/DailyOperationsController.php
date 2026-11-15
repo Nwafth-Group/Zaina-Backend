@@ -74,6 +74,28 @@ class DailyOperationsController extends Controller
     }
 
     /**
+     * Update both actual start time and actual end time together on the same day.
+     */
+    public function updateExecutionTimes(Request $request, Booking $booking)
+    {
+        $request->validate([
+            'actual_start_time' => 'required|string|regex:/^\d{1,2}:\d{2}$/',
+            'actual_end_time' => 'required|string|regex:/^\d{1,2}:\d{2}$/',
+            'date' => 'nullable|date',
+        ]);
+
+        $updatedBooking = $this->operationsService->updateExecutionTimes(
+            $booking,
+            $request->user(),
+            $request->input('actual_start_time'),
+            $request->input('actual_end_time'),
+            $request->input('date')
+        );
+
+        return $this->successResponse($updatedBooking, __('messages.service_times_updated_successfully') ?: 'Execution times updated successfully on the same day');
+    }
+
+    /**
      * US-A37: Suggest Alternative Candidates for At-Risk / Unassigned Bookings.
      */
     public function getAlternatives(Booking $booking)
