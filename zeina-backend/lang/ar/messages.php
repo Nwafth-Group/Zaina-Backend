@@ -323,6 +323,25 @@ return [
     'service_zone_deleted_successfully' => 'تم حذف منطقة التغطية بنجاح',
     'service_zone_not_available' => 'عذراً، الخدمة غير متاحة في هذا الموقع حالياً.',
     'transport_dispatch_updated_successfully' => 'تم تحديث بيانات النقل وتحديد الانطلاق بنجاح',
+    'transport_worker_assigned_successfully' => 'تم تعيين العاملة للسائق بنجاح',
+    'transport_worker_unassigned_successfully' => 'تم فك ارتباط العاملة بنجاح',
+
+    // User & KYC Verification
+    'user_approved_success' => 'تم قبول وتوثيق حساب العميل بنجاح',
+    'user_rejected_success' => 'تم رفض توثيق حساب العميل بنجاح',
+    'action_required' => 'نوع الإجراء مطلوب',
+    'rejection_reason_required' => 'سبب الرفض مطلوب عند رفض التوثيق',
+
+    // Roles & Employees & Reviews
+    'cannot_deactivate_last_super_admin' => 'لا يمكن إلغاء تفعيل أو حذف المشرف العام الوحيد النشط في النظام',
+    'cannot_delete_role_with_users' => 'لا يمكن حذف هذا الدور لوجود مستخدمين مرتبطين به',
+    'role_retrieved' => 'تم جلب بيانات الدور بنجاح',
+    'permissions_retrieved' => 'تم جلب الصلاحيات بنجاح',
+    'reviews_retrieved' => 'تم جلب التقييمات بنجاح',
+    'notifications_marked_read' => 'تم تحديد جميع الإشعارات كمقروءة',
+    'workers_fetched_success' => 'تم جلب العمال بنجاح',
+    'service_not_found' => 'الخدمة المطلوبة غير موجودة',
+    'coupon_used_cannot_change_zones' => 'لا يمكن تعديل مناطق الخدمة لكوبون مستخدم بالفعل',
 
     // V.18 Operations & Execution
     'service_started_successfully' => 'تم تسجيل بدء الخدمة بنجاح وتحويل الحالة إلى قيد التنفيذ',

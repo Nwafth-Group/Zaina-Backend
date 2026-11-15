@@ -59,7 +59,7 @@ class TransportDispatchController extends Controller
 
         return $this->successResponse(
             $result,
-            __('messages.transport_worker_assigned_successfully') ?? 'تم تعيين العاملة للسائق بنجاح'
+            __('messages.transport_worker_assigned_successfully')
         );
     }
 
@@ -76,7 +76,7 @@ class TransportDispatchController extends Controller
 
         return $this->successResponse(
             null,
-            __('messages.transport_worker_unassigned_successfully') ?? 'تم إلغاء تعيين العاملة بنجاح'
+            __('messages.transport_worker_unassigned_successfully')
         );
     }
 

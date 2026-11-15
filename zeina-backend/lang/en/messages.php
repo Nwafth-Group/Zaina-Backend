@@ -336,6 +336,25 @@ return [
     'service_zone_deleted_successfully' => 'Service zone deleted successfully.',
     'service_zone_not_available' => 'Sorry, service is currently unavailable in this location.',
     'transport_dispatch_updated_successfully' => 'Transport dispatch details updated successfully.',
+    'transport_worker_assigned_successfully' => 'Worker assigned to driver successfully.',
+    'transport_worker_unassigned_successfully' => 'Worker unassigned successfully.',
+
+    // User & KYC Verification
+    'user_approved_success' => 'User account verified and approved successfully.',
+    'user_rejected_success' => 'User verification rejected successfully.',
+    'action_required' => 'Action is required.',
+    'rejection_reason_required' => 'Rejection reason is required when rejecting verification.',
+
+    // Roles & Employees & Reviews
+    'cannot_deactivate_last_super_admin' => 'Cannot deactivate or delete the last active Super Admin.',
+    'cannot_delete_role_with_users' => 'Cannot delete this role because users are assigned to it.',
+    'role_retrieved' => 'Role details retrieved successfully.',
+    'permissions_retrieved' => 'Permissions retrieved successfully.',
+    'reviews_retrieved' => 'Reviews retrieved successfully.',
+    'notifications_marked_read' => 'All notifications marked as read.',
+    'workers_fetched_success' => 'Workers retrieved successfully.',
+    'service_not_found' => 'Requested service not found.',
+    'coupon_used_cannot_change_zones' => 'Cannot change service zones for an already used coupon.',
 
     // V.18 Operations & Execution
     'service_started_successfully' => 'Service execution started successfully and status updated to In Progress.',
