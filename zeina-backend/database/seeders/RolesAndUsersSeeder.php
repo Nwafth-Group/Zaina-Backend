@@ -113,15 +113,48 @@ class RolesAndUsersSeeder extends Seeder
         );
         $superAdmin->assignRole($superAdminRole);
 
-        // ب. توليد 50 موظف عمليات (Operations)
-        // بنستخدم الـ Factory وبنجبر الـ type يكون operation
-        $operations = User::factory()->count(3)->create([
-            'type' => 'operation',
-            'job_title' => 'Operations Officer',
-        ]);
+        // ب. توليد موظفي عمليات (Operations)
+        $operations = [
+            [
+                'first_name' => 'خالد',
+                'last_name' => 'عادل إبراهيم',
+                'phone_number' => '01099000001',
+                'email' => 'ops1@zeina.com',
+                'password' => Hash::make('password'),
+                'verification_status' => 'approved',
+                'gender' => 'Male',
+                'type' => 'operation',
+                'job_title' => 'Operations Officer',
+                'status' => 'active',
+            ],
+            [
+                'first_name' => 'محمد',
+                'last_name' => 'سمير عبد الوهاب',
+                'phone_number' => '01099000002',
+                'email' => 'ops2@zeina.com',
+                'password' => Hash::make('password'),
+                'verification_status' => 'approved',
+                'gender' => 'Male',
+                'type' => 'operation',
+                'job_title' => 'Operations Officer',
+                'status' => 'active',
+            ],
+            [
+                'first_name' => 'أحمد',
+                'last_name' => 'عصام التوني',
+                'phone_number' => '01099000003',
+                'email' => 'ops3@zeina.com',
+                'password' => Hash::make('password'),
+                'verification_status' => 'approved',
+                'gender' => 'Male',
+                'type' => 'operation',
+                'job_title' => 'Operations Officer',
+                'status' => 'active',
+            ],
+        ];
 
-        // إسناد الدور لكل موظف عمليات
-        foreach ($operations as $op) {
+        foreach ($operations as $opData) {
+            $op = User::updateOrCreate(['phone_number' => $opData['phone_number']], $opData);
             $op->assignRole($operationRole);
         }
 

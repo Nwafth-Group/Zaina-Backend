@@ -16,7 +16,8 @@ class WorkerFactory extends Factory
      */
     public function definition(): array
     {
-        $gender = fake()->randomElement(['male', 'female']);
+        $genders = ['male', 'female'];
+        $gender = $genders[array_rand($genders)];
 
         $femaleNames = [
             'مريم إبراهيم حسن', 'فاطمة أحمد عبد الله', 'خديجة محمد السيد', 'سارة علي خليل',
@@ -60,21 +61,26 @@ class WorkerFactory extends Factory
         ];
 
         $name = ($gender === 'female')
-            ? fake()->randomElement($femaleNames)
-            : fake()->randomElement($maleNames);
+            ? $femaleNames[array_rand($femaleNames)]
+            : $maleNames[array_rand($maleNames)];
 
         $nationality = ($gender === 'female')
-            ? fake()->randomElement($femaleNationalities)
-            : fake()->randomElement($maleNationalities);
+            ? $femaleNationalities[array_rand($femaleNationalities)]
+            : $maleNationalities[array_rand($maleNationalities)];
+
+        $phonePrefixes = ['0', '1', '2', '5'];
+        $phonePrefix = $phonePrefixes[array_rand($phonePrefixes)];
+        $phoneNumber = '01' . $phonePrefix . mt_rand(10000000, 99999999);
+        $idNumber = '2' . mt_rand(90, 99) . sprintf('%011d', mt_rand(1, 99999999999));
 
         return [
             'name' => $name,
             'nationality' => $nationality,
-            'avg_rating' => fake()->randomFloat(1, 4.6, 5.0),
+            'avg_rating' => round(4.5 + (mt_rand(0, 5) / 10), 1),
             'status' => 'active',
-            'phone_number' => '01' . fake()->randomElement(['0', '1', '2', '5']) . fake()->unique()->numerify('########'),
-            'id_number' => '2' . fake()->unique()->numerify('#############'),
-            'address' => fake()->randomElement($addresses),
+            'phone_number' => $phoneNumber,
+            'id_number' => $idNumber,
+            'address' => $addresses[array_rand($addresses)],
             'gender' => $gender,
         ];
     }

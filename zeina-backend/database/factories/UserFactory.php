@@ -23,17 +23,28 @@ class UserFactory extends Factory
      */
     public function definition(): array
     {
+        $firstNames = ['أحمد', 'محمد', 'محمود', 'علي', 'عمر', 'سارة', 'فاطمة', 'مريم', 'نورهان', 'إسراء'];
+        $lastNames = ['السيد', 'علي', 'حسن', 'إبراهيم', 'مصطفى', 'محمود', 'عثمان', 'عبد الله', 'خليل'];
+        $statuses = ['active', 'active', 'inactive'];
+        $verificationStatuses = ['pending', 'approved', 'rejected'];
+        $genders = ['Male', 'Female'];
+        $languages = ['ar', 'en'];
+
+        $firstName = $firstNames[array_rand($firstNames)];
+        $lastName = $lastNames[array_rand($lastNames)];
+        $phone = '01' . ['0', '1', '2', '5'][array_rand(['0', '1', '2', '5'])] . mt_rand(10000000, 99999999);
+        $email = 'user_' . Str::random(8) . '@example.com';
+
         return [
-            'first_name' => fake()->firstName(),
-            'last_name' => fake()->lastName(),
-            // توليد رقم موبايل سعودي/فلسطيني وهمي فريد من 10 خانات
-            'phone_number' => fake()->unique()->numerify('05########'),
-            'email' => fake()->unique()->safeEmail(),
-            'password' => Hash::make('password'),
-            'verification_status' => fake()->randomElement(['pending', 'approved', 'rejected']),
-            'status' => fake()->randomElement(['active', 'active', 'inactive']), // نسبة الـ active أعلى
-            'gender' => fake()->randomElement(['Male', 'Female']),
-            'preferred_language' => fake()->randomElement(['ar', 'en']),
+            'first_name' => $firstName,
+            'last_name' => $lastName,
+            'phone_number' => $phone,
+            'email' => $email,
+            'password' => static::$password ??= Hash::make('password'),
+            'verification_status' => $verificationStatuses[array_rand($verificationStatuses)],
+            'status' => $statuses[array_rand($statuses)],
+            'gender' => $genders[array_rand($genders)],
+            'preferred_language' => $languages[array_rand($languages)],
             'remember_token' => Str::random(10),
         ];
     }
