@@ -431,6 +431,19 @@ class BookingController extends Controller
             }
         }
 
+        // Validate worker count matches service min and max
+        $serviceMin = $service ? $service->min_workers : null;
+        $serviceMax = $service ? $service->max_workers : null;
+        if ($serviceMin !== null && $serviceMax !== null && (int)$serviceMin === (int)$serviceMax && (int)$serviceMin > 0) {
+            if (count($workerIds) !== (int)$serviceMin) {
+                $isAr = app()->getLocale() === 'ar';
+                $msg = $isAr
+                    ? "يجب اختيار {$serviceMin} عمال بالضبط ليتطابق مع الحد الأدنى والأقصى للخدمة."
+                    : "You must select exactly {$serviceMin} workers to match the service min and max.";
+                return $this->errorResponse($msg, 422);
+            }
+        }
+
         // Validate worker gender compatibility with booking and service
         $requiredGender = $booking->worker_gender;
         if (empty($requiredGender)) {
