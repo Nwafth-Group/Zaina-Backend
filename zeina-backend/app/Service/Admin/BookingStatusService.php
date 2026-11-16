@@ -55,6 +55,7 @@ class BookingStatusService
             }
 
             // Enforce operational readiness: driver on date, team, and workers
+            /*
             $opsService = app(DailyOperationsService::class);
             try {
                 $opsService->validateOperationalReadiness($booking, $bookingDate);
@@ -62,6 +63,7 @@ class BookingStatusService
                 $msg = collect($ve->errors())->flatten()->first();
                 throw new \Exception($msg, 400);
             }
+            */
         }
 
         if ($status === BookingStatus::Completed) {
@@ -76,6 +78,7 @@ class BookingStatusService
             }
 
             // Enforce operational readiness: driver on date, team, and workers
+            /*
             $bookingDate = Carbon::parse($booking->booking_date, 'Africa/Cairo')->toDateString();
             $opsService = app(DailyOperationsService::class);
             try {
@@ -84,6 +87,7 @@ class BookingStatusService
                 $msg = collect($ve->errors())->flatten()->first();
                 throw new \Exception($msg, 400);
             }
+            */
         }
 
         if ($status === BookingStatus::Cancelled) {

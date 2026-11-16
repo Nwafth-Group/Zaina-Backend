@@ -379,7 +379,8 @@ class DailyOperationsService
             ]);
         }
 
-        // 2. Resource check: Team vs Workers
+        // 2. Resource check: Team vs Workers (Commented out per requirement to allow bookings/operations without mandatory workers/team)
+        /*
         $isTeam = !empty($booking->team_id) || ($booking->service && $booking->service->isTeamBased());
 
         if ($isTeam) {
@@ -407,6 +408,7 @@ class DailyOperationsService
                 ]);
             }
         }
+        */
     }
 
     /**
