@@ -112,8 +112,8 @@ class StoreBookingRequest extends CustomFormRequest
             'dates.*' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
             'start_time' => [$isTeamService ? 'nullable' : 'required', 'date_format:H:i'],
             'team_id' => ['nullable', 'exists:teams,id'],
-            'worker_ids' => $isTeamService ? ['nullable', 'array'] : ['required', 'array', 'min:1'],
-            'worker_ids.*' => ['required', 'exists:workers,id'],
+            'worker_ids' => ['nullable', 'array'],
+            'worker_ids.*' => ['integer', 'exists:workers,id'],
             'payment_method' => ['required', 'string', 'in:points,wallet,card'],
             'coupon_code' => ['nullable', 'string'],
             'duration' => ['nullable', 'integer'],
@@ -286,17 +286,19 @@ class StoreBookingRequest extends CustomFormRequest
                     }
 
                     $workerIds = $this->input('worker_ids') ?? [];
-                    $workersCount = count($workerIds);
-                    if ($workersCount < $calculatedMinWorkers) {
-                        $breakdown = app(CustomerBookingService::class)->getBabysitterBreakdown($service, $childAgeGroups);
-                        $msg = __('validation.create_booking.babysitters_count_min', ['min' => $calculatedMinWorkers]);
-                        if (! empty($breakdown)) {
-                            $msg .= ' ('.$breakdown.')';
+                    if (!empty($workerIds)) {
+                        $workersCount = count($workerIds);
+                        if ($workersCount < $calculatedMinWorkers) {
+                            $breakdown = app(CustomerBookingService::class)->getBabysitterBreakdown($service, $childAgeGroups);
+                            $msg = __('validation.create_booking.babysitters_count_min', ['min' => $calculatedMinWorkers]);
+                            if (! empty($breakdown)) {
+                                $msg .= ' ('.$breakdown.')';
+                            }
+                            $validator->errors()->add('worker_ids', $msg);
                         }
-                        $validator->errors()->add('worker_ids', $msg);
-                    }
-                    if ($workersCount > $maxWorkers) {
-                        $validator->errors()->add('worker_ids', __('validation.create_booking.babysitters_count_max', ['max' => $maxWorkers]));
+                        if ($workersCount > $maxWorkers) {
+                            $validator->errors()->add('worker_ids', __('validation.create_booking.babysitters_count_max', ['max' => $maxWorkers]));
+                        }
                     }
                 }
 
@@ -305,22 +307,24 @@ class StoreBookingRequest extends CustomFormRequest
                     $bookingService = app(CustomerBookingService::class);
                     $calculatedMinWorkers = $bookingService->calculateMinimumPedicureWorkers($service, $numberOfPersons);
                     $workerIds = $this->input('worker_ids') ?? [];
-                    $workersCount = count($workerIds);
-                    $maxAllowedWorkers = min($numberOfPersons, $service->max_workers ?? 10);
+                    if (!empty($workerIds)) {
+                        $workersCount = count($workerIds);
+                        $maxAllowedWorkers = min($numberOfPersons, $service->max_workers ?? 10);
 
-                    if ($workersCount < $calculatedMinWorkers) {
-                        $isArabic = app()->getLocale() === 'ar';
-                        $msg = $isArabic
-                            ? "الحد الأدنى للعمالة المطلوبة لعدد {$numberOfPersons} أشخاص هو {$calculatedMinWorkers} عاملة."
-                            : "Minimum required workers for {$numberOfPersons} person(s) is {$calculatedMinWorkers}.";
-                        $validator->errors()->add('worker_ids', $msg);
-                    }
-                    if ($workersCount > $maxAllowedWorkers) {
-                        $isArabic = app()->getLocale() === 'ar';
-                        $msg = $isArabic
-                            ? "الحد الأقصى للعمالة المسموح به لهذا الحجز هو {$maxAllowedWorkers} عاملة."
-                            : "Maximum allowed workers for this booking is {$maxAllowedWorkers}.";
-                        $validator->errors()->add('worker_ids', $msg);
+                        if ($workersCount < $calculatedMinWorkers) {
+                            $isArabic = app()->getLocale() === 'ar';
+                            $msg = $isArabic
+                                ? "الحد الأدنى للعمالة المطلوبة لعدد {$numberOfPersons} أشخاص هو {$calculatedMinWorkers} عاملة."
+                                : "Minimum required workers for {$numberOfPersons} person(s) is {$calculatedMinWorkers}.";
+                            $validator->errors()->add('worker_ids', $msg);
+                        }
+                        if ($workersCount > $maxAllowedWorkers) {
+                            $isArabic = app()->getLocale() === 'ar';
+                            $msg = $isArabic
+                                ? "الحد الأقصى للعمالة المسموح به لهذا الحجز هو {$maxAllowedWorkers} عاملة."
+                                : "Maximum allowed workers for this booking is {$maxAllowedWorkers}.";
+                            $validator->errors()->add('worker_ids', $msg);
+                        }
                     }
                 }
 

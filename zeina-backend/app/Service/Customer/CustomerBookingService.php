@@ -251,12 +251,12 @@ class CustomerBookingService
             if ($calculatedMinWorkers > $maxWorkers) {
                 throw new \Exception(__('validation.create_booking.babysitters_count_max', ['max' => $maxWorkers]), 422);
             }
-            if ($workerIdsCount < $calculatedMinWorkers) {
+            if (!empty($data['worker_ids']) && $workerIdsCount < $calculatedMinWorkers) {
                 $breakdown = $this->getBabysitterBreakdown($service, $data['child_age_groups'] ?? []);
                 $msg = __('validation.create_booking.babysitters_count_min', ['min' => $calculatedMinWorkers]).' ('.$breakdown.')';
                 throw new \Exception($msg, 422);
             }
-            if ($workerIdsCount > $maxWorkers) {
+            if (!empty($data['worker_ids']) && $workerIdsCount > $maxWorkers) {
                 throw new \Exception(__('validation.create_booking.babysitters_count_max', ['max' => $maxWorkers]), 422);
             }
             if (empty($data['worker_gender'])) {
@@ -266,7 +266,7 @@ class CustomerBookingService
             $numberOfPersons = (int) ($data['number_of_persons'] ?? 1);
             $calculatedMinWorkers = $this->calculateMinimumPedicureWorkers($service, $numberOfPersons);
             $workerIdsCount = count($data['worker_ids'] ?? []);
-            if ($workerIdsCount < $calculatedMinWorkers) {
+            if (!empty($data['worker_ids']) && $workerIdsCount < $calculatedMinWorkers) {
                 $isArabic = app()->getLocale() === 'ar';
                 $msg = $isArabic
                     ? "الحد الأدنى للعمالة المطلوبة لعدد {$numberOfPersons} أشخاص هو {$calculatedMinWorkers} عاملة."
@@ -274,14 +274,15 @@ class CustomerBookingService
                 throw new \Exception($msg, 422);
             }
             $maxAllowedWorkers = min($numberOfPersons, $service->max_workers ?? 10);
-            if ($workerIdsCount > $maxAllowedWorkers) {
+            if (!empty($data['worker_ids']) && $workerIdsCount > $maxAllowedWorkers) {
                 $isArabic = app()->getLocale() === 'ar';
                 $msg = $isArabic
                     ? "الحد الأقصى للعمالة المسموح به لهذا الحجز هو {$maxAllowedWorkers} عاملة."
                     : "Maximum allowed workers for this booking is {$maxAllowedWorkers}.";
                 throw new \Exception($msg, 422);
             }
-            $data['duration'] = $this->calculatePedicureDuration($service, $numberOfPersons, $workerIdsCount);
+            $effectiveWorkerCount = !empty($workerIdsCount) ? $workerIdsCount : $calculatedMinWorkers;
+            $data['duration'] = $this->calculatePedicureDuration($service, $numberOfPersons, $effectiveWorkerCount);
             if (empty($data['worker_gender'])) {
                 $data['worker_gender'] = 'Female';
             }
@@ -322,9 +323,12 @@ class CustomerBookingService
         $isTeamService = $service->isTeamBased();
         $workerIds = $data['worker_ids'] ?? [];
 
+        // Allow customer to book without requiring pre-assigned worker
+        /*
         if (empty($workerIds) && !$isTeamService) {
             throw new \Exception(__('validation.create_booking.worker_ids_required'), 422);
         }
+        */
 
         // 5. Ensure allocated workers are active and not double-booked (overlap check) across all dates (if workers are provided)
         if (!empty($workerIds)) {
@@ -364,7 +368,7 @@ class CustomerBookingService
 
         // 6. Calculate prices
         $options = $data['options'] ?? $data['selected_options'] ?? [];
-        $pricingWorkerCount = !empty($workerIds) ? count($workerIds) : ($service->min_workers ?? 3);
+        $pricingWorkerCount = !empty($workerIds) ? count($workerIds) : ($data['workers_count'] ?? $service->min_workers ?? 1);
         $pricing = $this->calculatePricing(
             $service,
             $address,
@@ -479,7 +483,7 @@ class CustomerBookingService
                 'end_time' => $times['end_str'],
                 'duration_minutes' => $times['duration_minutes'],
                 'worker_gender' => $data['worker_gender'] ?? null,
-                'number_of_workers' => !empty($workerIds) ? count($workerIds) : ($service->min_workers ?? 1),
+                'number_of_workers' => !empty($workerIds) ? count($workerIds) : ($data['workers_count'] ?? $service->min_workers ?? 1),
                 'number_of_children' => $service->service_code === 'BABYSITTER_HOURLY' ? ($data['number_of_children'] ?? null) : null,
                 'number_of_persons' => $service->service_code === 'PEDICURE_MANICURE' ? ($data['number_of_persons'] ?? 1) : null,
                 'child_age_groups' => $service->service_code === 'BABYSITTER_HOURLY' ? ($data['child_age_groups'] ?? null) : null,
@@ -697,13 +701,13 @@ class CustomerBookingService
         $needed = $workersCount - $allocated->count();
         if ($needed > 0) {
             $remaining = $availableWorkers->whereNotIn('id', $allocated->pluck('id'))->values();
-            if ($remaining->count() < $needed) {
-                throw ValidationException::withMessages([
-                    'workers_count' => __('messages.no_workers_available'),
-                ]);
+            if ($remaining->count() <= $needed) {
+                // If not enough workers are available, allocate whatever is available without throwing an error
+                $allocated = $allocated->merge($remaining);
+            } else {
+                $randomPicked = $remaining->random($needed)->values();
+                $allocated = $allocated->merge($randomPicked);
             }
-            $randomPicked = $remaining->random($needed)->values();
-            $allocated = $allocated->merge($randomPicked);
         }
 
         return $allocated;
