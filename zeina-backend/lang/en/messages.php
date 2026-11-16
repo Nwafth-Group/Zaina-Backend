@@ -137,7 +137,7 @@ return [
     'booking_started_or_completed' => 'Cannot reschedule a booking that has already started or been completed.',
     'reschedule_cutoff_exceeded' => 'Cannot reschedule: the reschedule window has passed (less than :hours hours remaining before start).',
     'select_exactly_3_dates' => 'Please select exactly 3 dates for a 3-visit booking.',
-    'dates_must_belong_to_same_week' => 'All selected dates must belong to the same calendar week.',
+    'dates_must_belong_to_same_week' => 'All selected dates must occur within one week starting from the first visit date (maximum 7 days from the first visit).',
     'select_exactly_1_date' => 'Please select exactly 1 date for a single visit booking.',
     'service_no_active_schedules' => 'The service does not have active schedules on :date.',
     'time_slot_outside_shifts' => 'The selected time slot is outside the available shifts for :date.',

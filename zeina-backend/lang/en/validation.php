@@ -433,7 +433,7 @@ return [
         'dates_array' => 'The selected dates must be a list.',
         'dates_exactly_three' => 'Please select exactly 3 dates for the 3 visits per week schedule.',
         'dates_exactly_one' => 'Please select exactly 1 date for the single visit schedule.',
-        'dates_same_week' => 'All selected dates must belong to the same calendar week.',
+        'dates_same_week' => 'All three visits must occur within one week starting from the first visit date (maximum 7 days from the first visit).',
         'dates_same_day_not_allowed' => 'Same-day booking is not allowed for date: :date.',
         'dates_max_advance' => 'The date :date cannot be further than :days days in advance.',
         'workers_count_between' => 'The workers count must be between :min and :max.',

@@ -80,7 +80,7 @@ class CustomerBookingService
             $data['workers_count'] = $workersCount;
         }
 
-        $dates = $data['dates'] ?? [];
+        $dates = collect($data['dates'] ?? [])->sort()->values()->toArray();
         $startTime = $data['start_time'] ?? '08:00';
 
         if ($service->service_code === 'PEDICURE_MANICURE') {
@@ -301,7 +301,7 @@ class CustomerBookingService
             throw new \Exception(__('messages.unpaid_penalties', ['amount' => abs($user->wallet_balance)]), 402);
         }
 
-        $dates = $data['dates'] ?? [];
+        $dates = collect($data['dates'] ?? [])->sort()->values()->toArray();
         $startTime = $data['start_time'] ?? '08:00';
 
         // 3. Compute times

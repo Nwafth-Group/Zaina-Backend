@@ -195,13 +195,13 @@ class ValidateBookingRequest extends CustomFormRequest
                     return;
                 }
 
-                // 2. Validate all dates belong to the same calendar week (ISO 8601 week definition)
-                if ($visitType === 'three_visits_per_week') {
-                    $weeks = collect($dates)->map(function ($d) {
-                        return Carbon::parse($d)->startOfWeek(Carbon::SATURDAY)->toDateString();
-                    })->unique();
+                // 2. Validate all dates belong to a 1-week window starting from the first visit (e.g. Monday to Monday)
+                if ($visitType === 'three_visits_per_week' && count($dates) >= 2) {
+                    $sortedDates = collect($dates)->map(fn($d) => Carbon::parse($d))->sort()->values();
+                    $firstDate = $sortedDates->first();
+                    $lastDate = $sortedDates->last();
 
-                    if ($weeks->count() > 1) {
+                    if ($lastDate->gt($firstDate->copy()->addDays(7))) {
                         $validator->errors()->add('dates', __('validation.create_booking.dates_same_week'));
                     }
                 }

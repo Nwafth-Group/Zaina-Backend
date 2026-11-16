@@ -343,9 +343,12 @@ class BookingService
             if (count($dates) !== 3) {
                 throw new \Exception(__('messages.select_exactly_3_dates'), 400);
             }
-            // Check all 3 belong to the same week
-            $weeks = collect($dates)->map(fn($d) => Carbon::parse($d)->startOfWeek(Carbon::SATURDAY)->toDateString())->unique();
-            if ($weeks->count() > 1) {
+            // Check all 3 belong to 1-week window starting from the first visit (e.g. Monday to Monday)
+            $sortedDates = collect($dates)->map(fn($d) => Carbon::parse($d))->sort()->values();
+            $firstDate = $sortedDates->first();
+            $lastDate = $sortedDates->last();
+
+            if ($lastDate->gt($firstDate->copy()->addDays(7))) {
                 throw new \Exception(__('messages.dates_must_belong_to_same_week'), 400);
             }
         } else {
