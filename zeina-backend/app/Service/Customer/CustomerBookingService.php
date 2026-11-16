@@ -178,10 +178,16 @@ class CustomerBookingService
                 }
             }
             if (!$selectedTeam) {
-                $allocatedWorkers = collect();
-            } else {
-                $allocatedWorkers = $selectedTeam->workers;
+                throw ValidationException::withMessages([
+                    'team' => __('messages.no_teams_available') ?? 'لا يوجد فريق عمل متاح لهذا الموعد.',
+                ]);
             }
+            if ($selectedTeam->workers->isEmpty()) {
+                throw ValidationException::withMessages([
+                    'team' => 'فريق العمل المتاح لا يحتوي على عمالة مسجلة.',
+                ]);
+            }
+            $allocatedWorkers = $selectedTeam->workers;
         } else {
             $allocatedWorkers = $this->allocateWorkers($availableWorkers, (int) $data['workers_count'], $data['preferred_worker_ids'] ?? []);
         }
@@ -251,12 +257,12 @@ class CustomerBookingService
             if ($calculatedMinWorkers > $maxWorkers) {
                 throw new \Exception(__('validation.create_booking.babysitters_count_max', ['max' => $maxWorkers]), 422);
             }
-            if (!empty($data['worker_ids']) && $workerIdsCount < $calculatedMinWorkers) {
+            if ($workerIdsCount < $calculatedMinWorkers) {
                 $breakdown = $this->getBabysitterBreakdown($service, $data['child_age_groups'] ?? []);
                 $msg = __('validation.create_booking.babysitters_count_min', ['min' => $calculatedMinWorkers]).' ('.$breakdown.')';
                 throw new \Exception($msg, 422);
             }
-            if (!empty($data['worker_ids']) && $workerIdsCount > $maxWorkers) {
+            if ($workerIdsCount > $maxWorkers) {
                 throw new \Exception(__('validation.create_booking.babysitters_count_max', ['max' => $maxWorkers]), 422);
             }
             if (empty($data['worker_gender'])) {
@@ -266,7 +272,7 @@ class CustomerBookingService
             $numberOfPersons = (int) ($data['number_of_persons'] ?? 1);
             $calculatedMinWorkers = $this->calculateMinimumPedicureWorkers($service, $numberOfPersons);
             $workerIdsCount = count($data['worker_ids'] ?? []);
-            if (!empty($data['worker_ids']) && $workerIdsCount < $calculatedMinWorkers) {
+            if ($workerIdsCount < $calculatedMinWorkers) {
                 $isArabic = app()->getLocale() === 'ar';
                 $msg = $isArabic
                     ? "الحد الأدنى للعمالة المطلوبة لعدد {$numberOfPersons} أشخاص هو {$calculatedMinWorkers} عاملة."
@@ -274,15 +280,14 @@ class CustomerBookingService
                 throw new \Exception($msg, 422);
             }
             $maxAllowedWorkers = min($numberOfPersons, $service->max_workers ?? 10);
-            if (!empty($data['worker_ids']) && $workerIdsCount > $maxAllowedWorkers) {
+            if ($workerIdsCount > $maxAllowedWorkers) {
                 $isArabic = app()->getLocale() === 'ar';
                 $msg = $isArabic
                     ? "الحد الأقصى للعمالة المسموح به لهذا الحجز هو {$maxAllowedWorkers} عاملة."
                     : "Maximum allowed workers for this booking is {$maxAllowedWorkers}.";
                 throw new \Exception($msg, 422);
             }
-            $effectiveWorkerCount = !empty($workerIdsCount) ? $workerIdsCount : $calculatedMinWorkers;
-            $data['duration'] = $this->calculatePedicureDuration($service, $numberOfPersons, $effectiveWorkerCount);
+            $data['duration'] = $this->calculatePedicureDuration($service, $numberOfPersons, $workerIdsCount);
             if (empty($data['worker_gender'])) {
                 $data['worker_gender'] = 'Female';
             }
@@ -323,12 +328,19 @@ class CustomerBookingService
         $isTeamService = $service->isTeamBased();
         $workerIds = $data['worker_ids'] ?? [];
 
-        // Allow customer to book without requiring pre-assigned worker
-        /*
-        if (empty($workerIds) && !$isTeamService) {
-            throw new \Exception(__('validation.create_booking.worker_ids_required'), 422);
+        if (!$isTeamService) {
+            if (empty($workerIds)) {
+                throw new \Exception(__('validation.create_booking.worker_ids_required'), 422);
+            }
+            $requiredWorkerCount = (int) ($data['workers_count'] ?? $service->min_workers ?? 1);
+            if (count($workerIds) < $requiredWorkerCount) {
+                $isAr = app()->getLocale() === 'ar';
+                $msg = $isAr
+                    ? "يجب اختيار {$requiredWorkerCount} عمال على الأقل لهذا الحجز."
+                    : "You must select at least {$requiredWorkerCount} workers for this booking.";
+                throw new \Exception($msg, 422);
+            }
         }
-        */
 
         // 5. Ensure allocated workers are active and not double-booked (overlap check) across all dates (if workers are provided)
         if (!empty($workerIds)) {
@@ -423,11 +435,35 @@ class CustomerBookingService
                     }
                 }
 
-                if ($teamId && empty($workerIds)) {
-                    $teamModel = Team::with('workers')->find($teamId);
-                    if ($teamModel && $teamModel->workers->isNotEmpty()) {
-                        $workerIds = $teamModel->workers->pluck('id')->toArray();
+                if (!$teamId) {
+                    $conflictService = app(\App\Service\Booking\BookingScheduleConflictService::class);
+                    $teams = $service->teams()->where('status', 'active')->with('workers')->get();
+                    foreach ($teams as $team) {
+                        $teamAvailableAllDates = true;
+                        foreach ($dates as $date) {
+                            if (!$conflictService->isTeamAvailable($team, $date, $times['start_str'], $times['end_str'])) {
+                                $teamAvailableAllDates = false;
+                                break;
+                            }
+                        }
+                        if ($teamAvailableAllDates && $team->workers->isNotEmpty()) {
+                            $teamId = $team->id;
+                            break;
+                        }
                     }
+                }
+
+                if (empty($teamId)) {
+                    throw new \Exception(__('messages.no_teams_available') ?? 'لا يوجد فريق عمل متاح لهذا الموعد.', 422);
+                }
+
+                $teamModel = Team::with('workers')->find($teamId);
+                if (!$teamModel || $teamModel->workers->isEmpty()) {
+                    throw new \Exception('فريق العمل المحدد لا يحتوي على عمالة مسندة.', 422);
+                }
+
+                if (empty($workerIds)) {
+                    $workerIds = $teamModel->workers->pluck('id')->toArray();
                 }
             } else {
                 $teamId = null;
@@ -701,13 +737,13 @@ class CustomerBookingService
         $needed = $workersCount - $allocated->count();
         if ($needed > 0) {
             $remaining = $availableWorkers->whereNotIn('id', $allocated->pluck('id'))->values();
-            if ($remaining->count() <= $needed) {
-                // If not enough workers are available, allocate whatever is available without throwing an error
-                $allocated = $allocated->merge($remaining);
-            } else {
-                $randomPicked = $remaining->random($needed)->values();
-                $allocated = $allocated->merge($randomPicked);
+            if ($remaining->count() < $needed) {
+                throw ValidationException::withMessages([
+                    'workers_count' => __('messages.no_workers_available') ?? 'لا توجد عمالة كافية ومتاحة لهذا الموعد.',
+                ]);
             }
+            $randomPicked = $remaining->random($needed)->values();
+            $allocated = $allocated->merge($randomPicked);
         }
 
         return $allocated;
