@@ -133,7 +133,10 @@ class WorkerController extends Controller
     public function store(StoreWorkerRequest $request)
     {
         $data = $request->validated();
-        $create_data = collect($data)->only(['name', 'nationality', 'status', 'phone_number', 'id_number', 'address', 'gender', 'team_id'])->toArray();
+        $create_data = collect($data)->only(['name', 'nationality', 'status', 'phone_number', 'id_number', 'address', 'gender', 'team_id', 'work_days'])->toArray();
+        if (!isset($create_data['work_days']) || empty($create_data['work_days'])) {
+            $create_data['work_days'] = Worker::ALL_DAYS;
+        }
         $worker = Worker::create($create_data);
 
         if (isset($data['services'])) {
@@ -200,7 +203,7 @@ class WorkerController extends Controller
     public function update(UpdateWorkerRequest $request, Worker $worker)
     {
         $data = $request->validated();
-        $update_data = collect($data)->only(['name', 'nationality', 'status', 'phone_number', 'id_number', 'address', 'gender', 'team_id'])->toArray();
+        $update_data = collect($data)->only(['name', 'nationality', 'status', 'phone_number', 'id_number', 'address', 'gender', 'team_id', 'work_days'])->toArray();
         $worker->update($update_data);
         if (isset($data['services'])) {
             $worker->services()->sync($data['services']);

@@ -50,6 +50,8 @@ class WorkerListResource extends JsonResource
             'assigned_service' => $assignedService,
             'assigned_services' => $assignedServices,
             'services' => $assignedServices,
+            'work_days' => $this->getEffectiveWorkDays(),
+            'vacation_days' => $this->getVacationDays(),
             'image' => $media ? (new MediaResource($media))->getFileUrl() : null,
             'bookings_count' => $this->bookings()->count(),
         ];

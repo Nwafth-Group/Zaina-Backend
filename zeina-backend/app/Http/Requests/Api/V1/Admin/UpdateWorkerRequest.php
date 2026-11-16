@@ -36,6 +36,8 @@ class UpdateWorkerRequest extends CustomFormRequest
             'team_id' => ['sometimes', 'nullable', 'exists:teams,id'],
             'services' => ['sometimes', 'nullable', 'array'],
             'services.*' => ['exists:services,id'],
+            'work_days' => ['sometimes', 'nullable', 'array', 'min:1'],
+            'work_days.*' => ['string', 'in:saturday,sunday,monday,tuesday,wednesday,thursday,friday'],
             'image' => ['sometimes', 'nullable', 'image', 'mimes:jpeg,png,jpg,gif,svg', 'max:2048'],
         ];
     }

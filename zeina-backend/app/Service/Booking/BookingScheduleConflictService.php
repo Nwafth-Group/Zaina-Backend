@@ -31,6 +31,13 @@ class BookingScheduleConflictService
             return __('validation.booking_conflict.worker_inactive', ['name' => $worker->name]);
         }
 
+        if (!$worker->isWorkingOnDate($date)) {
+            $isAr = app()->getLocale() === 'ar';
+            return $isAr
+                ? "العامل «{$worker->name}» في يوم إجازة أسبوعية بتاريخ هذا الحجز."
+                : "Worker \"{$worker->name}\" is on weekly vacation on the booking date.";
+        }
+
         $newStart = Carbon::parse("{$date} {$startTime}");
         $newEnd = Carbon::parse("{$date} {$endTime}");
 
@@ -137,7 +144,16 @@ class BookingScheduleConflictService
                 }
             });
 
-        return $query->pluck('worker_id')->unique()->values()->toArray();
+        $busyWorkerIds = $query->pluck('worker_id')->unique()->values()->toArray();
+
+        // Check if any candidate worker has a weekly vacation / day off on this date
+        $vacationWorkerIds = Worker::whereIn('id', $workerIds)
+            ->get()
+            ->filter(fn($w) => !$w->isWorkingOnDate($date))
+            ->pluck('id')
+            ->toArray();
+
+        return array_values(array_unique(array_merge($busyWorkerIds, $vacationWorkerIds)));
     }
 
     /**

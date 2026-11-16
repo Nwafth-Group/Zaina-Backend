@@ -32,6 +32,8 @@ class StoreWorkerRequest extends CustomFormRequest
             'team_id' => ['nullable', 'exists:teams,id'],
             'services' => ['nullable', 'array'],
             'services.*' => ['exists:services,id'],
+            'work_days' => ['nullable', 'array', 'min:1'],
+            'work_days.*' => ['string', 'in:saturday,sunday,monday,tuesday,wednesday,thursday,friday'],
             'image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,svg', 'max:2048'],
         ];
     }

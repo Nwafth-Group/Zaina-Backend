@@ -800,6 +800,11 @@ class DailyOperationsService
                     continue; // Must have 3 members
                 }
 
+                // Skip team if any member is on weekly vacation on this date
+                if ($team->workers->contains(fn($w) => !$w->isWorkingOnDate($date))) {
+                    continue;
+                }
+
                 // Check team booking conflict
                 $conflict = Booking::where('team_id', $team->id)
                     ->forDate($date)
@@ -856,6 +861,11 @@ class DailyOperationsService
             $workers = $workersQuery->get();
 
             foreach ($workers as $worker) {
+                // Skip worker if this date is their weekly vacation
+                if (!$worker->isWorkingOnDate($date)) {
+                    continue;
+                }
+
                 // Check conflict
                 $conflict = Booking::where(function ($bq) use ($worker) {
                         $bq->where('worker_id', $worker->id)

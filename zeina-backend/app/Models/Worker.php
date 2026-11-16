@@ -10,6 +10,8 @@ class Worker extends Model
     /** @use HasFactory<\Database\Factories\WorkerFactory> */
     use HasFactory;
 
+    public const ALL_DAYS = ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+
     protected $fillable = [
         'name',
         'nationality',
@@ -20,6 +22,7 @@ class Worker extends Model
         'address',
         'gender',
         'team_id',
+        'work_days',
     ];
 
     /**
@@ -29,7 +32,35 @@ class Worker extends Model
     {
         return [
             'avg_rating' => 'float',
+            'work_days' => 'array',
         ];
+    }
+
+    public function getEffectiveWorkDays(): array
+    {
+        if (is_array($this->work_days) && !empty($this->work_days)) {
+            return array_values(array_unique(array_map('strtolower', $this->work_days)));
+        }
+        return self::ALL_DAYS;
+    }
+
+    public function worksOnDay(string $dayName): bool
+    {
+        return in_array(strtolower($dayName), $this->getEffectiveWorkDays(), true);
+    }
+
+    public function isWorkingOnDate(\Carbon\Carbon|string $date): bool
+    {
+        $dayName = $date instanceof \Carbon\Carbon
+            ? $date->format('l')
+            : \Carbon\Carbon::parse($date)->format('l');
+
+        return $this->worksOnDay($dayName);
+    }
+
+    public function getVacationDays(): array
+    {
+        return array_values(array_diff(self::ALL_DAYS, $this->getEffectiveWorkDays()));
     }
 
     public function team()

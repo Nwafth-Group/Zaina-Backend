@@ -380,6 +380,8 @@ class BookingController extends Controller
                     'gender' => $w->gender,
                     'team_id' => $w->team_id,
                     'status' => $w->status,
+                    'work_days' => $w->getEffectiveWorkDays(),
+                    'vacation_days' => $w->getVacationDays(),
                     'services' => $mappedServices,
                     'assigned_services' => $mappedServices,
                     'assigned_service' => !empty($mappedServices) ? $mappedServices[0] : null,
@@ -414,10 +416,28 @@ class BookingController extends Controller
         $workerIds = $request->input('worker_ids');
         $workers = Worker::whereIn('id', $workerIds)->get();
 
-        // Check if any worker is inactive
+        // Check if any worker is inactive or on weekly vacation
         foreach ($workers as $worker) {
             if ($worker->status !== 'active') {
                 return $this->errorResponse(__('validation.replace_worker.worker_inactive', ['name' => $worker->name]), 422);
+            }
+
+            if (!$worker->isWorkingOnDate($booking->booking_date)) {
+                $isAr = app()->getLocale() === 'ar';
+                $dayNameAr = [
+                    'saturday' => 'السبت',
+                    'sunday' => 'الأحد',
+                    'monday' => 'الاثنين',
+                    'tuesday' => 'الثلاثاء',
+                    'wednesday' => 'الأربعاء',
+                    'thursday' => 'الخميس',
+                    'friday' => 'الجمعة',
+                ][strtolower(\Carbon\Carbon::parse($booking->booking_date)->format('l'))] ?? '';
+
+                $msg = $isAr
+                    ? "لا يمكن تعيين العامل «{$worker->name}» لأن يوم ({$dayNameAr}) هو يوم إجازته الأسبوعية."
+                    : "Cannot assign worker \"{$worker->name}\" because the booking day is their weekly vacation.";
+                return $this->errorResponse($msg, 422);
             }
         }
 
@@ -610,6 +630,25 @@ class BookingController extends Controller
 
         if ($newWorker->status !== 'active') {
             return $this->errorResponse(__('validation.replace_worker.worker_inactive', ['name' => $newWorker->name]), 422);
+        }
+
+        // Validate replacement worker is not on weekly vacation on booking date
+        if (!$newWorker->isWorkingOnDate($booking->booking_date)) {
+            $isAr = app()->getLocale() === 'ar';
+            $dayNameAr = [
+                'saturday' => 'السبت',
+                'sunday' => 'الأحد',
+                'monday' => 'الاثنين',
+                'tuesday' => 'الثلاثاء',
+                'wednesday' => 'الأربعاء',
+                'thursday' => 'الخميس',
+                'friday' => 'الجمعة',
+            ][strtolower(\Carbon\Carbon::parse($booking->booking_date)->format('l'))] ?? '';
+
+            $msg = $isAr
+                ? "لا يمكن استبدال العامل بالعامل «{$newWorker->name}» لأن يوم ({$dayNameAr}) هو يوم إجازته الأسبوعية."
+                : "Cannot replace with worker \"{$newWorker->name}\" because the booking day is their weekly vacation.";
+            return $this->errorResponse($msg, 422);
         }
 
         // Validate service eligibility
