@@ -343,31 +343,7 @@ class UpdateServiceRequest extends CustomFormRequest
                         $validator->errors()->add('min_workers', $isAr ? 'الحد الأدنى للعمال لا يمكن أن يكون أكبر من الحد الأقصى.' : 'Minimum worker count cannot be greater than maximum worker count.');
                     }
 
-                    $workersInput = $this->input('workers', []);
-                    if (is_array($workersInput) && !empty($workersInput)) {
-                        $count = count($workersInput);
-                        if ($minWorkers !== null && $maxWorkers !== null && (int)$minWorkers === (int)$maxWorkers && (int)$minWorkers > 0) {
-                            if ($count !== (int)$minWorkers) {
-                                $msg = $isAr
-                                    ? "يجب أن يكون عدد العمال المسندين ({$count}) مساوياً للحد الأدنى والأقصى للعمال ({$minWorkers} عمال بالضبط)."
-                                    : "Assigned workers count ({$count}) must be equal to min and max workers ({$minWorkers} exactly).";
-                                $validator->errors()->add('workers', $msg);
-                            }
-                        } else {
-                            if ($maxWorkers !== null && $maxWorkers > 0 && $count > $maxWorkers) {
-                                $msg = $isAr
-                                    ? "عدد العمال المحددين ({$count}) يتجاوز الحد الأقصى المسموح به للعمال لهذا الخدمة ({$maxWorkers})."
-                                    : "Selected workers count ({$count}) exceeds the maximum allowed limit for this service ({$maxWorkers}).";
-                                $validator->errors()->add('workers', $msg);
-                            }
-                            if ($minWorkers !== null && $minWorkers > 0 && $count < $minWorkers) {
-                                $msg = $isAr
-                                    ? "عدد العمال المحددين ({$count}) أقل من الحد الأدنى المسموح به للعمال لهذا الخدمة ({$minWorkers})."
-                                    : "Selected workers count ({$count}) is less than the minimum required limit for this service ({$minWorkers}).";
-                                $validator->errors()->add('workers', $msg);
-                            }
-                        }
-                    }
+                    // Selection of workers for service pool is open (no min/max limit on pool size)
 
                 // Check if any selected worker is already assigned to another service
                 $workersInput = $this->input('workers');
