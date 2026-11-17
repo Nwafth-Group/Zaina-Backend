@@ -112,6 +112,16 @@ class BookingController extends Controller
             ->toArray();
 
         $customerId = auth()->id();
+        if ($customerId) {
+            $hasActiveBooking = Booking::where('customer_id', $customerId)
+                ->where('service_id', $service->id)
+                ->whereIn('status', ['Upcoming', 'inService'])
+                ->exists();
+
+            if ($hasActiveBooking) {
+                return $this->errorResponse(__('validation.create_booking.active_service_booking_exists'), 422);
+            }
+        }
 
         // -------------------------------------------------------------
         // Branch A: Team-Based Services (Services 6 to 11)

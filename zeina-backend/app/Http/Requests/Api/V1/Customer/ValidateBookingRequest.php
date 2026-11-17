@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Api\V1\Customer;
 
+use App\Models\Booking;
 use App\Models\Service;
 use App\Service\Customer\CustomerBookingService;
 use App\Traits\ParsesChildAgeGroups;
@@ -163,6 +164,20 @@ class ValidateBookingRequest extends CustomFormRequest
     public function after(): array
     {
         return [
+            function ($validator) {
+                $serviceId = $this->input('service_id');
+                $customerId = $this->user()?->id ?? auth()->id();
+                if ($serviceId && $customerId) {
+                    $hasActiveBooking = Booking::where('customer_id', $customerId)
+                        ->where('service_id', $serviceId)
+                        ->whereIn('status', ['Upcoming', 'inService'])
+                        ->exists();
+
+                    if ($hasActiveBooking) {
+                        $validator->errors()->add('service_id', __('validation.create_booking.active_service_booking_exists'));
+                    }
+                }
+            },
             function ($validator) {
                 $serviceId = $this->input('service_id');
                 $service = Service::with('rules')->find($serviceId);

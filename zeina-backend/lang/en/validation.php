@@ -440,6 +440,7 @@ return [
         'shift_invalid' => 'The selected start time and duration must fit entirely within the service shift hours for all dates.',
         'dates_unique' => 'Duplicate dates are not allowed in the schedule.',
         'customer_overlap' => 'You already have an active booking scheduled at this date and time.',
+        'active_service_booking_exists' => 'You already have an active booking for this service that is not yet completed or closed. You cannot book the same service again until the previous booking is completed.',
         'worker_gender_invalid' => 'The selected gender is not available for this service.',
         'babysitters_count_min' => 'The number of babysitters cannot be less than the calculated minimum of :min.',
         'babysitters_count_max' => 'The required number of babysitters exceeds the service limit of :max.',

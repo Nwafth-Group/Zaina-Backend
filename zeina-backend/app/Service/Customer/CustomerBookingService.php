@@ -122,6 +122,13 @@ class CustomerBookingService
             throw new \Exception(__('messages.unpaid_penalties', ['amount' => abs($user->wallet_balance)]), 402);
         }
 
+        // Check if customer already has an active booking for this service (not completed or closed)
+        if ($this->hasActiveCustomerBooking($user->id, $service->id)) {
+            throw ValidationException::withMessages([
+                'service_id' => __('validation.create_booking.active_service_booking_exists'),
+            ]);
+        }
+
         // 3. Compute duration and start/end datetimes
         $times = $this->calculateBookingTimes($service, $dates[0], $startTime, $data['duration'] ?? null);
 
@@ -306,6 +313,13 @@ class CustomerBookingService
         // 2. Enforce wallet checks
         if ($user->wallet_balance < 0) {
             throw new \Exception(__('messages.unpaid_penalties', ['amount' => abs($user->wallet_balance)]), 402);
+        }
+
+        // Check if customer already has an active booking for this service (not completed or closed)
+        if ($this->hasActiveCustomerBooking($user->id, $service->id)) {
+            throw ValidationException::withMessages([
+                'service_id' => __('validation.create_booking.active_service_booking_exists'),
+            ]);
         }
 
         $dates = collect($data['dates'] ?? [])->sort()->values()->toArray();
@@ -956,6 +970,17 @@ class CustomerBookingService
                 Cache::put("temp_hold_worker_{$workerId}", $holds, now()->addMinutes(15));
             }
         }
+    }
+
+    /**
+     * Check if the customer already has an active booking for this service that is not completed or closed.
+     */
+    public function hasActiveCustomerBooking(int $userId, int $serviceId): bool
+    {
+        return Booking::where('customer_id', $userId)
+            ->where('service_id', $serviceId)
+            ->whereIn('status', ['Upcoming', 'inService'])
+            ->exists();
     }
 
     /**
