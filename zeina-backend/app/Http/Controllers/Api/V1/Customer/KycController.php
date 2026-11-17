@@ -23,6 +23,12 @@ class KycController extends Controller
     public function submit(SubmitVerifyAccountRequest $request)
     {
         $user = auth()->user();
+
+        if ($user->status !== 'active') {
+            $user->tokens()->delete();
+            $user->devices()->delete();
+            return $this->errorResponse(__('messages.account_inactive'), 403);
+        }
         // 1. حماية: نمنع المستخدم من إرسال طلب جديد إذا كان طلبه قيد المراجعة أو تمت الموافقة عليه بالفعل
         // if (in_array($user->verification_status, ['pending', 'approved'])) {
         // return $this->successResponse(null,__('messages.kyc_already_submitted', ['status' => $user->verification_status]), 400);

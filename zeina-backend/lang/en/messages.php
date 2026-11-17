@@ -127,6 +127,7 @@ return [
     'reschedule_duration_mismatch' => 'In rescheduling, you cannot change the service duration. Please choose an end time that matches the original hours of the booking.',
     'reschedule_cutoff' => 'Sorry, you must modify the appointment at least :cutoff_hours hours in advance.',
     'reschedule_max_changes' => 'You have exceeded the maximum number of modifications (:max_changes_per_booking times).',
+    'reschedule_limit_reached' => 'Rescheduling can only be applied once per booking and has already been used.',
     'reschedule_lead_time_min' => 'The new appointment must be at least :lead_time_min_hours hours from now.',
     'reschedule_lead_time_max' => 'Cannot book an appointment that exceeds :lead_time_max_days days from now.',
     'booking_rescheduled_successfully' => 'Booking rescheduled successfully.',

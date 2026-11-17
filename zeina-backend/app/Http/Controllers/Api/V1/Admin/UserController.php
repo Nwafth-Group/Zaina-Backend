@@ -288,6 +288,11 @@ class UserController extends Controller
         }
         $user->save();
 
+        if ($user->status === 'inactive') {
+            $user->tokens()->delete();
+            $user->devices()->delete();
+        }
+
         return $this->successResponse(new UserResource($user->load('roles')), __('messages.user_updated'));
     }
 
@@ -303,6 +308,11 @@ class UserController extends Controller
 
         $user->status = ($user->status === 'active') ? 'inactive' : 'active';
         $user->save();
+
+        if ($user->status === 'inactive') {
+            $user->tokens()->delete();
+            $user->devices()->delete();
+        }
 
         return $this->successResponse(null, __('messages.user_status_toggled', ['status' => $user->status]));
     }

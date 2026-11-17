@@ -131,6 +131,7 @@ return [
     'reschedule_duration_mismatch' => 'في عملية إعادة الجدولة، لا يمكن تغيير مدة الخدمة. يرجى اختيار وقت نهاية يطابق عدد الساعات الأصلي للحجز.',
     'reschedule_cutoff' => 'عذراً، يجب تعديل الموعد قبل :cutoff ساعات على الأقل من وقت الخدمة.',
     'reschedule_max_changes' => 'لقد استنفذت الحد الأقصى لمرات التعديل (:max_changes مرات).',
+    'reschedule_limit_reached' => 'عذراً، يمكن إعادة جدولة الحجز لمرة واحدة فقط وقد تم استخدامها بالفعل.',
     'reschedule_lead_time_min' => 'يجب أن يكون الموعد الجديد بعد :lead_time_min ساعات على الأقل من الآن.',
     'reschedule_lead_time_max' => 'لا يمكن الحجز لموعد يتجاوز :lead_time_max أيام من الآن.',
     'booking_rescheduled_successfully' => 'تم إعادة جدولة الحجز بنجاح.',

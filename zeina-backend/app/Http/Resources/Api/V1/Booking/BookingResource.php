@@ -162,6 +162,11 @@ class BookingResource extends JsonResource
             'is_reported'            => \App\Models\Report::where('booking_id', $this->id)
                 ->where('customer_id', $this->customer_id ?? auth()->id())
                 ->exists(),
+            'customer_reschedule_count' => (int) ($this->customer_reschedule_count ?? 0),
+            'rescheduled_at'         => $this->rescheduled_at ? Carbon::parse($this->rescheduled_at)->toIso8601String() : null,
+            'can_reschedule'         => (bool) ($this->service && $this->service->rules && $this->service->rules->allow_reschedule)
+                && (($this->customer_reschedule_count ?? 0) < 1)
+                && ($this->status === 'Upcoming'),
 
             // Formatting/UI fields
             'image'                  => $media ? (new MediaResource($media))->getFileUrl() : null,
@@ -205,9 +210,15 @@ class BookingResource extends JsonResource
                 $notes = [];
 
                 if ((bool) ($rules->allow_reschedule ?? true)) {
-                    $notes[] = $lang == 'ar' 
-                        ? 'يمكن إعادة الجدولة قبل ' . $rules->reschedule_cutoff_hours . ' ساعات' 
-                        : 'Reschedule Can Be Before ' . $rules->reschedule_cutoff_hours . ' Hours';
+                    if (($this->customer_reschedule_count ?? 0) >= 1) {
+                        $notes[] = $lang == 'ar' 
+                            ? 'تم استنفاد الحد الأقصى لإعادة الجدولة (مسموح بها مرة واحدة فقط)' 
+                            : 'Reschedule limit reached (allowed one time only)';
+                    } else {
+                        $notes[] = $lang == 'ar' 
+                            ? 'يمكن إعادة الجدولة لمرة واحدة قبل ' . $rules->reschedule_cutoff_hours . ' ساعات' 
+                            : 'Reschedule Can Be Before ' . $rules->reschedule_cutoff_hours . ' Hours (One Time Only)';
+                    }
                 } else {
                     $notes[] = $lang == 'ar' 
                         ? 'إعادة الجدولة غير مسموح بها لهذه الخدمة' 

@@ -19,11 +19,14 @@ class Booking extends Model
         'actual_start_time', 'actual_end_time', 'started_by', 'completed_by', 'is_at_risk', 'at_risk_reason',
         'visit_type', 'visit_number', 'payment_transaction_id', 'currency_code', 'contract_id',
         'payment_method', 'paid_points', 'refund_amount', 'refund_points', 'refund_destination',
-        'refund_status', 'cancelled_by', 'cancelled_at', 'cancellation_reason'
+        'refund_status', 'cancelled_by', 'cancelled_at', 'cancellation_reason',
+        'customer_reschedule_count', 'rescheduled_at'
     ];
 
     protected $casts = [
         'scheduled_at' => 'datetime',
+        'rescheduled_at' => 'datetime',
+        'customer_reschedule_count' => 'integer',
         'is_at_risk' => 'boolean',
         'child_age_groups' => 'array',
         'selected_options' => 'array',

@@ -57,6 +57,16 @@ class User extends Authenticatable implements Auditable
 
     protected $guard_name = 'sanctum';
 
+    protected static function booted(): void
+    {
+        static::saved(function (User $user) {
+            if ($user->wasChanged('status') && $user->status === 'inactive') {
+                $user->tokens()->delete();
+                $user->devices()->delete();
+            }
+        });
+    }
+
     /**
      * Get the attributes that should be cast.
      *

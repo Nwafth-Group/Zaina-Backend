@@ -459,6 +459,10 @@ class BookingController extends Controller
             return $this->errorResponse(__('messages.unauthorized'), 403);
         }
 
+        if (($booking->customer_reschedule_count ?? 0) >= 1) {
+            return $this->errorResponse(__('messages.reschedule_limit_reached'), 400);
+        }
+
         $date = Carbon::parse($request->date);
         $dayName = strtolower($date->format('l'));
 

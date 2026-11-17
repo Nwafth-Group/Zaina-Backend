@@ -234,13 +234,20 @@ class BookingService
             $sortedDates = collect($dates)->sort()->values();
 
             // Update Booking Header
-            $booking->update([
+            $updateData = [
                 'booking_date' => $sortedDates[0],
                 'start_time' => $newStartStr,
                 'end_time' => $newEndStr,
                 'status' => 'Upcoming',
                 'is_at_risk' => false,
-            ]);
+                'rescheduled_at' => now(),
+            ];
+
+            if (!$isAdmin) {
+                $updateData['customer_reschedule_count'] = ($booking->customer_reschedule_count ?? 0) + 1;
+            }
+
+            $booking->update($updateData);
 
             // Update visits
             if ($booking->relationLoaded('visits') && $booking->visits) {
@@ -301,6 +308,11 @@ class BookingService
         // Must be Upcoming status (bypassed for admin: admin can reschedule anytime)
         if (!$isAdmin && $booking->status !== 'Upcoming') {
             throw new \Exception(__('messages.booking_not_upcoming', ['status' => $booking->status]), 400);
+        }
+
+        // One-time reschedule limit for customer only (admin is exempted)
+        if (!$isAdmin && ($booking->customer_reschedule_count ?? 0) >= 1) {
+            throw new \Exception(__('messages.reschedule_limit_reached'), 400);
         }
 
         // Allow reschedule rule check (bypassed for admin)
