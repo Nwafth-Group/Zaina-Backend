@@ -8,6 +8,8 @@ use App\Models\User;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
@@ -15,13 +17,22 @@ class AuthController extends Controller
 
     public function login(AdminLoginRequest $request)
     {
+        $throttleKey = 'admin_login_'.Str::lower($request->input('email')).'|'.$request->ip();
+
+        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+            return $this->errorResponse(__('messages.too_many_attempts'), 429);
+        }
+
         // 1. جلب المستخدم بناءً على الإيميل
         $user = User::where('email', $request->email)->first();
 
         // 2. التحقق من صحة الباسورد
         if (!$user || !Hash::check($request->password, $user->password)) {
+            RateLimiter::hit($throttleKey, 300);
             return $this->errorResponse(__('messages.invalid_credentials'), 401);
         }
+
+        RateLimiter::clear($throttleKey);
 
         // 3. حماية أمنية: التأكد أن المستخدم ليس عميلاً (يجب أن يكون Admin أو Operation)
         // بناءً على جدولك، الأنواع المسموح لها هي super_admin و operation

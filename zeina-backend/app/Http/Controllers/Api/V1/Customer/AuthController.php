@@ -25,25 +25,30 @@ class AuthController extends Controller
     public function sendOtp(SendOtpRequest $request, SmsService $smsService)
     {
         $mobile = $request->validated()['mobile_number'];
-        // مفتاح الحماية الفريد لكل رقم هاتف
-        $limiterKey = 'otp_lock_'.preg_replace('/[^0-9]/', '', $mobile);
-        $executed = RateLimiter::attempt(
-            $limiterKey,
-            5, // عدد المحاولات
-            function () {
-                // بنتركها فاضية لأننا بس بدنا إياه يحسب الـ hit
-            },
-            300 // المدة بالثواني (15 دقيقة)
-        );
+        $cleanMobile = preg_replace('/[^0-9]/', '', $mobile);
 
-        if (! $executed) {
-            // الرد الموحد الاحترافي تبعك عشان يقرأه الـ React
+        // 1. حماية بالـ IP لمنع هجمات الإغراق (SMS flood)
+        $ipLimiterKey = 'otp_send_ip_'.$request->ip();
+        if (RateLimiter::tooManyAttempts($ipLimiterKey, 10)) {
             return response()->json([
                 'success' => false,
                 'message' => __('messages.otp_rate_limit_exceeded'),
                 'data' => null,
             ], 429);
         }
+
+        // 2. مفتاح الحماية الفريد لكل رقم هاتف (حد أقصى 5 طلبات خلال 5 دقائق)
+        $limiterKey = 'otp_lock_'.$cleanMobile;
+        if (RateLimiter::tooManyAttempts($limiterKey, 5)) {
+            return response()->json([
+                'success' => false,
+                'message' => __('messages.otp_rate_limit_exceeded'),
+                'data' => null,
+            ], 429);
+        }
+
+        RateLimiter::hit($ipLimiterKey, 600); // 10 دقائق
+        RateLimiter::hit($limiterKey, 300);    // 5 دقائق
         $isSandbox = config('services.community_sms.sandbox_mode');
         $otp = $isSandbox ? '123456' : rand(100000, 999999);
         Cache::put('auth_otp_'.$mobile, $otp, now()->addMinutes(10));
