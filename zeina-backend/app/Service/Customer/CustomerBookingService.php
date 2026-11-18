@@ -356,6 +356,9 @@ class CustomerBookingService
             ]);
         }
 
+        $dates = collect($data['dates'] ?? [])->sort()->values()->toArray();
+        $startTime = $data['start_time'] ?? '08:00';
+
         // Enforce same-day rules
         if ($service->rules) {
             $todayCairo = Carbon::today('Africa/Cairo')->toDateString();
@@ -389,9 +392,6 @@ class CustomerBookingService
                 }
             }
         }
-
-        $dates = collect($data['dates'] ?? [])->sort()->values()->toArray();
-        $startTime = $data['start_time'] ?? '08:00';
 
         // 3. Compute times
         $times = $this->calculateBookingTimes($service, $dates[0], $startTime, $data['duration'] ?? null);
