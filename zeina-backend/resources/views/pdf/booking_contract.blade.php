@@ -350,17 +350,22 @@
         </div>
 
         @if(!empty($selectedOptions))
-        <!-- Selected Items Card for Specialized Services (6 to 11) -->
+        <!-- Selected Items Card for Specialized Services (6 to 12) -->
         <div class="card">
-            <div class="card-header">{{ $lang === 'ar' ? 'تفاصيل البنود والكميات المطلوبة' : 'Selected Items & Options' }}</div>
+            <div class="card-header">{{ $lang === 'ar' ? (!empty($isOfficeClinic) ? 'تفاصيل الخدمة والخيارات المطلوبة' : 'تفاصيل البنود والكميات المطلوبة') : (!empty($isOfficeClinic) ? 'Selected Service Options' : 'Selected Items & Options') }}</div>
             <div class="card-body">
                 <table class="items-table">
                     <thead>
                         <tr>
-                            <th style="width: 45%;">{{ $lang === 'ar' ? 'البند' : 'Item' }}</th>
-                            <th style="width: 20%; text-align: center;">{{ $lang === 'ar' ? 'سعر الوحدة' : 'Unit Price' }}</th>
-                            <th style="width: 15%; text-align: center;">{{ $lang === 'ar' ? 'الكمية' : 'Qty' }}</th>
-                            <th style="width: 20%; text-align: {{ $lang === 'ar' ? 'left' : 'right' }};">{{ $lang === 'ar' ? 'الإجمالي' : 'Total' }}</th>
+                            @if(!empty($isOfficeClinic))
+                                <th style="width: 70%;">{{ $lang === 'ar' ? 'البند / الخيار' : 'Item / Option' }}</th>
+                                <th style="width: 30%; text-align: {{ $lang === 'ar' ? 'left' : 'right' }};">{{ $lang === 'ar' ? 'السعر' : 'Price' }}</th>
+                            @else
+                                <th style="width: 45%;">{{ $lang === 'ar' ? 'البند' : 'Item' }}</th>
+                                <th style="width: 20%; text-align: center;">{{ $lang === 'ar' ? 'سعر الوحدة' : 'Unit Price' }}</th>
+                                <th style="width: 15%; text-align: center;">{{ $lang === 'ar' ? 'الكمية' : 'Qty' }}</th>
+                                <th style="width: 20%; text-align: {{ $lang === 'ar' ? 'left' : 'right' }};">{{ $lang === 'ar' ? 'الإجمالي' : 'Total' }}</th>
+                            @endif
                         </tr>
                     </thead>
                     <tbody>
@@ -373,9 +378,13 @@
                             @endphp
                             <tr>
                                 <td><strong>{{ $optName }}</strong></td>
-                                <td style="text-align: center;">{{ number_format($unitPrice, 2) }} {{ $currency }}</td>
-                                <td style="text-align: center;">{{ $qty }}</td>
-                                <td style="text-align: {{ $lang === 'ar' ? 'left' : 'right' }}; font-weight: bold; color: #F45B8C;">{{ number_format($itemTotal, 2) }} {{ $currency }}</td>
+                                @if(!empty($isOfficeClinic))
+                                    <td style="text-align: {{ $lang === 'ar' ? 'left' : 'right' }}; font-weight: bold; color: #F45B8C;">{{ number_format($itemTotal, 2) }} {{ $currency }}</td>
+                                @else
+                                    <td style="text-align: center;">{{ number_format($unitPrice, 2) }} {{ $currency }}</td>
+                                    <td style="text-align: center;">{{ $qty }}</td>
+                                    <td style="text-align: {{ $lang === 'ar' ? 'left' : 'right' }}; font-weight: bold; color: #F45B8C;">{{ number_format($itemTotal, 2) }} {{ $currency }}</td>
+                                @endif
                             </tr>
                         @endforeach
                     </tbody>

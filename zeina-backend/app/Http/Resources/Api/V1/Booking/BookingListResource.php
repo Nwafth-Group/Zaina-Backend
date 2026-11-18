@@ -48,6 +48,7 @@ class BookingListResource extends JsonResource
         return [
             'booking_id' => $this->id,
             'booking_reference' => $this->booking_ref,
+            'service_id' => $this->service_id,
             'service_name' => $serviceName,
             'service_date' => $this->booking_date,
             'start_time' => Carbon::parse($this->start_time)->format('H:i'),
@@ -57,6 +58,15 @@ class BookingListResource extends JsonResource
             'first_schedule_date_formatted' => $firstVisitFormatted,
             'booking_status' => $this->status,
             'visit_type' => $this->visit_type ?? 'single_visit',
+            'team_id' => $this->team_id,
+            'team' => $this->relationLoaded('team') && $this->team ? [
+                'id' => $this->team->id,
+                'code' => $this->team->code,
+                'name' => $lang === 'ar' ? $this->team->name_ar : $this->team->name_en,
+            ] : null,
+            'selected_options' => is_array($this->selected_options)
+                ? $this->selected_options
+                : json_decode($this->selected_options ?? '[]', true),
             'visit_schedule' => $this->relationLoaded('visits') && $this->visits ? $this->visits->map(fn($v) => [
                 'id' => $v->id,
                 'visit_date' => $v->visit_date,
@@ -84,6 +94,9 @@ class BookingListResource extends JsonResource
                 'duration' => (int) ceil($this->duration_minutes / 60),
                 'status' => $this->status,
                 'visit_type' => $this->visit_type ?? 'single_visit',
+                'selected_options' => is_array($this->selected_options)
+                    ? $this->selected_options
+                    : json_decode($this->selected_options ?? '[]', true),
                 'is_reviewed' => \App\Models\Review::where('booking_id', $this->id)
                     ->where('customer_id', $this->customer_id ?? auth()->id())
                     ->exists(),

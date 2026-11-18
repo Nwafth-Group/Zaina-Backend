@@ -142,7 +142,7 @@ class Service extends Model implements Auditable
             return true;
         }
 
-        if ((int) $this->id >= 6 && (int) $this->id <= 11) {
+        if ((int) $this->id >= 6 && (int) $this->id <= 12) {
             return true;
         }
 

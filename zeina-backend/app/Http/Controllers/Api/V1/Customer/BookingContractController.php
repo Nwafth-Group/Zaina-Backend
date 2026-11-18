@@ -508,7 +508,8 @@ class BookingContractController extends Controller
             'visitTypeFormatted' => $visitTypeFormatted,
             'isBabysitter' => $isBabysitter,
             'isPedicureManicure' => ($service->service_code === 'PEDICURE_MANICURE'),
-            'isSpecialized' => in_array(strtoupper($service->service_code ?? ''), array_map('strtoupper', Service::getTeamBasedCodes()), true) || ((int)$service->id >= 6 && (int)$service->id <= 11) || !empty($selectedOptions),
+            'isSpecialized' => in_array(strtoupper($service->service_code ?? ''), array_map('strtoupper', Service::getTeamBasedCodes()), true) || ((int)$service->id >= 6 && (int)$service->id <= 12) || !empty($selectedOptions),
+            'isOfficeClinic' => (strtoupper($service->service_code ?? '') === 'OFFICE_CLINIC_CLEANING' || (int)$service->id === 12),
             'selectedOptions' => $selectedOptions,
             'team' => $team ? [
                 'name' => $lang === 'ar' ? ($team->name_ar ?: $team->name_en) : ($team->name_en ?: $team->name_ar),
