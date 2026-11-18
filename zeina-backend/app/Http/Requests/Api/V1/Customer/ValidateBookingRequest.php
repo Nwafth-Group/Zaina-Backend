@@ -223,7 +223,7 @@ class ValidateBookingRequest extends CustomFormRequest
 
                 // 3. Same-day & Advance booking limits validation per date
                 $rules = $service->rules;
-                $todayStr = now()->toDateString();
+                $todayStr = Carbon::today('Africa/Cairo')->toDateString();
 
                 foreach ($dates as $dateStr) {
                     $date = Carbon::parse($dateStr);

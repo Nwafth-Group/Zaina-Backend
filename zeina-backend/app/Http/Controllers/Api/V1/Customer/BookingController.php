@@ -121,8 +121,8 @@ class BookingController extends Controller
             }
         }
 
-        $startDate = $allowSameDay ? Carbon::today() : Carbon::tomorrow();
-        $endDate = Carbon::today()->addDays($maxDays);
+        $startDate = $allowSameDay ? Carbon::today('Africa/Cairo') : Carbon::tomorrow('Africa/Cairo');
+        $endDate = Carbon::today('Africa/Cairo')->addDays($maxDays);
 
         $workingDays = $service->schedules()
             ->where('is_active', true)
