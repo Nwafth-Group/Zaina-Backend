@@ -96,40 +96,15 @@ class UpdateWorkerRequest extends CustomFormRequest
                 }
             }
 
-            // Check status change to inactive/suspended when assigned to services
+            // Check status change to inactive/suspended when worker has upcoming or in-progress bookings
             if ($this->has('status') && in_array($this->input('status'), ['inactive', 'suspended'])) {
-                $isAr = app()->getLocale() === 'ar';
-
-                // 1. Direct services
-                $assignedDirectServices = collect();
-                if ($this->has('services')) {
-                    $serviceIds = $this->input('services', []);
-                    if (is_array($serviceIds) && !empty($serviceIds)) {
-                        $assignedDirectServices = \App\Models\Service::whereIn('id', $serviceIds)->get();
-                    }
-                } elseif ($worker) {
-                    $assignedDirectServices = $worker->services()->get();
-                }
-
-                // 2. Team services
-                $assignedTeamServices = collect();
-                if ($this->has('team_id')) {
-                    $teamId = $this->input('team_id');
-                    if ($teamId) {
-                        $team = \App\Models\Team::find($teamId);
-                        $assignedTeamServices = $team ? $team->services()->get() : collect();
-                    }
-                } elseif ($worker && $worker->team_id && $worker->team) {
-                    $assignedTeamServices = $worker->team->services()->get();
-                }
-
-                $allAssignedServices = $assignedDirectServices->concat($assignedTeamServices)->unique('id');
-
-                if ($allAssignedServices->isNotEmpty()) {
-                    $serviceNames = $allAssignedServices->map(fn($s) => $isAr ? ($s->name_ar ?: $s->name_en) : ($s->name_en ?: $s->name_ar))->join('، ');
+                $workerModel = $worker instanceof \App\Models\Worker ? $worker : \App\Models\Worker::find($worker);
+                if ($workerModel && $workerModel->hasUpcomingOrInProgressBookings()) {
+                    $count = $workerModel->activeBookingsCount();
+                    $isAr = app()->getLocale() === 'ar';
                     $msg = $isAr
-                        ? "لا يمكن تغيير حالة العامل إلى غير نشط لأنه مسند إلى خدمة: ({$serviceNames}). يرجى إلغاء إسناد العامل من الخدمة أولاً."
-                        : "Cannot deactivate this worker because they are assigned to service: ({$serviceNames}). Please unassign the worker from the service first.";
+                        ? "لا يمكن تغيير حالة العامل إلى غير نشط لوجود {$count} خدمة/حجز قيد التنفيذ أو قادم مسند إليه."
+                        : "Cannot deactivate this worker while they have {$count} upcoming or in-progress booking(s) assigned to them.";
 
                     $validator->errors()->add('status', $msg);
                 }

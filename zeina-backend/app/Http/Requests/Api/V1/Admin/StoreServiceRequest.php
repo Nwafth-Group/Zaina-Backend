@@ -175,6 +175,8 @@ class StoreServiceRequest extends CustomFormRequest
             'rules.allow_reschedule' => 'nullable|boolean',
             'rules.reschedule_cutoff_hours' => 'required_if:rules.allow_reschedule,true|integer|min:0',
             'rules.allow_same_day' => 'nullable|boolean',
+            'rules.same_day_lead_time_hours' => 'nullable|integer|min:0',
+            'rules.same_day_cutoff_time' => 'nullable|string',
             'rules.max_advance_booking_days' => 'nullable|integer|min:0',
             'rules.arrival_buffer_minutes' => 'nullable|integer|min:0',
             'rules.late_arrival_grace_minutes' => 'nullable|integer|min:0',

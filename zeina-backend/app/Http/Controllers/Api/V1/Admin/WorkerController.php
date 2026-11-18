@@ -255,19 +255,15 @@ class WorkerController extends Controller
     {
         $newStatus = $worker->status === 'active' ? 'inactive' : 'active';
 
-        if ($newStatus === 'inactive') {
-            $directServices = $worker->services()->get();
-            $teamServices = ($worker->team_id && $worker->team) ? $worker->team->services()->get() : collect();
-            $assignedServices = $directServices->concat($teamServices)->unique('id');
-
-            if ($assignedServices->isNotEmpty()) {
+        if ($newStatus === 'inactive' || $newStatus === 'suspended') {
+            if ($worker->hasUpcomingOrInProgressBookings()) {
+                $count = $worker->activeBookingsCount();
                 $isAr = app()->getLocale() === 'ar';
-                $serviceNames = $assignedServices->map(fn($s) => $isAr ? ($s->name_ar ?: $s->name_en) : ($s->name_en ?: $s->name_ar))->join('، ');
 
                 return $this->errorResponse(
                     $isAr
-                        ? "لا يمكن تغيير حالة العامل إلى غير نشط لأنه مسند إلى خدمة: ({$serviceNames}). يرجى إلغاء إسناد العامل من الخدمة أولاً."
-                        : "Cannot deactivate this worker because they are assigned to service: ({$serviceNames}). Please unassign the worker from the service first.",
+                        ? "لا يمكن تغيير حالة العامل إلى غير نشط لوجود {$count} خدمة/حجز قيد التنفيذ أو قادم مسند إليه."
+                        : "Cannot deactivate this worker while they have {$count} upcoming or in-progress booking(s) assigned to them.",
                     422
                 );
             }

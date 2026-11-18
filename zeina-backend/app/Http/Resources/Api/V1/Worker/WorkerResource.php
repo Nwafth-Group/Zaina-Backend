@@ -46,6 +46,14 @@ class WorkerResource extends JsonResource
             'gender' => $this->gender,
             'rating' => $this->avg_rating,
             'status' => $this->status,
+            'has_active_bookings' => $this->hasUpcomingOrInProgressBookings(),
+            'active_bookings_count' => $this->activeBookingsCount(),
+            'can_change_status' => !$this->hasUpcomingOrInProgressBookings(),
+            'cannot_change_status_reason' => $this->hasUpcomingOrInProgressBookings()
+                ? (app()->getLocale() === 'ar'
+                    ? 'لا يمكن تغيير حالة العامل لوجود خدمات قيد التنفيذ أو قادمة مسندة إليه'
+                    : 'Cannot change worker status while having upcoming or in-progress bookings')
+                : null,
             'team_id' => $this->team_id,
             'team' => $team ? [
                 'id' => $team->id,

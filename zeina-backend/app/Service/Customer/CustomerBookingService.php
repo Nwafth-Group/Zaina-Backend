@@ -129,6 +129,40 @@ class CustomerBookingService
             ]);
         }
 
+        // Enforce same-day rules
+        if ($service->rules) {
+            $todayCairo = Carbon::today('Africa/Cairo')->toDateString();
+            if (in_array($todayCairo, $dates)) {
+                if (! $service->rules->allow_same_day) {
+                    throw ValidationException::withMessages([
+                        'dates' => __('validation.create_booking.dates_same_day_not_allowed', ['date' => $todayCairo]),
+                    ]);
+                }
+                $nowCairo = Carbon::now('Africa/Cairo');
+                if (! empty($service->rules->same_day_cutoff_time)) {
+                    $cutoff = Carbon::today('Africa/Cairo')->setTimeFromTimeString($service->rules->same_day_cutoff_time);
+                    if ($nowCairo->gt($cutoff)) {
+                        throw ValidationException::withMessages([
+                            'dates' => app()->getLocale() === 'ar'
+                                ? "تم إغلاق استقبال حجوزات اليوم نفسه بعد الساعة {$service->rules->same_day_cutoff_time}."
+                                : "Same-day bookings are closed after {$service->rules->same_day_cutoff_time}.",
+                        ]);
+                    }
+                }
+                if (($service->rules->same_day_lead_time_hours ?? 3) > 0) {
+                    $leadHours = (int) ($service->rules->same_day_lead_time_hours ?? 3);
+                    $shiftStart = Carbon::today('Africa/Cairo')->setTimeFromTimeString($startTime);
+                    if ($nowCairo->copy()->addHours($leadHours)->gt($shiftStart)) {
+                        throw ValidationException::withMessages([
+                            'start_time' => app()->getLocale() === 'ar'
+                                ? "يلزم حجز الموعد قبل بدء الشفت بـ {$leadHours} ساعات على الأقل لحجوزات اليوم نفسه."
+                                : "Same-day booking requires at least {$leadHours} hour(s) advance notice before shift start time.",
+                        ]);
+                    }
+                }
+            }
+        }
+
         // 3. Compute duration and start/end datetimes
         $times = $this->calculateBookingTimes($service, $dates[0], $startTime, $data['duration'] ?? null);
 
@@ -320,6 +354,40 @@ class CustomerBookingService
             throw ValidationException::withMessages([
                 'service_id' => __('validation.create_booking.active_service_booking_exists'),
             ]);
+        }
+
+        // Enforce same-day rules
+        if ($service->rules) {
+            $todayCairo = Carbon::today('Africa/Cairo')->toDateString();
+            if (in_array($todayCairo, $dates)) {
+                if (! $service->rules->allow_same_day) {
+                    throw ValidationException::withMessages([
+                        'dates' => __('validation.create_booking.dates_same_day_not_allowed', ['date' => $todayCairo]),
+                    ]);
+                }
+                $nowCairo = Carbon::now('Africa/Cairo');
+                if (! empty($service->rules->same_day_cutoff_time)) {
+                    $cutoff = Carbon::today('Africa/Cairo')->setTimeFromTimeString($service->rules->same_day_cutoff_time);
+                    if ($nowCairo->gt($cutoff)) {
+                        throw ValidationException::withMessages([
+                            'dates' => app()->getLocale() === 'ar'
+                                ? "تم إغلاق استقبال حجوزات اليوم نفسه بعد الساعة {$service->rules->same_day_cutoff_time}."
+                                : "Same-day bookings are closed after {$service->rules->same_day_cutoff_time}.",
+                        ]);
+                    }
+                }
+                if (($service->rules->same_day_lead_time_hours ?? 3) > 0) {
+                    $leadHours = (int) ($service->rules->same_day_lead_time_hours ?? 3);
+                    $shiftStart = Carbon::today('Africa/Cairo')->setTimeFromTimeString($startTime);
+                    if ($nowCairo->copy()->addHours($leadHours)->gt($shiftStart)) {
+                        throw ValidationException::withMessages([
+                            'start_time' => app()->getLocale() === 'ar'
+                                ? "يلزم حجز الموعد قبل بدء الشفت بـ {$leadHours} ساعات على الأقل لحجوزات اليوم نفسه."
+                                : "Same-day booking requires at least {$leadHours} hour(s) advance notice before shift start time.",
+                        ]);
+                    }
+                }
+            }
         }
 
         $dates = collect($data['dates'] ?? [])->sort()->values()->toArray();

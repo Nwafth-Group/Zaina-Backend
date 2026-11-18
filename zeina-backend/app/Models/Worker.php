@@ -100,4 +100,59 @@ class Worker extends Model
     {
         return $this->hasMany(WorkerAbsence::class);
     }
+
+    /**
+     * Check if the worker has any upcoming or in-progress bookings.
+     */
+    public function hasUpcomingOrInProgressBookings(): bool
+    {
+        // 1. Direct assignment on bookings table
+        $hasDirect = Booking::where('worker_id', $this->id)
+            ->whereIn('status', ['Upcoming', 'inService'])
+            ->exists();
+
+        if ($hasDirect) {
+            return true;
+        }
+
+        // 2. Active assignment in booking_assignments for upcoming/inService bookings
+        $hasAssignment = BookingAssignment::where('worker_id', $this->id)
+            ->where('status', 'active')
+            ->whereHas('booking', function ($q) {
+                $q->whereIn('status', ['Upcoming', 'inService']);
+            })
+            ->exists();
+
+        if ($hasAssignment) {
+            return true;
+        }
+
+        // 3. Child booking visits in progress or upcoming
+        return \Illuminate\Support\Facades\DB::table('booking_visits')
+            ->join('bookings', 'booking_visits.booking_id', '=', 'bookings.id')
+            ->join('booking_assignments', 'booking_assignments.booking_id', '=', 'bookings.id')
+            ->where('booking_assignments.worker_id', $this->id)
+            ->where('booking_assignments.status', 'active')
+            ->whereIn('booking_visits.status', ['Upcoming', 'inService'])
+            ->exists();
+    }
+
+    /**
+     * Count upcoming or in-progress bookings for this worker.
+     */
+    public function activeBookingsCount(): int
+    {
+        $directCount = Booking::where('worker_id', $this->id)
+            ->whereIn('status', ['Upcoming', 'inService'])
+            ->count();
+
+        $assignmentCount = BookingAssignment::where('worker_id', $this->id)
+            ->where('status', 'active')
+            ->whereHas('booking', function ($q) {
+                $q->whereIn('status', ['Upcoming', 'inService']);
+            })
+            ->count();
+
+        return max($directCount, $assignmentCount);
+    }
 }

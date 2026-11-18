@@ -99,7 +99,27 @@ class BookingController extends Controller
         $maxDays = ($service->rules && $service->rules->max_advance_booking_days > 0)
             ? (int) $service->rules->max_advance_booking_days
             : 30;
+
+        $nowCairo = Carbon::now('Africa/Cairo');
         $allowSameDay = $service->rules ? (bool) $service->rules->allow_same_day : false;
+        if ($allowSameDay && $service->rules) {
+            // Check same day cut-off time (e.g. 10:00:00)
+            if (! empty($service->rules->same_day_cutoff_time)) {
+                $cutoffToday = Carbon::today('Africa/Cairo')->setTimeFromTimeString($service->rules->same_day_cutoff_time);
+                if ($nowCairo->gt($cutoffToday)) {
+                    $allowSameDay = false;
+                }
+            }
+
+            // If start_time is provided, also check lead time before shift start
+            if ($allowSameDay && ! empty($data['start_time']) && ($service->rules->same_day_lead_time_hours ?? 3) > 0) {
+                $leadHours = (int) ($service->rules->same_day_lead_time_hours ?? 3);
+                $shiftStartToday = Carbon::today('Africa/Cairo')->setTimeFromTimeString($data['start_time']);
+                if ($nowCairo->copy()->addHours($leadHours)->gt($shiftStartToday)) {
+                    $allowSameDay = false;
+                }
+            }
+        }
 
         $startDate = $allowSameDay ? Carbon::today() : Carbon::tomorrow();
         $endDate = Carbon::today()->addDays($maxDays);

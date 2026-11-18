@@ -126,6 +126,7 @@ class Service extends Model implements Auditable
             'CAR_WASH',
             'MATTRESS_CLEANING',
             'CURTAIN_CLEANING',
+            'OFFICE_CLINIC_CLEANING',
         ];
     }
 

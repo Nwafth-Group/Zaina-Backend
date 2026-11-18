@@ -230,6 +230,36 @@ class StoreBookingRequest extends CustomFormRequest
                     if ($dateStr === $todayStr) {
                         if ($rules && ! $rules->allow_same_day) {
                             $validator->errors()->add('dates', __('validation.create_booking.dates_same_day_not_allowed', ['date' => $dateStr]));
+                        } elseif ($rules) {
+                            $nowCairo = Carbon::now('Africa/Cairo');
+
+                            // Cutoff check for same-day
+                            if (! empty($rules->same_day_cutoff_time)) {
+                                $cutoff = Carbon::today('Africa/Cairo')->setTimeFromTimeString($rules->same_day_cutoff_time);
+                                if ($nowCairo->gt($cutoff)) {
+                                    $validator->errors()->add(
+                                        'dates',
+                                        app()->getLocale() === 'ar'
+                                            ? "تم إغلاق استقبال حجوزات اليوم نفسه بعد الساعة {$rules->same_day_cutoff_time}."
+                                            : "Same-day bookings are closed after {$rules->same_day_cutoff_time}."
+                                    );
+                                }
+                            }
+
+                            // Lead time check before shift start
+                            $startTimeInput = $this->input('start_time');
+                            if (! empty($startTimeInput) && ($rules->same_day_lead_time_hours ?? 3) > 0) {
+                                $leadHours = (int) ($rules->same_day_lead_time_hours ?? 3);
+                                $shiftStart = Carbon::today('Africa/Cairo')->setTimeFromTimeString($startTimeInput);
+                                if ($nowCairo->copy()->addHours($leadHours)->gt($shiftStart)) {
+                                    $validator->errors()->add(
+                                        'start_time',
+                                        app()->getLocale() === 'ar'
+                                            ? "يلزم حجز الموعد قبل بدء الشفت بـ {$leadHours} ساعات على الأقل لحجوزات اليوم نفسه."
+                                            : "Same-day booking requires at least {$leadHours} hour(s) advance notice before shift start time."
+                                    );
+                                }
+                            }
                         }
                     }
 
