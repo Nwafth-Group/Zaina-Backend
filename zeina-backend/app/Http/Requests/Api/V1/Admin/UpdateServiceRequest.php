@@ -379,15 +379,23 @@ class UpdateServiceRequest extends CustomFormRequest
                             ->get();
 
                         if ($conflictingStandard->isNotEmpty()) {
-                            $details = $conflictingStandard->map(function ($cw) use ($isAr) {
-                                $serviceName = $isAr ? ($cw->service_name_ar ?: $cw->service_name_en) : ($cw->service_name_en ?: $cw->service_name_ar);
-                                return "«{$cw->worker_name}» (مسند لخدمة: {$serviceName})";
-                            })->implode('، ');
+                            $groupedStandard = $conflictingStandard->groupBy('worker_id');
 
-                            $detailsEn = $conflictingStandard->map(function ($cw) {
-                                $serviceName = $cw->service_name_en ?: $cw->service_name_ar;
-                                return "\"{$cw->worker_name}\" (assigned to: {$serviceName})";
-                            })->implode(', ');
+                            $details = $groupedStandard->map(function ($items) use ($isAr) {
+                                $workerName = $items->first()->worker_name;
+                                $serviceNames = $items->map(function ($cw) use ($isAr) {
+                                    return $isAr ? ($cw->service_name_ar ?: $cw->service_name_en) : ($cw->service_name_en ?: $cw->service_name_ar);
+                                })->unique()->implode('، ');
+                                return "«{$workerName}» (مسند لخدمة: {$serviceNames})";
+                            })->implode(' | ');
+
+                            $detailsEn = $groupedStandard->map(function ($items) {
+                                $workerName = $items->first()->worker_name;
+                                $serviceNames = $items->map(function ($cw) {
+                                    return $cw->service_name_en ?: $cw->service_name_ar;
+                                })->unique()->implode(', ');
+                                return "\"{$workerName}\" (assigned to: {$serviceNames})";
+                            })->implode(' | ');
 
                             $validator->errors()->add('workers', $isAr
                                 ? "العمال التالية مسندون لخدمات بالساعة (1-5): {$details}، ولا يمكن إسنادهم لخدمات تخصصية."
@@ -408,15 +416,23 @@ class UpdateServiceRequest extends CustomFormRequest
                             ->get();
 
                         if ($conflictingWorkers->isNotEmpty()) {
-                            $details = $conflictingWorkers->map(function ($cw) use ($isAr) {
-                                $serviceName = $isAr ? ($cw->service_name_ar ?: $cw->service_name_en) : ($cw->service_name_en ?: $cw->service_name_ar);
-                                return "«{$cw->worker_name}» (مسند لخدمة: {$serviceName})";
-                            })->implode('، ');
+                            $groupedWorkers = $conflictingWorkers->groupBy('worker_id');
 
-                            $detailsEn = $conflictingWorkers->map(function ($cw) {
-                                $serviceName = $cw->service_name_en ?: $cw->service_name_ar;
-                                return "\"{$cw->worker_name}\" (assigned to: {$serviceName})";
-                            })->implode(', ');
+                            $details = $groupedWorkers->map(function ($items) use ($isAr) {
+                                $workerName = $items->first()->worker_name;
+                                $serviceNames = $items->map(function ($cw) use ($isAr) {
+                                    return $isAr ? ($cw->service_name_ar ?: $cw->service_name_en) : ($cw->service_name_en ?: $cw->service_name_ar);
+                                })->unique()->implode('، ');
+                                return "«{$workerName}» (مسند لخدمة: {$serviceNames})";
+                            })->implode(' | ');
+
+                            $detailsEn = $groupedWorkers->map(function ($items) {
+                                $workerName = $items->first()->worker_name;
+                                $serviceNames = $items->map(function ($cw) {
+                                    return $cw->service_name_en ?: $cw->service_name_ar;
+                                })->unique()->implode(', ');
+                                return "\"{$workerName}\" (assigned to: {$serviceNames})";
+                            })->implode(' | ');
 
                             $validator->errors()->add('workers', $isAr
                                 ? "لا يمكن حفظ التعديل: العمال التالية مسندون لخدمات أخرى بالفعل: {$details}. في الخدمات العادية، يمكن إسناد العامل لخدمة واحدة فقط."
