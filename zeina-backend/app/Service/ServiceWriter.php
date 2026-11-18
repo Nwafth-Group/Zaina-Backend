@@ -208,7 +208,7 @@ class ServiceWriter
 
         if (array_key_exists('working_days', $data) || array_key_exists('shifts', $data)) {
             $workingDays = array_key_exists('working_days', $data)
-                ? $data['working_days']
+                ? (is_array($data['working_days']) ? $data['working_days'] : [])
                 : $service->schedules()->pluck('day')->unique()->toArray();
 
             $isServiceWithoutShifts = Service::isServiceWithoutShifts($service->service_code, $service->category_id);

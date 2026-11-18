@@ -504,6 +504,24 @@ class StoreServiceRequest extends CustomFormRequest
             'workers.min' => __('validation.create_service.workers_min'),
             'workers.*.integer' => __('validation.create_service.workers_integer'),
             'workers.*.exists' => __('validation.create_service.workers_exists'),
+
+            // مواعيد وأوقات العمل والمدد
+            'start_time.date_format' => 'صيغة وقت البدء غير صحيحة (يجب أن تكون بتنسيق HH:MM).',
+            'end_time.date_format' => 'صيغة وقت الانتهاء غير صحيحة (يجب أن تكون بتنسيق HH:MM).',
+            'end_time.after' => 'وقت الانتهاء يجب أن يكون بعد وقت البدء.',
+            'default_duration.required' => 'المدة الافتراضية مطلوبة.',
+            'default_duration.min' => 'المدة الافتراضية يجب أن تكون ساعة واحدة على الأقل.',
+            'min_duration.min' => 'الحد الأدنى للمدة يجب أن يكون ساعة واحدة على الأقل.',
+            'max_duration.gte' => 'الحد الأقصى للمدة يجب أن يكون أكبر من أو يساوي الحد الأدنى.',
+            'min_workers.min' => 'الحد الأدنى للعمال يجب أن يكون 1 على الأقل.',
+            'max_workers.gte' => 'الحد الأقصى لعدد العمال يجب أن يكون أكبر من أو يساوي الحد الأدنى.',
+
+            // أيام وفترات العمل
+            'working_days.*.in' => 'أحد أيام العمل المحددة غير صالح.',
+            'shifts.*.start_time.required_with' => 'وقت بدء الفترة مطلوب.',
+            'shifts.*.start_time.date_format' => 'صيغة وقت بدء الفترة غير صحيحة.',
+            'shifts.*.end_time.date_format' => 'صيغة وقت انتهاء الفترة غير صحيحة.',
+
             // 2. القواعد (Rules)
             'rules.required' => __('validation.create_service.rules_required'),
             'rules.array' => __('validation.create_service.rules_array'),

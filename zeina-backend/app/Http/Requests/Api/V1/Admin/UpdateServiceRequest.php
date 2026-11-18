@@ -49,6 +49,13 @@ class UpdateServiceRequest extends CustomFormRequest
                 $this->merge(['child_age_groups' => []]);
             }
         }
+
+        if ($this->has('working_days') || array_key_exists('working_days', $this->all())) {
+            $days = $this->input('working_days');
+            if (empty($days) || $days === '' || $days === 'null' || $days === '[]') {
+                $this->merge(['working_days' => []]);
+            }
+        }
     }
 
     /**
@@ -182,9 +189,9 @@ class UpdateServiceRequest extends CustomFormRequest
             'child_age_groups.*.status' => 'required_with:child_age_groups|in:active,inactive',
 
             // Service Shifts & Schedules
-            'working_days' => 'sometimes|nullable|array|min:1',
-            'working_days.*' => 'required_with:working_days|in:saturday,sunday,monday,tuesday,wednesday,thursday,friday',
-            'shifts' => 'required_with:working_days|array|min:1',
+            'working_days' => 'sometimes|nullable|array',
+            'working_days.*' => 'in:saturday,sunday,monday,tuesday,wednesday,thursday,friday',
+            'shifts' => 'sometimes|nullable|array',
             'shifts.*.start_time' => 'required_with:shifts|date_format:H:i',
             'shifts.*.end_time' => 'nullable|date_format:H:i',
 
@@ -612,6 +619,23 @@ class UpdateServiceRequest extends CustomFormRequest
             'name_ar.max' => __('validation.update_service.name_ar_max'),
             'name_en.max' => __('validation.update_service.name_en_max'),
             'status.in' => __('validation.update_service.status_in'),
+
+            // مواعيد وأوقات العمل والمدد
+            'start_time.date_format' => 'صيغة وقت البدء غير صحيحة (يجب أن تكون بتنسيق HH:MM).',
+            'end_time.date_format' => 'صيغة وقت الانتهاء غير صحيحة (يجب أن تكون بتنسيق HH:MM).',
+            'end_time.after' => 'وقت الانتهاء يجب أن يكون بعد وقت البدء.',
+            'default_duration.required' => 'المدة الافتراضية مطلوبة.',
+            'default_duration.min' => 'المدة الافتراضية يجب أن تكون ساعة واحدة على الأقل.',
+            'min_duration.min' => 'الحد الأدنى للمدة يجب أن يكون ساعة واحدة على الأقل.',
+            'max_duration.gte' => 'الحد الأقصى للمدة يجب أن يكون أكبر من أو يساوي الحد الأدنى.',
+            'min_workers.min' => 'الحد الأدنى للعمال يجب أن يكون 1 على الأقل.',
+            'max_workers.gte' => 'الحد الأقصى لعدد العمال يجب أن يكون أكبر من أو يساوي الحد الأدنى.',
+
+            // أيام وفترات العمل
+            'working_days.*.in' => 'أحد أيام العمل المحددة غير صالح.',
+            'shifts.*.start_time.required_with' => 'وقت بدء الفترة مطلوب.',
+            'shifts.*.start_time.date_format' => 'صيغة وقت بدء الفترة غير صحيحة.',
+            'shifts.*.end_time.date_format' => 'صيغة وقت انتهاء الفترة غير صحيحة.',
 
             // قواعد الخدمة
             'rules.array' => __('validation.update_service.rules_array'),
