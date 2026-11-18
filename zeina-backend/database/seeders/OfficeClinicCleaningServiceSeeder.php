@@ -11,6 +11,7 @@ use App\Models\ServiceZone;
 use App\Models\Team;
 use App\Models\Worker;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Storage;
 
 class OfficeClinicCleaningServiceSeeder extends Seeder
 {
@@ -78,7 +79,7 @@ class OfficeClinicCleaningServiceSeeder extends Seeder
             ]
         );
 
-        // 2. Service Options (Two Options per Document V.19)
+        // 2. Service Options (Two Options per Document V.19 - Price only, no min/max qty)
         $optionsData = [
             [
                 'name_ar' => 'الصغيرة والمتوسطة (60–120 م²)',
@@ -86,8 +87,8 @@ class OfficeClinicCleaningServiceSeeder extends Seeder
                 'description_ar' => 'المكاتب والعيادات الصغيرة والمتوسطة (60–120 م²) - تشمل 3 عمال لمدة 4 ساعات',
                 'description_en' => 'Small to medium offices & clinics (60–120 m²) - includes 3 workers for 4 hours',
                 'unit_price' => 200.00,
-                'min_qty' => 1,
-                'max_qty' => 1,
+                'min_qty' => null,
+                'max_qty' => null,
                 'status' => 'active',
                 'sort_order' => 1,
             ],
@@ -97,8 +98,8 @@ class OfficeClinicCleaningServiceSeeder extends Seeder
                 'description_ar' => 'المكاتب والمراكز والعيادات الكبيرة (أكثر من 300 م²) - تشمل 4 عمال لمدة 4 ساعات',
                 'description_en' => 'Large corporate offices & clinics (> 300 m²) - includes 4 workers for 4 hours',
                 'unit_price' => 500.00,
-                'min_qty' => 1,
-                'max_qty' => 1,
+                'min_qty' => null,
+                'max_qty' => null,
                 'status' => 'active',
                 'sort_order' => 2,
             ],
@@ -152,6 +153,27 @@ class OfficeClinicCleaningServiceSeeder extends Seeder
         $maleWorkerIds = Worker::where('gender', 'male')->where('status', 'active')->pluck('id')->toArray();
         if (! empty($maleWorkerIds)) {
             $service->workers()->syncWithoutDetaching($maleWorkerIds);
+        }
+
+        // 6. Sync Media Icon (12.jpg)
+        $dummyIconPath = public_path('assist/services/12.jpg');
+        if (file_exists($dummyIconPath)) {
+            $extension = pathinfo($dummyIconPath, PATHINFO_EXTENSION);
+            $iconName = 'service_' . $service->id . '_icon.' . $extension;
+            $iconPath = 'services/icons/' . $iconName;
+
+            Storage::disk('public')->put($iconPath, file_get_contents($dummyIconPath));
+
+            $service->media()->updateOrCreate(
+                ['collection' => 'service/icon'],
+                [
+                    'file_name' => $iconName,
+                    'mime_type' => mime_content_type($dummyIconPath),
+                    'disk' => 'public',
+                    'path' => $iconPath,
+                    'size' => Storage::disk('public')->size($iconPath),
+                ]
+            );
         }
     }
 }

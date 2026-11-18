@@ -30,8 +30,8 @@ class ServiceOptionResource extends JsonResource
         }
 
         $data['unit_price'] = (float) $this->unit_price;
-        $data['min_qty'] = (int) $this->min_qty;
-        $data['max_qty'] = (int) $this->max_qty;
+        $data['min_qty'] = $this->min_qty !== null ? (int) $this->min_qty : null;
+        $data['max_qty'] = $this->max_qty !== null ? (int) $this->max_qty : null;
         $data['status'] = $this->status;
         $data['sort_order'] = (int) $this->sort_order;
 
