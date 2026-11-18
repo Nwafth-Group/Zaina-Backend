@@ -440,7 +440,7 @@ class BookingController extends Controller
                     [
                         'booking_ref' => $booking->booking_ref,
                         'booking_date' => $booking->booking_date,
-                        'workers_count' => count($request->worker_ids),
+                        'workers_count' => !empty($request->worker_ids) ? count($request->worker_ids) : ($booking->workers_count ?? 1),
                     ]
                 ));
 
